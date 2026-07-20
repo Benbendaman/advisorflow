@@ -255,9 +255,16 @@
         <div id="dueCare"></div>
       </div>
     </div>
-    <div class="card">
-      <h2>Coming up in the next 14 days</h2>
-      <div id="upcoming"></div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Birthdays 🎂 next 14 days</h2>
+        <div class="cardhint">Clients and prospects. A birthday message is a warm touch point even before they're a client.</div>
+        <div id="birthdays"></div>
+      </div>
+      <div class="card">
+        <h2>Coming up in the next 14 days</h2>
+        <div id="upcoming"></div>
+      </div>
     </div>
   </section>
 
@@ -525,10 +532,17 @@
       </table>
       <div class="calcnote">Percentages of contribution allocation. Total is employer + employee. Edit any cell and it saves automatically.</div>
     </div>
-    <div class="card">
-      <h2>Plan name presets</h2>
-      <textarea id="set_plans" rows="10" oninput="App.setPlans(this.value)" style="font-size:13px"></textarea>
-      <div class="calcnote">One plan per line. These appear as type-ahead suggestions for plan names in the fact-find. Seeded with common AIA products — edit freely, and add other insurers' plans too.</div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Insurance plan presets</h2>
+        <textarea id="set_plans_ins" rows="12" oninput="App.setPlansIns(this.value)" style="font-size:13px"></textarea>
+        <div class="calcnote">One per line. Suggested when typing a plan name in the fact-find's Insurance table.</div>
+      </div>
+      <div class="card">
+        <h2>Investment / savings plan presets</h2>
+        <textarea id="set_plans_inv" rows="12" oninput="App.setPlansInv(this.value)" style="font-size:13px"></textarea>
+        <div class="calcnote">One per line. Suggested in the Investment / Savings Plans table. Add other insurers' products freely.</div>
+      </div>
     </div>
     <div class="card">
       <h2>Data</h2>
@@ -580,7 +594,8 @@
   </div>
 </div>
 
-<datalist id="dlPlans"></datalist>
+<datalist id="dlPlansIns"></datalist>
+<datalist id="dlPlansInv"></datalist>
 <datalist id="dlSR">
   <option value="File hospitalisation claim"><option value="File accident claim"><option value="File CI claim">
   <option value="Change address"><option value="Update contact details"><option value="Update beneficiary / nomination">
@@ -620,7 +635,7 @@ const DEFAULT_RATES = [
   {min:71,max:120,er:7.5,  ee:5,    oa:8.00,  sa:8.00,  ma:84.00},
 ];
 
-const DEFAULT_PLANS = [
+const DEFAULT_PLANS_INS = [
   // Health & hospital (from 2026 Agency Commission Rates infosheet)
   'AIA HealthShield Gold Max A','AIA HealthShield Gold Max B','AIA HealthShield Gold Max Standard Plan',
   'AIA Max VitalHealth A','AIA Max VitalHealth A Value','AIA Max VitalHealth B','AIA Max VitalHealth B Lite',
@@ -637,7 +652,8 @@ const DEFAULT_PLANS = [
   'AIA Critical Protector Waiver of Premium (II)','AIA Early Critical Protector Waiver of Premium II',
   // PA & travel
   'AIA Solitaire PA (II)','AIA Centurion PA','AIA Platinum AccidentCare','AIA Around The World Plus (II)',
-  // ILP, savings & wealth
+];
+const DEFAULT_PLANS_INV = [
   'AIA Pro Achiever 3.0','AIA Invest Easy (Cash/SRS)','AIA Invest Easy (CPF OA/SA)','AIA Elite Secure Income',
   'AIA Wealth Venture','AIA Platinum Wealth Venture 2.0','AIA Smart Wealth Builder (II)','AIA Smart Flexi Growth',
   'AIA Smart Flexi Rewards (II)','AIA Smart Goal 10','AIA Retirement Saver (IV)',
@@ -645,7 +661,7 @@ const DEFAULT_PLANS = [
   'AIA Platinum Indexed Legacy (II)','AIA Platinum Heritage Wealth (II)','AIA Platinum Generations (II)',
   'AIA Platinum Gift for Life Plus (II)','AIA Platinum Infinite Wealth (II)',
 ];
-const PLAN_PRESETS_VERSION = 2; // bump when the seeded list changes
+const INV_HINT = /achiever|invest easy|wealth|saver|retirement|legacy|goal 10|flexi growth|flexi rewards|elite secure|generations|gift for life|infinite/i;
 
 const CARE_TEMPLATE = [
   {label:'Welcome message — thank them, set expectations for servicing', offset:0},
@@ -738,7 +754,8 @@ const App = {
       version:1,
       settings:{ advisorName:'', advisorPhone:'', advisorEmail:'', advisorTitle:'', owCeiling:8000, cpfEffective:'1 Jan 2026' },
       cpfRates: JSON.parse(JSON.stringify(DEFAULT_RATES)),
-      planPresets: DEFAULT_PLANS.slice(),
+      planPresetsIns: DEFAULT_PLANS_INS.slice(),
+      planPresetsInv: DEFAULT_PLANS_INV.slice(),
       people: [],
     };
   },
@@ -746,7 +763,6 @@ const App = {
     try{ const raw=localStorage.getItem('advisorflow_v1'); this.data = raw ? JSON.parse(raw) : this.blank(); }
     catch(e){ this.data=this.blank(); }
     if(!this.data.cpfRates||!this.data.cpfRates.length) this.data.cpfRates=JSON.parse(JSON.stringify(DEFAULT_RATES));
-    if(!this.data.planPresets) this.data.planPresets=DEFAULT_PLANS.slice();
     // one-time upgrade: promote "HNW" markers stashed in notes (from the AdvisorQuest migration) to a real flag
     if(!this.data.hnwMigrated){
       (this.data.people||[]).forEach(p=>{
@@ -757,11 +773,18 @@ const App = {
       });
       this.data.hnwMigrated=true; this.save();
     }
-    if((this.data.planPresetsVersion||1) < PLAN_PRESETS_VERSION){
-      // reseed with the list taken from the 2026 commission schedule; keep any lines the user added themselves
-      const custom=(this.data.planPresets||[]).filter(x=>!x.startsWith('AIA '));
-      this.data.planPresets=DEFAULT_PLANS.concat(custom);
-      this.data.planPresetsVersion=PLAN_PRESETS_VERSION;
+    // migrate the old single preset list into insurance / investment splits, keeping user-added lines
+    if(!this.data.planPresetsIns){
+      const ins=[], inv=[];
+      (this.data.planPresets||[]).forEach(x=>{
+        if(DEFAULT_PLANS_INV.includes(x) || (!DEFAULT_PLANS_INS.includes(x) && INV_HINT.test(x))) { if(!inv.includes(x)) inv.push(x); }
+        else { if(!ins.includes(x)) ins.push(x); }
+      });
+      DEFAULT_PLANS_INS.forEach(x=>{ if(!ins.includes(x)) ins.push(x); });
+      DEFAULT_PLANS_INV.forEach(x=>{ if(!inv.includes(x)) inv.push(x); });
+      this.data.planPresetsIns=ins; this.data.planPresetsInv=inv;
+      delete this.data.planPresets;
+      this.save();
     }
   },
   save(){ try{ localStorage.setItem('advisorflow_v1', JSON.stringify(this.data)); }catch(e){ toast('Could not save — storage full?'); } },
@@ -984,11 +1007,26 @@ const App = {
         <div style="flex:1"><div class="t">${esc(t.label)}</div>
         <div class="when"><b style="cursor:pointer" onclick="App.openPerson('${p.id}','clients')">${esc(p.name)}</b> · ${duePill(t.due)}</div></div>
       </div>`).join('') : '<div class="empty">No care tasks due.</div>';
-    // upcoming 14 days
+    // birthdays next 14 days — clients AND prospects, straight from DOB
+    const bdays=this.data.people
+      .filter(p=>p.dob)
+      .map(p=>({p, due:nextBirthday(p.dob), days:daysUntil(nextBirthday(p.dob))}))
+      .filter(x=>x.days>=0 && x.days<=14)
+      .sort((a,b)=>a.days-b.days);
+    $('#birthdays').innerHTML = bdays.length ? bdays.map(({p,due,days})=>{
+      const turning=+due.slice(0,4) - +p.dob.slice(0,4);
+      const who=p.stage==='onboarded' ? '<span class="pill stage-onboarded">client</span>' : stagePill(p.stage);
+      return `<div class="care-item">
+        <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','${p.stage==='onboarded'?'clients':'pipeline'}')">${esc(p.name)}</b>${hnwPill(p)} ${who}
+        <div class="when">${days===0?'🎂 TODAY':'in '+days+'d'} · ${fmtDate(due)} · turns ${turning}</div></div>
+        <button class="btn small" onclick="App.openPerson('${p.id}','${p.stage==='onboarded'?'clients':'pipeline'}')">Open</button>
+      </div>`;
+    }).join('') : '<div class="empty">No birthdays in the next two weeks.</div>';
+    // upcoming 14 days (birthday care tasks excluded — the Birthdays card covers them)
     const up=[];
     this.data.people.forEach(p=>{
-      if(p.stage!=='onboarded' && p.nextFollowUp){ const d=daysUntil(p.nextFollowUp); if(d>0&&d<=14) up.push({date:p.nextFollowUp, html:`Follow up <b>${esc(p.name)}</b>`, id:p.id, from:'pipeline'}); }
-      (p.careTasks||[]).forEach(t=>{ if(!t.done){ const d=daysUntil(t.due); if(d>0&&d<=14) up.push({date:t.due, html:`${esc(t.label)} — <b>${esc(p.name)}</b>`, id:p.id, from:'clients'}); }});
+      if(effStage(p)!==null && p.nextFollowUp){ const d=daysUntil(p.nextFollowUp); if(d>0&&d<=14) up.push({date:p.nextFollowUp, html:`Follow up <b>${esc(p.name)}</b>`, id:p.id, from:'pipeline'}); }
+      (p.careTasks||[]).forEach(t=>{ if(!t.done && !t.label.includes('Birthday')){ const d=daysUntil(t.due); if(d>0&&d<=14) up.push({date:t.due, html:`${esc(t.label)} — <b>${esc(p.name)}</b>`, id:p.id, from:'clients'}); }});
     });
     up.sort((a,b)=>a.date.localeCompare(b.date));
     $('#upcoming').innerHTML = up.length ? up.map(u=>`
@@ -1353,18 +1391,19 @@ const App = {
     $('#cpfTable tbody').innerHTML=['OA','SA','MA','RA'].map(k=>`
       <tr><td style="width:80px"><b>${k}</b></td>
       <td><input type="number" value="${ff.cpf[k]||''}" step="100" oninput="App.ffCpf('${k}',this.value)"></td></tr>`).join('');
-    // plan name suggestions
-    $('#dlPlans').innerHTML=(this.data.planPresets||[]).map(n=>`<option value="${esc(n)}">`).join('');
+    // plan name suggestions, split by type
+    $('#dlPlansIns').innerHTML=(this.data.planPresetsIns||[]).map(n=>`<option value="${esc(n)}">`).join('');
+    $('#dlPlansInv').innerHTML=(this.data.planPresetsInv||[]).map(n=>`<option value="${esc(n)}">`).join('');
     // investments
     $('#invTable tbody').innerHTML=(ff.investments||[]).map((x,i)=>`
-      <tr><td><input type="text" list="dlPlans" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('investments',${i},'name',this.value)"></td>
+      <tr><td><input type="text" list="dlPlansInv" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('investments',${i},'name',this.value)"></td>
       <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('investments',${i},'mth',this.value); App.ffAutoYr('investments',${i})"></td>
       <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('investments',${i},'yr',this.value)"></td>
       <td><input type="text" value="${esc(x.notes)}" placeholder="Fund value, fund name..." oninput="App.ffRow('investments',${i},'notes',this.value)"></td>
       <td><button class="del" onclick="App.ffDelRow('investments',${i})">&times;</button></td></tr>`).join('');
     // insurance
     $('#insTable tbody').innerHTML=(ff.insurance||[]).map((x,i)=>`
-      <tr><td><input type="text" list="dlPlans" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('insurance',${i},'name',this.value)"></td>
+      <tr><td><input type="text" list="dlPlansIns" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('insurance',${i},'name',this.value)"></td>
       <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('insurance',${i},'mth',this.value); App.ffAutoYr('insurance',${i})"></td>
       <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('insurance',${i},'yr',this.value)"></td>
       <td><input type="text" value="${esc(x.notes)}" placeholder="Coverage details" oninput="App.ffRow('insurance',${i},'notes',this.value)"></td>
@@ -1493,14 +1532,16 @@ const App = {
   renderSettings(){
     const s=this.data.settings;
     $$('[data-set]').forEach(el=>{ el.value=s[el.dataset.set]??''; });
-    if(document.activeElement!==$('#set_plans')) $('#set_plans').value=(this.data.planPresets||[]).join('\n');
+    if(document.activeElement!==$('#set_plans_ins')) $('#set_plans_ins').value=(this.data.planPresetsIns||[]).join('\n');
+    if(document.activeElement!==$('#set_plans_inv')) $('#set_plans_inv').value=(this.data.planPresetsInv||[]).join('\n');
     $('#rateTable tbody').innerHTML=this.data.cpfRates.map((r,i)=>`
       <tr>${['min','max','er','ee'].map(k=>`<td><input type="number" step="0.01" value="${r[k]}" oninput="App.setRate(${i},'${k}',this.value)"></td>`).join('')}
       <td style="text-align:right; color:var(--ink-soft); padding-right:14px">${(r.er+r.ee).toFixed(1)}%</td>
       ${['oa','sa','ma'].map(k=>`<td><input type="number" step="0.01" value="${r[k]}" oninput="App.setRate(${i},'${k}',this.value)"></td>`).join('')}</tr>`).join('');
   },
   setRate(i,k,v){ this.data.cpfRates[i][k]=num(v); this.save(); },
-  setPlans(v){ this.data.planPresets=v.split('\n').map(x=>x.trim()).filter(Boolean); this.save(); },
+  setPlansIns(v){ this.data.planPresetsIns=v.split('\n').map(x=>x.trim()).filter(Boolean); this.save(); },
+  setPlansInv(v){ this.data.planPresetsInv=v.split('\n').map(x=>x.trim()).filter(Boolean); this.save(); },
 
   /* ---------- data ---------- */
   exportData(){
