@@ -1,0 +1,1493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AdvisorFlow</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230f4c81'/><text x='50' y='72' font-size='60' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>A</text></svg>">
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1a2332; --ink-soft:#5b6b7f; --ink-faint:#8a97a8;
+    --line:#e4e8ee; --accent:#0f4c81; --accent-soft:#e8f0f8; --good:#1a7f5c; --good-soft:#e6f4ee;
+    --warn:#b45309; --warn-soft:#fdf3e3; --bad:#b3261e; --bad-soft:#fbeae9;
+    --radius:10px; --shadow:0 1px 3px rgba(26,35,50,.07);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; background:var(--bg); color:var(--ink); font-size:14px; line-height:1.5;}
+  button{font:inherit; cursor:pointer;}
+  input,select,textarea{font:inherit; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:6px; padding:7px 10px; width:100%;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
+  input[type=number]{text-align:right;}
+  label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:4px;}
+
+  header.app{background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50;}
+  .header-inner{max-width:1180px; margin:0 auto; padding:0 20px; display:flex; align-items:center; gap:24px; height:56px;}
+  .logo{font-weight:700; font-size:16px; color:var(--accent); letter-spacing:.2px; white-space:nowrap;}
+  .logo span{color:var(--ink);}
+  nav.tabs{display:flex; gap:4px; flex:1; overflow-x:auto;}
+  nav.tabs button{background:none; border:none; padding:8px 14px; border-radius:8px; color:var(--ink-soft); font-weight:600; font-size:13.5px; white-space:nowrap;}
+  nav.tabs button:hover{background:var(--bg);}
+  nav.tabs button.active{background:var(--accent-soft); color:var(--accent);}
+  nav.tabs button .badge{display:inline-block; min-width:18px; padding:0 5px; margin-left:6px; border-radius:9px; background:var(--bad); color:#fff; font-size:11px; line-height:18px; text-align:center;}
+
+  main{max-width:1180px; margin:0 auto; padding:24px 20px 80px;}
+  .page{display:none;}
+  .page.active{display:block;}
+  h1{font-size:20px; margin-bottom:4px;}
+  .sub{color:var(--ink-soft); margin-bottom:20px; font-size:13.5px;}
+  h2{font-size:15px; margin-bottom:10px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:16px;}
+  .grid{display:grid; gap:16px;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  .grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr);}
+  @media(max-width:860px){.grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr;}}
+
+  .btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:#fff; border-radius:8px; padding:7px 14px; font-weight:600; font-size:13px; color:var(--ink);}
+  .btn:hover{border-color:var(--accent); color:var(--accent);}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn.primary:hover{filter:brightness(1.1); color:#fff;}
+  .btn.danger{color:var(--bad);}
+  .btn.small{padding:4px 10px; font-size:12px;}
+  .btn.ghost{border:none; background:none; padding:4px 8px;}
+
+  .pill{display:inline-block; padding:2px 10px; border-radius:20px; font-size:11.5px; font-weight:600;}
+  .pill.stage-new{background:#eef2f7; color:#41536b;}
+  .pill.stage-contacted{background:#e8f0f8; color:#0f4c81;}
+  .pill.stage-appointment{background:#eee8f8; color:#5b3a9e;}
+  .pill.stage-factfind{background:#e3f2f4; color:#0e6773;}
+  .pill.stage-proposal{background:var(--warn-soft); color:var(--warn);}
+  .pill.stage-onboarded{background:var(--good-soft); color:var(--good);}
+  .pill.stage-notnow{background:#f1f1f1; color:#777;}
+  .pill.due{background:var(--bad-soft); color:var(--bad);}
+  .pill.soon{background:var(--warn-soft); color:var(--warn);}
+  .pill.ok{background:var(--good-soft); color:var(--good);}
+
+  table{width:100%; border-collapse:collapse;}
+  th{font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-faint); text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-weight:600; position:sticky; top:56px; background:var(--card); z-index:5;}
+  td{padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tr.rowlink{cursor:pointer;}
+  tr.rowlink:hover{background:var(--bg);}
+
+  .stat{padding:14px 16px;}
+  .stat .n{font-size:24px; font-weight:700;}
+  .stat .l{font-size:12px; color:var(--ink-soft); font-weight:600;}
+
+  .empty{color:var(--ink-faint); text-align:center; padding:24px 10px; font-size:13px;}
+  .toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px;}
+  .toolbar input[type=search]{max-width:240px;}
+  .toolbar select{width:auto;}
+  .spacer{flex:1;}
+
+  /* modal */
+  .modal-back{display:none; position:fixed; inset:0; background:rgba(20,28,40,.45); z-index:100; overflow-y:auto; padding:4vh 16px;}
+  .modal-back.open{display:block;}
+  .modal{background:var(--card); border-radius:14px; max-width:640px; margin:0 auto; padding:24px; position:relative;}
+  .modal.wide{max-width:980px;}
+  .modal h2{margin-bottom:16px;}
+  .modal .close{position:absolute; top:14px; right:14px; border:none; background:var(--bg); border-radius:8px; width:30px; height:30px; font-size:15px;}
+  .form-row{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;}
+  .form-row.single{grid-template-columns:1fr;}
+  @media(max-width:600px){.form-row{grid-template-columns:1fr;}}
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+  /* fact-find */
+  .ff-header{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:16px;}
+  .ff-header h1{margin:0;}
+  .hero{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; margin-bottom:16px;}
+  @media(max-width:860px){.hero{grid-template-columns:1fr 1fr;}}
+  .hero .card{margin:0; padding:14px;}
+  .hero .l{font-size:11.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-faint); font-weight:600;}
+  .hero .n{font-size:20px; font-weight:700; margin-top:2px;}
+  .hero .s{font-size:11.5px; color:var(--ink-soft);}
+  .hero .n.pos{color:var(--good);} .hero .n.neg{color:var(--bad);}
+  .minitable td, .minitable th{padding:6px 8px;}
+  .minitable input{padding:5px 8px; font-size:13px;}
+  .addrow{margin-top:8px;}
+  .calcnote{font-size:12px; color:var(--ink-faint); margin-top:8px;}
+  .ff-computed{background:var(--accent-soft); border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; font-size:13px; margin-top:10px;}
+  .ff-computed b{color:var(--accent);}
+  .del{border:none; background:none; color:var(--ink-faint); font-size:15px; padding:2px 6px;}
+  .del:hover{color:var(--bad);}
+
+  /* care timeline */
+  .care-item{display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--line);}
+  .care-item:last-child{border-bottom:none;}
+  .care-item input[type=checkbox]{width:auto; margin-top:3px;}
+  .care-item .when{font-size:12px; color:var(--ink-soft);}
+  .care-item.done .t{text-decoration:line-through; color:var(--ink-faint);}
+
+  .note-log{font-size:13px;}
+  .note-log .entry{padding:8px 0; border-bottom:1px solid var(--line);}
+  .note-log .d{font-size:11.5px; color:var(--ink-faint); display:flex; align-items:center; gap:8px;}
+  .note-log .txt{white-space:pre-wrap;}
+  .note-log .d button{border:none; background:none; color:var(--ink-faint); font-size:11px; padding:0; text-decoration:underline;}
+  .note-log .d button:hover{color:var(--accent);}
+
+  footer.app{max-width:1180px; margin:0 auto; padding:10px 20px 30px; color:var(--ink-faint); font-size:12px;}
+
+  /* today & pipeline UX */
+  .h2link{font-size:12px; color:var(--accent); cursor:pointer; font-weight:600; float:right;}
+  .h2link:hover{text-decoration:underline;}
+  .cardhint{font-size:12px; color:var(--ink-faint); margin:-4px 0 10px;}
+  .quick{display:flex; gap:6px; align-items:center; flex:none;}
+  .plink{cursor:pointer;}
+  .plink:hover{color:var(--accent);}
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;}
+  .chip{border:1px solid var(--line); background:var(--card); border-radius:20px; padding:5px 14px; font-size:12.5px; font-weight:600; color:var(--ink-soft); cursor:pointer;}
+  .chip:hover{border-color:var(--accent); color:var(--accent);}
+  .chip.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .chip .n{opacity:.75; margin-left:4px;}
+  tr.overdue td:first-child{box-shadow:inset 3px 0 0 var(--bad);}
+  .showmore{width:100%; margin-top:8px; justify-content:center;}
+
+  /* avatars & name cells */
+  .avatar{width:30px; height:30px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex:none; letter-spacing:.3px;}
+  .avatar.lg{width:40px; height:40px; font-size:14px;}
+  .namecell{display:flex; align-items:center; gap:10px;}
+  .nick{font-size:11.5px; color:var(--ink-faint); font-weight:500;}
+
+  /* polish */
+  .btn{transition:border-color .12s, color .12s, background .12s;}
+  .btn:active{transform:translateY(1px);}
+  .modal-back.open{animation:fadeIn .14s ease;}
+  .modal{animation:pop .16s ease;}
+  @keyframes fadeIn{from{opacity:0}}
+  @keyframes pop{from{transform:translateY(10px); opacity:0}}
+  .hero .card{border-top:3px solid var(--accent);}
+  .backup-nudge{display:inline-flex; align-items:center; gap:10px; background:var(--warn-soft); color:var(--warn); border-radius:8px; padding:6px 12px; font-size:12.5px; font-weight:600; margin-bottom:14px;}
+  @media(max-width:860px){
+    .card{overflow-x:auto;}
+    th{position:static;}
+  }
+
+  /* meeting mode */
+  body.present .ff-header h1{font-size:26px;}
+  body.present header.app, body.present footer.app{display:none;}
+  body.present main{padding-top:14px;}
+  .present-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px;}
+  .present-card{border:1px solid var(--line); border-radius:10px; padding:14px; cursor:pointer; transition:border-color .15s, box-shadow .15s;}
+  .present-card:hover{border-color:var(--accent); box-shadow:var(--shadow);}
+  .present-card .nm{font-weight:700; font-size:15px;}
+  .present-card .meta{font-size:12px; color:var(--ink-soft); margin:4px 0 10px;}
+
+  /* tiers */
+  .pill.tier-A{background:#fdf0d0; color:#8a6100;}
+  .pill.tier-B{background:var(--accent-soft); color:var(--accent);}
+  .pill.tier-C{background:#eef2f7; color:#41536b;}
+  .pill.tier-D{background:#f1f1f1; color:#999;}
+  .pill.stale{background:var(--warn-soft); color:var(--warn);}
+  select.mini, input.mini{padding:3px 6px; font-size:12px; width:auto;}
+
+  /* toast */
+  #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none;}
+  #toast.show{opacity:1;}
+
+  /* ============ PRINT: fact-find document ============ */
+  #printDoc{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printDoc, #printDoc *{visibility:visible;}
+    #printDoc{display:block; position:absolute; top:0; left:0; width:100%; background:#fff; color:#111; font-size:11.5px;}
+    @page{margin:14mm;}
+    #printDoc h1{font-size:19px; margin-bottom:2px; color:#0f4c81;}
+    #printDoc .pd-sub{color:#555; margin-bottom:14px; font-size:11px;}
+    #printDoc h3{font-size:12.5px; margin:14px 0 6px; color:#0f4c81; border-bottom:1.5px solid #0f4c81; padding-bottom:3px; text-transform:uppercase; letter-spacing:.5px;}
+    #printDoc table{width:100%; border-collapse:collapse; margin-bottom:4px;}
+    #printDoc th{background:#f0f4f8; color:#333; font-size:10px; padding:5px 7px; border:1px solid #d8dee6; text-align:left;}
+    #printDoc td{padding:5px 7px; border:1px solid #d8dee6;}
+    #printDoc td.r, #printDoc th.r{text-align:right;}
+    #printDoc .pd-hero{display:flex; gap:8px; margin:10px 0;}
+    #printDoc .pd-hero div{flex:1; border:1px solid #d8dee6; border-radius:6px; padding:8px 10px;}
+    #printDoc .pd-hero .l{font-size:9.5px; text-transform:uppercase; color:#666; letter-spacing:.4px;}
+    #printDoc .pd-hero .n{font-size:15px; font-weight:700;}
+    #printDoc .pd-footer{margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font-size:10px; color:#555; display:flex; justify-content:space-between;}
+    #printDoc .pd-note{font-size:9.5px; color:#777; margin-top:6px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <div class="header-inner">
+    <div class="logo">Advisor<span>Flow</span></div>
+    <nav class="tabs" id="navTabs">
+      <button data-page="today" class="active">Today <span class="badge" id="todayBadge" style="display:none">0</span></button>
+      <button data-page="pipeline">Pipeline</button>
+      <button data-page="present">Meeting</button>
+      <button data-page="clients">Clients</button>
+      <button data-page="settings">Settings</button>
+    </nav>
+    <button class="btn small" onclick="App.exportData()">Export</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ TODAY ============ -->
+  <section class="page active" id="page-today">
+    <h1 id="greeting">Today</h1>
+    <div class="sub" id="todayDate"></div>
+    <div id="backupNudge"></div>
+    <div class="grid cols-4" id="todayStats"></div>
+    <div class="grid cols-2" style="margin-top:16px">
+      <div class="card">
+        <h2>Prospects to touch <span class="h2link" onclick="App.showPage('pipeline'); App.renderAll()">full pipeline →</span></h2>
+        <div class="cardhint">Only prospects whose next-touch date has arrived. Snooze pushes the date; the full list lives in Pipeline.</div>
+        <div id="dueFollowups"></div>
+      </div>
+      <div class="card">
+        <h2>Client care due <span class="h2link" onclick="App.showPage('clients'); App.renderAll()">all clients →</span></h2>
+        <div class="cardhint">Gifts, check-ins, birthdays and reviews that are due for existing clients.</div>
+        <div id="dueCare"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Coming up in the next 14 days</h2>
+      <div id="upcoming"></div>
+    </div>
+  </section>
+
+  <!-- ============ PIPELINE ============ -->
+  <section class="page" id="page-pipeline">
+    <h1>Pipeline</h1>
+    <div class="sub">Everyone who isn't a client yet, each with a next-touch date. The Today tab surfaces only the ones that are due.</div>
+    <div class="chips" id="pipeChips"></div>
+    <div class="toolbar">
+      <input type="search" id="pipeSearch" placeholder="Search name..." oninput="App.renderPipeline()">
+      <select id="pipeStageFilter" onchange="App.renderPipeline()">
+        <option value="">All stages</option>
+      </select>
+      <select id="pipeSourceFilter" onchange="App.renderPipeline()">
+        <option value="">All sources</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="App.openPersonModal()">+ Add prospect</button>
+    </div>
+    <div class="card" style="padding:6px 10px">
+      <table id="pipeTable">
+        <thead><tr><th>Name</th><th>Stage</th><th>Source</th><th>Next touch</th><th>Last note</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="empty" id="pipeEmpty" style="display:none">No prospects yet. Add your first one.</div>
+    </div>
+  </section>
+
+  <!-- ============ MEETING MODE ============ -->
+  <section class="page" id="page-present">
+    <h1>Meeting mode</h1>
+    <div class="sub">Pick who you're sitting down with. The rest of the app hides, so only their fact-find is on screen.</div>
+    <div class="card">
+      <h2>Appointments set</h2>
+      <div class="present-grid" id="presentList"></div>
+    </div>
+    <div class="card">
+      <h2>Meeting someone else? (e.g. a client review)</h2>
+      <div style="display:flex; gap:10px; max-width:440px">
+        <select id="presentPick"></select>
+        <button class="btn primary" onclick="App.startMeeting(document.getElementById('presentPick').value)">Start</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CLIENTS ============ -->
+  <section class="page" id="page-clients">
+    <h1>Clients</h1>
+    <div class="sub">Onboarded clients and their care timeline.</div>
+    <div class="toolbar">
+      <input type="search" id="clientSearch" placeholder="Search name..." oninput="App.renderClients()">
+      <select id="clientTierFilter" onchange="App.renderClients()">
+        <option value="">All tiers</option>
+        <option value="A">Tier A</option><option value="B">Tier B</option>
+        <option value="C">Tier C</option><option value="D">Tier D</option>
+        <option value="-">No tier yet</option>
+      </select>
+      <select id="clientMetFilter" onchange="App.renderClients()">
+        <option value="">Last met: any</option>
+        <option value="3">Not met in 3+ mths</option>
+        <option value="6">Not met in 6+ mths</option>
+        <option value="12">Not met in 12+ mths</option>
+        <option value="never">Never recorded</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn" onclick="document.getElementById('clientImportFile').click()">Import Excel / CSV</button>
+      <input type="file" id="clientImportFile" accept=".csv,.xlsx" style="display:none" onchange="App.importClients(this)">
+      <button class="btn primary" onclick="App.openPersonModal(null,'client')">+ Add client</button>
+    </div>
+    <div class="card" style="padding:6px 10px">
+      <table id="clientTable">
+        <thead><tr><th>Name</th><th>Tier</th><th>Last met</th><th>Next care task</th><th>Care</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="empty" id="clientEmpty" style="display:none">No clients yet. Move a prospect to Onboarded and their care plan starts automatically.</div>
+    </div>
+  </section>
+
+  <!-- ============ PERSON DETAIL (pipeline or client) ============ -->
+  <section class="page" id="page-person">
+    <div class="ff-header">
+      <button class="btn small" onclick="App.backFromPerson()">&larr; Back</button>
+      <h1 id="personName"></h1>
+      <span class="pill" id="personStagePill"></span>
+      <div class="spacer"></div>
+      <button class="btn small" onclick="App.openPersonModal(App.state.currentPersonId)">Edit details</button>
+      <button class="btn small danger" onclick="App.deletePerson()">Delete</button>
+    </div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Status &amp; follow-up</h2>
+        <div class="form-row">
+          <div><label>Stage</label><select id="pStage" onchange="App.changeStage(this.value)"></select></div>
+          <div><label>Next follow-up</label><input type="date" id="pNextTouch" onchange="App.setNextTouch(this.value)"></div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px">
+          <span style="font-size:12px; color:var(--ink-soft); align-self:center">Snooze:</span>
+          <button class="btn small" onclick="App.snooze(7)">1 wk</button>
+          <button class="btn small" onclick="App.snooze(30)">1 mth</button>
+          <button class="btn small" onclick="App.snooze(90)">3 mth</button>
+          <button class="btn small" onclick="App.snooze(182)">6 mth</button>
+          <button class="btn small" onclick="App.snooze(365)">1 yr</button>
+        </div>
+        <div class="calcnote" id="pContact"></div>
+      </div>
+      <div class="card">
+        <h2>Notes log</h2>
+        <div style="display:flex; gap:8px; margin-bottom:10px; align-items:flex-start">
+          <textarea id="noteInput" rows="2" placeholder="Add a note. Enter to save, Shift+Enter for a new paragraph." onkeydown="App.noteKey(event)"></textarea>
+          <button class="btn" onclick="App.addNote()">Add</button>
+        </div>
+        <div class="note-log" id="noteLog"></div>
+      </div>
+    </div>
+    <div class="card" id="careCard" style="display:none">
+      <div class="form-row" style="max-width:440px">
+        <div><label>Client tier (A = best, most care)</label>
+          <select id="pTier" onchange="App.setTier(App.state.currentPersonId, this.value); App.renderAll()">
+            <option value="">No tier</option><option value="A">A — top client</option>
+            <option value="B">B — good client</option><option value="C">C — standard</option>
+            <option value="D">D — low engagement</option>
+          </select></div>
+        <div><label>Last met (month is enough)</label><input type="month" id="pLastMet" onchange="App.setLastMet(App.state.currentPersonId, this.value); App.renderAll()"></div>
+      </div>
+      <h2>Client care timeline</h2>
+      <div id="careList"></div>
+      <div style="margin-top:10px; display:flex; gap:8px">
+        <input type="text" id="careLabel" placeholder="Custom task (e.g. Send CNY greeting)" style="max-width:320px">
+        <input type="date" id="careDate" style="max-width:170px">
+        <button class="btn small" onclick="App.addCareTask()">Add task</button>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px">
+        <h2 style="margin:0">Fact-Find &amp; Cashflow</h2>
+        <div class="spacer"></div>
+        <button class="btn small" onclick="App.openFactFind()">Open fact-find</button>
+      </div>
+      <div class="calcnote" id="ffSummary">Not started yet. Open it during the first appointment and fill it in together with the client.</div>
+    </div>
+  </section>
+
+  <!-- ============ FACT-FIND ============ -->
+  <section class="page" id="page-factfind">
+    <div class="ff-header">
+      <button class="btn small" id="ffBack" onclick="App.showPage('person'); App.renderPerson()">&larr; Back to profile</button>
+      <button class="btn small" id="exitPresent" style="display:none; background:var(--ink); color:#fff; border-color:var(--ink)" onclick="App.endMeeting()">Exit meeting mode</button>
+      <h1 id="ffName"></h1>
+      <div class="spacer"></div>
+      <button class="btn small" id="btn55" onclick="App.toggle55()"></button>
+      <button class="btn primary" onclick="App.printFactFind()">Download / Print PDF</button>
+    </div>
+    <div class="hero" id="ffHero"></div>
+
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Personal &amp; Income</h2>
+        <div class="form-row">
+          <div><label>Date of birth</label><input type="date" id="ff_dob" data-ff="dob"></div>
+          <div><label>Age</label><input type="text" id="ff_age" disabled></div>
+        </div>
+        <div class="form-row">
+          <div><label>Gross income (/mth)</label><input type="number" data-ff="grossMonthly" step="100"></div>
+          <div><label>Other income (/mth)</label><input type="number" data-ff="otherMonthly" step="100"></div>
+        </div>
+        <div class="form-row">
+          <div><label title="Amount the client commits to setting aside every month, e.g. a standing instruction to a savings account. Counted as an outflow in net cashflow.">Savings set aside (/mth) ⓘ</label><input type="number" data-ff="savingsMonthly" step="50"></div>
+          <div><label>Employment</label><select data-ff="employment"><option value="employed">Employed (CPF applies)</option><option value="self">Self-employed (no CPF deduction)</option></select></div>
+        </div>
+        <div class="ff-computed"><span>Take-home income (/mth)</span><b id="c_takehome">—</b></div>
+        <div class="calcnote" id="c_cpfnote"></div>
+      </div>
+
+      <div class="card">
+        <h2>Monthly Expenses</h2>
+        <table class="minitable" id="expTable"><tbody></tbody></table>
+        <button class="btn small addrow" onclick="App.ffAddRow('expenses')">+ Add category</button>
+        <div class="ff-computed"><span>Total expenses (/mth)</span><b id="c_expenses">—</b></div>
+      </div>
+
+      <div class="card">
+        <h2>Bank Savings / FD / T-Bills</h2>
+        <table class="minitable" id="bankTable"><tbody></tbody></table>
+        <button class="btn small addrow" onclick="App.ffAddRow('bank')">+ Add item</button>
+        <div class="ff-computed"><span>Total liquid assets</span><b id="c_bank">—</b></div>
+      </div>
+
+      <div class="card">
+        <h2>CPF Balances</h2>
+        <table class="minitable" id="cpfTable"><tbody></tbody></table>
+        <div class="ff-computed"><span>Total CPF balances</span><b id="c_cpfbal">—</b></div>
+        <div class="calcnote" id="c_cpfrates"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Investment / Savings Plans</h2>
+      <table class="minitable" id="invTable">
+        <thead><tr><th>Plan name</th><th style="width:130px">Premium /mth</th><th style="width:130px">Premium /yr</th><th>Fund value / notes</th><th style="width:36px"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button class="btn small addrow" onclick="App.ffAddRow('investments')">+ Add plan</button>
+      <div class="ff-computed"><span>Total investment premiums</span><b id="c_inv">—</b></div>
+    </div>
+
+    <div class="card">
+      <h2>Insurance Plans</h2>
+      <table class="minitable" id="insTable">
+        <thead><tr><th>Plan name</th><th style="width:110px">Prem /mth</th><th style="width:110px">Prem /yr</th><th>Coverage / notes</th><th style="width:100px">Death</th><th style="width:100px">TPD</th><th style="width:100px">Early/Int CI</th><th style="width:100px">Late CI</th><th style="width:36px"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button class="btn small addrow" onclick="App.ffAddRow('insurance')">+ Add plan</button>
+      <div class="ff-computed"><span>Total insurance premiums (cash /mth)</span><b id="c_ins">—</b></div>
+      <div class="calcnote">Tip: MediSave-paid premiums (e.g. Integrated Shield base) — enter yearly amount only and put "MediSave" in notes; leave /mth at 0 so it doesn't hit cash flow.</div>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section class="page" id="page-settings">
+    <h1>Settings</h1>
+    <div class="sub">Your details appear on the PDF the client takes home. CPF reference data is editable when rates change.</div>
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Advisor details</h2>
+        <div class="form-row single"><div><label>Name</label><input type="text" id="set_name" data-set="advisorName"></div></div>
+        <div class="form-row">
+          <div><label>Phone</label><input type="text" data-set="advisorPhone"></div>
+          <div><label>Email</label><input type="text" data-set="advisorEmail"></div>
+        </div>
+        <div class="form-row single"><div><label>Company / rep title (shown on PDF footer)</label><input type="text" data-set="advisorTitle"></div></div>
+      </div>
+      <div class="card">
+        <h2>CPF reference</h2>
+        <div class="form-row">
+          <div><label>Ordinary Wage ceiling (/mth)</label><input type="number" id="set_ow" data-set="owCeiling"></div>
+          <div><label>Rates effective</label><input type="text" data-set="cpfEffective"></div>
+        </div>
+        <div class="calcnote">CPF contributions are computed on income up to this ceiling. Update it when CPF Board changes the schedule.</div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>CPF age-band rates</h2>
+      <table class="minitable" id="rateTable">
+        <thead><tr><th>Age from</th><th>Age to</th><th>Employer %</th><th>Employee %</th><th>Total %</th><th>OA %</th><th>SA/RA %</th><th>MA %</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="calcnote">Percentages of contribution allocation. Total is employer + employee. Edit any cell and it saves automatically.</div>
+    </div>
+    <div class="card">
+      <h2>Plan name presets</h2>
+      <textarea id="set_plans" rows="10" oninput="App.setPlans(this.value)" style="font-size:13px"></textarea>
+      <div class="calcnote">One plan per line. These appear as type-ahead suggestions for plan names in the fact-find. Seeded with common AIA products — edit freely, and add other insurers' plans too.</div>
+    </div>
+    <div class="card">
+      <h2>Data</h2>
+      <div style="display:flex; gap:10px; flex-wrap:wrap">
+        <button class="btn" onclick="App.exportData()">Export backup (.json)</button>
+        <button class="btn" onclick="document.getElementById('importFile').click()">Import backup</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="App.importData(this)">
+        <button class="btn" onclick="App.loadSample()">Load sample prospect</button>
+        <div class="spacer"></div>
+        <button class="btn danger" onclick="App.wipe()">Erase all data</button>
+      </div>
+      <div class="calcnote">Data lives in this browser only. Export a backup regularly, or to move to another device. Autosaves on every change.</div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app">AdvisorFlow — local-first advisor toolkit. Data stays on your device.</footer>
+
+<!-- person add/edit modal -->
+<div class="modal-back" id="personModal">
+  <div class="modal">
+    <button class="close" onclick="App.closeModal()">&times;</button>
+    <h2 id="personModalTitle">Add prospect</h2>
+    <div class="form-row">
+      <div><label>Name *</label><input type="text" id="pm_name"></div>
+      <div><label>Nickname (how you actually call them)</label><input type="text" id="pm_nickname" placeholder="e.g. Chef Jin, Marcus GF"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Lead source</label><select id="pm_source"></select></div>
+      <div><label>Phone</label><input type="text" id="pm_phone"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Email</label><input type="text" id="pm_email"></div>
+      <div><label>Date of birth (powers birthday touchpoints)</label><input type="date" id="pm_dob"></div>
+    </div>
+    <div class="form-row">
+      <div id="pm_nextWrap"><label>First follow-up date</label><input type="date" id="pm_next"></div>
+      <div id="pm_onboardedWrap" style="display:none"><label>Onboarded date</label><input type="date" id="pm_onboarded"></div>
+    </div>
+    <div class="form-row single"><div><label>Context notes</label><textarea id="pm_notes" rows="2" placeholder="How you know them, what they mentioned..."></textarea></div></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="App.closeModal()">Cancel</button>
+      <button class="btn primary" onclick="App.savePersonModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="dlPlans"></datalist>
+<div id="toast"></div>
+<div id="printDoc"></div>
+
+<script>
+/* ================= AdvisorFlow ================= */
+'use strict';
+
+const STAGES = [
+  {id:'new',        label:'New lead'},
+  {id:'contacted',  label:'Contacted'},
+  {id:'appointment',label:'Appointment set'},
+  {id:'factfind',   label:'Fact-find done'},
+  {id:'proposal',   label:'Proposal presented'},
+  {id:'onboarded',  label:'Onboarded (client)'},
+  {id:'notnow',     label:'Not now — re-contact later'},
+];
+const SOURCES = ['Referral','Warm / friend','Instagram','Existing client','Cold','Other'];
+
+const DEFAULT_RATES = [
+  {min:1, max:35, er:17,   ee:20,   oa:62.17, sa:16.21, ma:21.62},
+  {min:36,max:45, er:17,   ee:20,   oa:56.77, sa:18.91, ma:24.32},
+  {min:46,max:50, er:17,   ee:20,   oa:51.36, sa:21.62, ma:27.02},
+  {min:51,max:55, er:17,   ee:20,   oa:40.55, sa:31.08, ma:28.37},
+  {min:56,max:60, er:16,   ee:18,   oa:35.30, sa:33.82, ma:30.88},
+  {min:61,max:65, er:12.5, ee:12.5, oa:14.00, sa:44.00, ma:42.00},
+  {min:66,max:70, er:9,    ee:7.5,  oa:6.07,  sa:30.30, ma:63.63},
+  {min:71,max:120,er:7.5,  ee:5,    oa:8.00,  sa:8.00,  ma:84.00},
+];
+
+const DEFAULT_PLANS = [
+  // Health & hospital (from 2026 Agency Commission Rates infosheet)
+  'AIA HealthShield Gold Max A','AIA HealthShield Gold Max B','AIA HealthShield Gold Max Standard Plan',
+  'AIA Max VitalHealth A','AIA Max VitalHealth A Value','AIA Max VitalHealth B','AIA Max VitalHealth B Lite',
+  'AIA Max VitalHealth Pro A','AIA Max VitalHealth Pro B','AIA Max VitalHealth Pro B Lite',
+  'AIA Max A Cancer Care Booster','AIA Platinum International Health','AIA Hospital Income',
+  // Life & protection
+  'AIA Guaranteed Protect Plus (IV)','AIA Pro Lifetime Protector (II)','AIA Secure Flexi Term','AIA Decreasing Term',
+  'AIA Protection Builder','AIA Life Dividends','AIA Protect 3','AIA Star Protector Plus','AIA Pay Protector',
+  'AIA Secure Income Guard','AIA SAFE',
+  // Critical illness & riders
+  'AIA Absolute Critical Cover','AIA Ultimate Critical Cover','AIA Prime Critical Cover','AIA Beyond Critical Care',
+  'AIA Child Critical Cover','AIA Enhanced Cancer Protect','AIA Diabetes Care','AIA Baby Protect Plus (III)',
+  'AIA Critical Cover Accelerator (CCA)','AIA Early Critical Cover Accelerator (ECCA)',
+  'AIA Critical Protector Waiver of Premium (II)','AIA Early Critical Protector Waiver of Premium II',
+  // PA & travel
+  'AIA Solitaire PA (II)','AIA Centurion PA','AIA Platinum AccidentCare','AIA Around The World Plus (II)',
+  // ILP, savings & wealth
+  'AIA Pro Achiever 3.0','AIA Invest Easy (Cash/SRS)','AIA Invest Easy (CPF OA/SA)','AIA Elite Secure Income',
+  'AIA Wealth Venture','AIA Platinum Wealth Venture 2.0','AIA Smart Wealth Builder (II)','AIA Smart Flexi Growth',
+  'AIA Smart Flexi Rewards (II)','AIA Smart Goal 10','AIA Retirement Saver (IV)',
+  'AIA Platinum Wealth Elite 2.0','AIA Platinum Retirement Elite','AIA Platinum Wealth Legacy','AIA Platinum Legacy (IX)',
+  'AIA Platinum Indexed Legacy (II)','AIA Platinum Heritage Wealth (II)','AIA Platinum Generations (II)',
+  'AIA Platinum Gift for Life Plus (II)','AIA Platinum Infinite Wealth (II)',
+];
+const PLAN_PRESETS_VERSION = 2; // bump when the seeded list changes
+
+const CARE_TEMPLATE = [
+  {label:'Welcome message — thank them, set expectations for servicing', offset:0},
+  {label:'Send welcome / thank-you gift', offset:7},
+  {label:'30-day check-in — policy in force, any questions, ask how they feel', offset:30},
+  {label:'6-month touch — casual check-in, life updates, referral ask if natural', offset:182},
+  {label:'Annual review — full portfolio + fact-find refresh', offset:365, recur:true},
+];
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2,10);
+function isoLocal(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+const todayStr = () => isoLocal(new Date());
+function addDays(dateStr, n){ const d = dateStr ? new Date(dateStr+'T00:00') : new Date(); d.setDate(d.getDate()+n); return isoLocal(d); }
+function fmtDate(s){ if(!s) return '—'; const d=new Date(s+'T00:00'); return d.toLocaleDateString('en-SG',{day:'numeric',month:'short',year:'numeric'}); }
+function daysUntil(s){ if(!s) return null; return Math.round((new Date(s+'T00:00') - new Date(todayStr()+'T00:00'))/86400000); }
+function ageFrom(dob){ if(!dob) return null; const d=new Date(dob+'T00:00'), n=new Date(); let a=n.getFullYear()-d.getFullYear(); const m=n.getMonth()-d.getMonth(); if(m<0||(m===0&&n.getDate()<d.getDate())) a--; return a; }
+function nextBirthday(dob){ if(!dob) return null; const d=new Date(dob+'T00:00'), n=new Date(todayStr()+'T00:00'); const b=new Date(n.getFullYear(), d.getMonth(), d.getDate()); if(b<n) b.setFullYear(b.getFullYear()+1); return isoLocal(b); }
+function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '—'; const opts = Math.abs(n%1)>0.004 ? {minimumFractionDigits:2,maximumFractionDigits:2} : {maximumFractionDigits:0}; return 'S$' + n.toLocaleString('en-SG', opts); }
+function esc(s){ return String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function stageObj(id){ return STAGES.find(s=>s.id===id) || STAGES[0]; }
+function avatar(p, lg){
+  let h=0; for(const ch of p.name) h=(h*31+ch.charCodeAt(0))>>>0;
+  const hue=h%360;
+  const initials=p.name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+  return `<span class="avatar${lg?' lg':''}" style="background:hsl(${hue},42%,46%)">${esc(initials)}</span>`;
+}
+function nameCell(p){
+  return `<span class="namecell">${avatar(p)}<span><b>${esc(p.name)}</b>${p.nickname?`<div class="nick">${esc(p.nickname)}</div>`:''}</span></span>`;
+}
+function matches(p,q){ return (p.name+' '+(p.nickname||'')).toLowerCase().includes(q); }
+function stagePill(id){ const s=stageObj(id); return `<span class="pill stage-${s.id}">${s.label}</span>`; }
+function duePill(dateStr){
+  const d = daysUntil(dateStr);
+  if(d===null) return '<span class="pill" style="background:#f1f1f1;color:#888">no date</span>';
+  if(d<0) return `<span class="pill due">${-d}d overdue</span>`;
+  if(d===0) return '<span class="pill due">today</span>';
+  if(d<=7) return `<span class="pill soon">in ${d}d</span>`;
+  return `<span class="pill ok">${fmtDate(dateStr)}</span>`;
+}
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* ---------- app ---------- */
+const App = {
+  data: null,
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false },
+
+  init(){
+    this.load();
+    // nav
+    $('#navTabs').addEventListener('click', e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      this.showPage(b.dataset.page); this.renderAll();
+    });
+    // stage/source filters + modal selects (pipeline is pre-client only, so no Onboarded option)
+    const sf=$('#pipeStageFilter'); STAGES.filter(s=>s.id!=='onboarded').forEach(s=>sf.insertAdjacentHTML('beforeend',`<option value="${s.id}">${s.label}</option>`));
+    const so=$('#pipeSourceFilter'); SOURCES.forEach(s=>so.insertAdjacentHTML('beforeend',`<option>${s}</option>`));
+    const pm=$('#pm_source'); SOURCES.forEach(s=>pm.insertAdjacentHTML('beforeend',`<option>${s}</option>`));
+    const ps=$('#pStage'); STAGES.forEach(s=>ps.insertAdjacentHTML('beforeend',`<option value="${s.id}">${s.label}</option>`));
+    // settings bindings
+    $$('[data-set]').forEach(el=>{
+      el.addEventListener('input', ()=>{ this.data.settings[el.dataset.set] = el.type==='number' ? num(el.value) : el.value; this.save(); });
+    });
+    // fact-find scalar bindings
+    $$('[data-ff]').forEach(el=>{
+      el.addEventListener('input', ()=>{
+        const ff=this.currentFF(); if(!ff) return;
+        ff[el.dataset.ff] = el.type==='number' ? num(el.value) : el.value;
+        if(el.dataset.ff==='dob'){ const p=this.person(); if(p) p.dob=el.value; }
+        this.save(); this.ffCalc();
+      });
+    });
+    // modal close on backdrop / escape
+    $('#personModal').addEventListener('click', e=>{ if(e.target.id==='personModal') this.closeModal(); });
+    document.addEventListener('keydown', e=>{
+      if(e.key!=='Escape') return;
+      if($('#personModal').classList.contains('open')) this.closeModal();
+      else if(this.state.presenting) this.endMeeting();
+    });
+    this.renderAll();
+  },
+
+  /* ---------- persistence ---------- */
+  blank(){
+    return {
+      version:1,
+      settings:{ advisorName:'', advisorPhone:'', advisorEmail:'', advisorTitle:'', owCeiling:8000, cpfEffective:'1 Jan 2026' },
+      cpfRates: JSON.parse(JSON.stringify(DEFAULT_RATES)),
+      planPresets: DEFAULT_PLANS.slice(),
+      people: [],
+    };
+  },
+  load(){
+    try{ const raw=localStorage.getItem('advisorflow_v1'); this.data = raw ? JSON.parse(raw) : this.blank(); }
+    catch(e){ this.data=this.blank(); }
+    if(!this.data.cpfRates||!this.data.cpfRates.length) this.data.cpfRates=JSON.parse(JSON.stringify(DEFAULT_RATES));
+    if(!this.data.planPresets) this.data.planPresets=DEFAULT_PLANS.slice();
+    if((this.data.planPresetsVersion||1) < PLAN_PRESETS_VERSION){
+      // reseed with the list taken from the 2026 commission schedule; keep any lines the user added themselves
+      const custom=(this.data.planPresets||[]).filter(x=>!x.startsWith('AIA '));
+      this.data.planPresets=DEFAULT_PLANS.concat(custom);
+      this.data.planPresetsVersion=PLAN_PRESETS_VERSION;
+    }
+  },
+  save(){ try{ localStorage.setItem('advisorflow_v1', JSON.stringify(this.data)); }catch(e){ toast('Could not save — storage full?'); } },
+
+  person(){ return this.data.people.find(p=>p.id===this.state.currentPersonId) || null; },
+  currentFF(){ const p=this.person(); if(!p) return null; if(!p.factFind) p.factFind=this.blankFF(p); return p.factFind; },
+  blankFF(p){
+    return { dob:p.dob||'', grossMonthly:0, otherMonthly:0, savingsMonthly:0, employment:'employed',
+      expenses:[{label:'Food',amt:0},{label:'Entertainment',amt:0},{label:'Bills',amt:0},{label:'Transport',amt:0},{label:'Parents',amt:0},{label:'Rental / mortgage',amt:0}],
+      bank:[{label:'Bank / savings',amt:0},{label:'Fixed deposits',amt:0},{label:'T-Bills / SSB',amt:0},{label:'Joint account',amt:0}],
+      cpf:{OA:0,SA:0,MA:0,RA:0},
+      investments:[], insurance:[] };
+  },
+
+  /* ---------- navigation ---------- */
+  showPage(id){
+    this.state.page=id;
+    $$('.page').forEach(p=>p.classList.remove('active'));
+    $('#page-'+id).classList.add('active');
+    $$('#navTabs button').forEach(b=>b.classList.toggle('active', b.dataset.page===id));
+    window.scrollTo(0,0);
+  },
+  renderAll(){
+    this.renderToday(); this.renderPipeline(); this.renderClients(); this.renderSettings(); this.renderPresent();
+    if(this.state.page==='person') this.renderPerson();
+    if(this.state.page==='factfind') this.renderFactFind();
+  },
+
+  /* ---------- meeting mode ---------- */
+  renderPresent(){
+    const appts=this.data.people.filter(p=>p.stage==='appointment')
+      .sort((a,b)=>(a.nextFollowUp||'9999').localeCompare(b.nextFollowUp||'9999'));
+    $('#presentList').innerHTML = appts.length ? appts.map(p=>`
+      <div class="present-card" onclick="App.startMeeting('${p.id}')">
+        <div class="namecell" style="margin-bottom:6px">${avatar(p)}<span class="nm">${esc(p.name)}</span></div>
+        ${p.nickname?`<div class="nick">${esc(p.nickname)}</div>`:''}
+        <div class="meta">${esc(p.source||'')}${p.nextFollowUp?' · '+fmtDate(p.nextFollowUp):''}${p.factFind?' · fact-find started':''}</div>
+        <button class="btn small primary">Start meeting</button>
+      </div>`).join('') : '<div class="empty">No prospects at "Appointment set". Move someone there in the Pipeline first, or pick anyone below.</div>';
+    const pick=$('#presentPick');
+    const cur=pick.value;
+    pick.innerHTML='<option value="">Choose a person…</option>'+this.data.people.slice()
+      .sort((a,b)=>a.name.localeCompare(b.name))
+      .map(p=>`<option value="${p.id}">${esc(p.name)}${p.nickname?' · '+esc(p.nickname):''}${p.stage==='onboarded'?' (client)':''}</option>`).join('');
+    pick.value=cur;
+  },
+  startMeeting(id){
+    if(!id) return;
+    const p=this.data.people.find(x=>x.id===id); if(!p){ toast('Pick a person first'); return; }
+    this.state.currentPersonId=id;
+    this.state.presenting=true;
+    document.body.classList.add('present');
+    this.currentFF();
+    $('#ffBack').style.display='none';
+    $('#exitPresent').style.display='inline-flex';
+    this.showPage('factfind'); this.renderFactFind();
+  },
+  endMeeting(){
+    this.state.presenting=false;
+    document.body.classList.remove('present');
+    $('#ffBack').style.display='inline-flex';
+    $('#exitPresent').style.display='none';
+    const p=this.person();
+    if(p && p.stage==='onboarded'){
+      const ym=todayStr().slice(0,7);
+      if(p.lastMetMonth!==ym && confirm('Mark '+p.name+' as met this month ('+ym+')?')){ p.lastMetMonth=ym; this.save(); }
+    }
+    this.showPage('present'); this.renderAll();
+  },
+  setTier(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.tier=v; this.save(); } },
+  setLastMet(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.lastMetMonth=v; this.save(); } },
+  openPerson(id, from){
+    this.state.currentPersonId=id;
+    if(from) this.state.cameFrom=from;
+    this.showPage('person'); this.renderPerson();
+  },
+  backFromPerson(){ this.showPage(this.state.cameFrom==='clients'?'clients':'pipeline'); this.renderAll(); },
+
+  /* ---------- today ---------- */
+  dueFollowupsList(){
+    return this.data.people
+      .filter(p=>p.stage!=='onboarded' && p.nextFollowUp && daysUntil(p.nextFollowUp)<=0)
+      .sort((a,b)=>(a.nextFollowUp||'').localeCompare(b.nextFollowUp||''));
+  },
+  dueCareList(){
+    const out=[];
+    this.data.people.forEach(p=>(p.careTasks||[]).forEach(t=>{
+      if(!t.done && daysUntil(t.due)<=0) out.push({p,t});
+    }));
+    return out.sort((a,b)=>a.t.due.localeCompare(b.t.due));
+  },
+  renderToday(){
+    const dueF=this.dueFollowupsList(), dueC=this.dueCareList();
+    const n=dueF.length+dueC.length;
+    const badge=$('#todayBadge'); badge.style.display=n?'inline-block':'none'; badge.textContent=n;
+    const hr=new Date().getHours();
+    const firstName=(this.data.settings.advisorName||'').trim().split(/\s+/)[0];
+    $('#greeting').textContent=(hr<12?'Good morning':hr<18?'Good afternoon':'Good evening')+(firstName?', '+firstName:'');
+    $('#todayDate').textContent = new Date().toLocaleDateString('en-SG',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+    // backup nudge: data lives in this browser only, so remind when export is stale
+    const le=this.data.settings.lastExportAt;
+    const staleDays=le?Math.floor((new Date(todayStr()+'T00:00')-new Date(le+'T00:00'))/86400000):null;
+    $('#backupNudge').innerHTML=(this.data.people.length && (staleDays===null || staleDays>7))
+      ? `<div class="backup-nudge">⚠︎ ${staleDays===null?'No backup yet':'Last backup '+staleDays+' days ago'} — your data lives only in this browser. <button class="btn small" onclick="App.exportData()">Export now</button></div>` : '';
+    const active=this.data.people.filter(p=>p.stage!=='onboarded').length;
+    const clients=this.data.people.filter(p=>p.stage==='onboarded').length;
+    const noDate=this.data.people.filter(p=>p.stage!=='onboarded' && !p.nextFollowUp).length;
+    $('#todayStats').innerHTML = `
+      <div class="card stat"><div class="n" style="color:${dueF.length?'var(--bad)':'var(--good)'}">${dueF.length}</div><div class="l">Follow-ups due</div></div>
+      <div class="card stat"><div class="n" style="color:${dueC.length?'var(--warn)':'var(--good)'}">${dueC.length}</div><div class="l">Care tasks due</div></div>
+      <div class="card stat"><div class="n">${active}</div><div class="l">Active prospects</div></div>
+      <div class="card stat"><div class="n">${clients}</div><div class="l">Clients</div></div>`;
+    const cap=this.state.showAllDue?dueF.length:8;
+    $('#dueFollowups').innerHTML = dueF.length ? dueF.slice(0,cap).map(p=>`
+      <div class="care-item">
+        <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','pipeline')">${esc(p.name)}</b>${p.nickname?` <span class="nick">${esc(p.nickname)}</span>`:''} ${stagePill(p.stage)}
+        <div class="when">${duePill(p.nextFollowUp)} · ${esc(p.source||'')}</div></div>
+        <div class="quick">
+          <button class="btn small" title="Push follow-up 1 month" onclick="App.snoozeById('${p.id}',30)">+1m</button>
+          <button class="btn small" title="Push follow-up 3 months" onclick="App.snoozeById('${p.id}',90)">+3m</button>
+          <button class="btn small" title="Push follow-up 6 months" onclick="App.snoozeById('${p.id}',182)">+6m</button>
+          <button class="btn small primary" onclick="App.openPerson('${p.id}','pipeline')">Open</button>
+        </div>
+      </div>`).join('') + (dueF.length>cap?`<button class="btn small showmore" onclick="App.state.showAllDue=true; App.renderToday()">Show all ${dueF.length} due</button>`:'')
+      : '<div class="empty">Nothing due. Clean slate.</div>';
+    $('#dueCare').innerHTML = dueC.length ? dueC.map(({p,t})=>`
+      <div class="care-item">
+        <input type="checkbox" onchange="App.toggleCare('${p.id}','${t.id}', this.checked)">
+        <div style="flex:1"><div class="t">${esc(t.label)}</div>
+        <div class="when"><b style="cursor:pointer" onclick="App.openPerson('${p.id}','clients')">${esc(p.name)}</b> · ${duePill(t.due)}</div></div>
+      </div>`).join('') : '<div class="empty">No care tasks due.</div>';
+    // upcoming 14 days
+    const up=[];
+    this.data.people.forEach(p=>{
+      if(p.stage!=='onboarded' && p.nextFollowUp){ const d=daysUntil(p.nextFollowUp); if(d>0&&d<=14) up.push({date:p.nextFollowUp, html:`Follow up <b>${esc(p.name)}</b>`, id:p.id, from:'pipeline'}); }
+      (p.careTasks||[]).forEach(t=>{ if(!t.done){ const d=daysUntil(t.due); if(d>0&&d<=14) up.push({date:t.due, html:`${esc(t.label)} — <b>${esc(p.name)}</b>`, id:p.id, from:'clients'}); }});
+    });
+    up.sort((a,b)=>a.date.localeCompare(b.date));
+    $('#upcoming').innerHTML = up.length ? up.map(u=>`
+      <div class="care-item"><div style="flex:1">${u.html}<div class="when">${fmtDate(u.date)}</div></div>
+      <button class="btn small" onclick="App.openPerson('${u.id}','${u.from}')">Open</button></div>`).join('')
+      : '<div class="empty">Nothing scheduled in the next two weeks.</div>';
+  },
+
+  /* ---------- pipeline ---------- */
+  setPipeStage(v){ $('#pipeStageFilter').value=v; this.renderPipeline(); },
+  renderPipeline(){
+    const q=($('#pipeSearch').value||'').toLowerCase();
+    const st=$('#pipeStageFilter').value, so=$('#pipeSourceFilter').value;
+    const all=this.data.people.filter(p=>p.stage!=='onboarded');
+    // funnel chips
+    const chip=(id,label,n)=>`<button class="chip ${st===id?'active':''}" onclick="App.setPipeStage('${id}')">${label}<span class="n">${n}</span></button>`;
+    $('#pipeChips').innerHTML = chip('','All',all.length) +
+      STAGES.filter(s=>s.id!=='onboarded').map(s=>chip(s.id, s.label, all.filter(p=>p.stage===s.id).length)).join('');
+    let list=all;
+    if(q) list=list.filter(p=>matches(p,q));
+    if(st) list=list.filter(p=>p.stage===st);
+    if(so) list=list.filter(p=>p.source===so);
+    list.sort((a,b)=>(a.nextFollowUp||'9999').localeCompare(b.nextFollowUp||'9999'));
+    const tb=$('#pipeTable tbody');
+    tb.innerHTML=list.map(p=>{
+      const lastNote=(p.log&&p.log.length)?p.log[0].text:'';
+      const od=p.nextFollowUp && daysUntil(p.nextFollowUp)<=0;
+      return `<tr class="rowlink ${od?'overdue':''}" onclick="App.openPerson('${p.id}','pipeline')">
+        <td>${nameCell(p)}</td>
+        <td>${stagePill(p.stage)}</td>
+        <td style="color:var(--ink-soft)">${esc(p.source||'—')}</td>
+        <td>${duePill(p.nextFollowUp)}</td>
+        <td style="color:var(--ink-soft); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(lastNote)}</td>
+        <td onclick="event.stopPropagation()"><button class="btn small" onclick="App.openPerson('${p.id}','pipeline')">Open</button></td>
+      </tr>`;
+    }).join('');
+    $('#pipeEmpty').style.display=list.length?'none':'block';
+  },
+
+  /* ---------- clients ---------- */
+  monthsSinceMet(p){
+    if(!p.lastMetMonth) return null;
+    const [y,m]=p.lastMetMonth.split('-').map(Number);
+    const t=todayStr(); const [ty,tm]=[+t.slice(0,4), +t.slice(5,7)];
+    return (ty-y)*12+(tm-m);
+  },
+  metPill(p){
+    const ms=this.monthsSinceMet(p);
+    if(ms===null) return '<span class="pill stale">never recorded</span>';
+    if(ms<=0) return '<span class="pill ok">this month</span>';
+    if(ms<6) return `<span class="pill ok">${ms} mth${ms>1?'s':''} ago</span>`;
+    return `<span class="pill stale">${ms} mths ago</span>`;
+  },
+  renderClients(){
+    const q=($('#clientSearch').value||'').toLowerCase();
+    const tf=$('#clientTierFilter').value, mf=$('#clientMetFilter').value;
+    let list=this.data.people.filter(p=>p.stage==='onboarded');
+    if(q) list=list.filter(p=>matches(p,q));
+    if(tf) list=list.filter(p=> tf==='-' ? !p.tier : p.tier===tf);
+    if(mf){
+      list=list.filter(p=>{
+        const ms=this.monthsSinceMet(p);
+        return mf==='never' ? ms===null : (ms===null || ms>=+mf);
+      });
+      // stale first: never recorded, then longest ago
+      list.sort((a,b)=>{
+        const ma=this.monthsSinceMet(a), mb=this.monthsSinceMet(b);
+        if(ma===null&&mb===null) return a.name.localeCompare(b.name);
+        if(ma===null) return -1; if(mb===null) return 1;
+        return mb-ma;
+      });
+    } else {
+      list.sort((a,b)=>(a.tier||'Z').localeCompare(b.tier||'Z')||a.name.localeCompare(b.name));
+    }
+    const tb=$('#clientTable tbody');
+    tb.innerHTML=list.map(p=>{
+      const open=(p.careTasks||[]).filter(t=>!t.done).sort((a,b)=>a.due.localeCompare(b.due));
+      const done=(p.careTasks||[]).filter(t=>t.done).length, total=(p.careTasks||[]).length;
+      const next=open[0];
+      return `<tr class="rowlink" onclick="App.openPerson('${p.id}','clients')">
+        <td>${nameCell(p)}</td>
+        <td onclick="event.stopPropagation()">
+          <select class="mini" onchange="App.setTier('${p.id}',this.value); App.renderClients()">
+            <option value="">—</option>
+            ${['A','B','C','D'].map(t=>`<option ${p.tier===t?'selected':''}>${t}</option>`).join('')}
+          </select></td>
+        <td onclick="event.stopPropagation()">
+          <input type="month" class="mini" value="${p.lastMetMonth||''}" onchange="App.setLastMet('${p.id}',this.value); App.renderClients()">
+          ${this.metPill(p)}</td>
+        <td>${next?`${esc(next.label.split('—')[0])} ${duePill(next.due)}`:'<span class="pill ok">all done</span>'}</td>
+        <td style="color:var(--ink-soft)">${done}/${total}</td>
+        <td onclick="event.stopPropagation()"><button class="btn small" onclick="App.openPerson('${p.id}','clients')">Open</button></td>
+      </tr>`;
+    }).join('');
+    $('#clientEmpty').style.display=list.length?'none':'block';
+  },
+
+  /* ---------- person detail ---------- */
+  renderPerson(){
+    const p=this.person(); if(!p){ this.showPage('pipeline'); return; }
+    $('#personName').innerHTML=`<span class="namecell">${avatar(p,true)}<span>${esc(p.name)}${p.nickname?` <span class="nick" style="font-size:14px">(${esc(p.nickname)})</span>`:''}</span></span>`;
+    $('#personStagePill').outerHTML=stagePill(p.stage).replace('class="pill','id="personStagePill" class="pill');
+    $('#pStage').value=p.stage;
+    $('#pNextTouch').value=p.nextFollowUp||'';
+    const bits=[];
+    if(p.phone) bits.push('📞 '+esc(p.phone));
+    if(p.email) bits.push('✉️ '+esc(p.email));
+    if(p.source) bits.push('Source: '+esc(p.source));
+    if(p.dob) bits.push('DOB: '+fmtDate(p.dob)+' (age '+ageFrom(p.dob)+')');
+    if(p.notes) bits.push(esc(p.notes));
+    $('#pContact').innerHTML=bits.join(' &nbsp;·&nbsp; ')||'No contact details yet — Edit details to add.';
+    // notes
+    $('#noteLog').innerHTML=(p.log||[]).map((e,i)=>{
+      if(this.state.editingNote===i) return `<div class="entry"><div class="d">${fmtDate(e.date)}</div>
+        <textarea id="noteEdit" rows="4">${esc(e.text)}</textarea>
+        <div style="display:flex; gap:8px; margin-top:6px"><button class="btn small primary" onclick="App.saveNote(${i})">Save</button><button class="btn small" onclick="App.cancelNote()">Cancel</button></div></div>`;
+      return `<div class="entry"><div class="d">${fmtDate(e.date)}<button onclick="App.editNote(${i})">edit</button><button onclick="App.deleteNote(${i})">delete</button></div><div class="txt">${esc(e.text)}</div></div>`;
+    }).join('')||'<div class="empty">No notes yet.</div>';
+    // care card
+    const isClient=p.stage==='onboarded';
+    $('#careCard').style.display=isClient?'block':'none';
+    if(isClient){
+      $('#pTier').value=p.tier||'';
+      $('#pLastMet').value=p.lastMetMonth||'';
+      this.renderCare(p);
+    }
+    // ff summary
+    const ff=p.factFind;
+    if(ff && (ff.grossMonthly||ff.insurance.length||ff.investments.length)){
+      const c=this.calcFF(ff);
+      $('#ffSummary').innerHTML=`Take-home <b>${fmt(c.takeHome)}</b>/mth · Expenses <b>${fmt(c.expTotal)}</b> · Net cashflow <b>${fmt(c.netCashflow)}</b>/mth · ${ff.insurance.length} insurance plan(s), ${ff.investments.length} investment plan(s). Last saved data shown — open to update or print.`;
+    } else {
+      $('#ffSummary').textContent='Not started yet. Open it during the first appointment and fill it in together with the client.';
+    }
+  },
+  renderCare(p){
+    const list=(p.careTasks||[]).slice().sort((a,b)=>(a.done?1:0)-(b.done?1:0)||a.due.localeCompare(b.due));
+    $('#careList').innerHTML=list.length?list.map(t=>`
+      <div class="care-item ${t.done?'done':''}">
+        <input type="checkbox" ${t.done?'checked':''} onchange="App.toggleCare('${p.id}','${t.id}',this.checked)">
+        <div style="flex:1"><div class="t">${esc(t.label)}${t.recur?' <span class="pill ok" style="font-size:10px">yearly</span>':''}</div>
+        <div class="when">${t.done ? 'Done · '+fmtDate(t.due) : duePill(t.due)+' · '+fmtDate(t.due)}</div></div>
+        <button class="del" title="Remove" onclick="App.removeCare('${p.id}','${t.id}')">&times;</button>
+      </div>`).join(''):'<div class="empty">No care tasks.</div>';
+  },
+  changeStage(stage){
+    const p=this.person(); if(!p) return;
+    p.stage=stage;
+    if(stage==='onboarded' && !p.onboardedAt){
+      p.onboardedAt=todayStr();
+      p.nextFollowUp='';
+      this.generateCarePlan(p);
+      toast('Onboarded 🎉 Care plan created — welcome, gift, 30-day, 6-month, annual review'+(p.dob?', birthday':''));
+    }
+    if(stage==='notnow' && !p.nextFollowUp){
+      p.nextFollowUp=addDays(todayStr(),182);
+      toast('Parked. Re-contact set for '+fmtDate(p.nextFollowUp)+' — adjust if needed.');
+    }
+    this.save(); this.renderPerson(); this.renderAll();
+  },
+  generateCarePlan(p){
+    p.careTasks=p.careTasks||[];
+    const base=p.onboardedAt||todayStr();
+    const longExisting = daysUntil(base) < -60; // onboarded more than 60 days ago: skip the welcome sequence
+    CARE_TEMPLATE.forEach(t=>{
+      if(longExisting && !t.recur) return;
+      let due=addDays(base,t.offset);
+      while(t.recur && daysUntil(due)<0) due=addDays(due,365); // next anniversary, not a past one
+      p.careTasks.push({id:uid(), label:t.label, due, done:false, recur:!!t.recur});
+    });
+    if(p.dob) p.careTasks.push({id:uid(), label:'Birthday — send wishes 🎂', due:nextBirthday(p.dob), done:false, recur:true});
+  },
+  toggleCare(personId, taskId, checked){
+    const p=this.data.people.find(x=>x.id===personId); if(!p) return;
+    const t=(p.careTasks||[]).find(x=>x.id===taskId); if(!t) return;
+    t.done=checked;
+    if(checked && t.recur){
+      const next=addDays(t.due,365);
+      p.careTasks.push({id:uid(), label:t.label, due:next, done:false, recur:true});
+      toast('Done. Next "'+t.label.split('—')[0].trim()+'" scheduled for '+fmtDate(next));
+    }
+    this.save(); this.renderAll();
+  },
+  removeCare(personId, taskId){
+    const p=this.data.people.find(x=>x.id===personId); if(!p) return;
+    p.careTasks=(p.careTasks||[]).filter(t=>t.id!==taskId);
+    this.save(); this.renderPerson();
+  },
+  addCareTask(){
+    const p=this.person(); if(!p) return;
+    const label=$('#careLabel').value.trim(), due=$('#careDate').value;
+    if(!label||!due){ toast('Need both a task and a date'); return; }
+    p.careTasks=p.careTasks||[];
+    p.careTasks.push({id:uid(), label, due, done:false});
+    $('#careLabel').value=''; $('#careDate').value='';
+    this.save(); this.renderPerson();
+  },
+  setNextTouch(v){ const p=this.person(); if(!p) return; p.nextFollowUp=v; this.save(); this.renderAll(); },
+  snooze(days){
+    const p=this.person(); if(!p) return;
+    p.nextFollowUp=addDays(todayStr(),days);
+    this.save(); this.renderPerson(); this.renderAll();
+    toast('Next touch: '+fmtDate(p.nextFollowUp));
+  },
+  snoozeById(id,days){
+    const p=this.data.people.find(x=>x.id===id); if(!p) return;
+    p.nextFollowUp=addDays(todayStr(),days);
+    this.save(); this.renderAll();
+    toast(p.name+' → '+fmtDate(p.nextFollowUp));
+  },
+  noteKey(e){
+    if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); this.addNote(); }
+    // Shift+Enter falls through and inserts a paragraph break
+  },
+  addNote(){
+    const p=this.person(); if(!p) return;
+    const v=$('#noteInput').value.trim(); if(!v) return;
+    p.log=p.log||[]; p.log.unshift({date:todayStr(), text:v});
+    $('#noteInput').value='';
+    this.save(); this.renderPerson();
+  },
+  editNote(i){ this.state.editingNote=i; this.renderPerson(); setTimeout(()=>{const t=$('#noteEdit'); if(t){t.focus(); t.selectionStart=t.value.length;}},50); },
+  cancelNote(){ this.state.editingNote=null; this.renderPerson(); },
+  saveNote(i){
+    const p=this.person(); if(!p||!p.log||!p.log[i]) return;
+    const v=$('#noteEdit').value.trim();
+    if(v) p.log[i].text=v; else p.log.splice(i,1);
+    this.state.editingNote=null;
+    this.save(); this.renderPerson();
+  },
+  deleteNote(i){
+    const p=this.person(); if(!p||!p.log) return;
+    if(!confirm('Delete this note?')) return;
+    p.log.splice(i,1); this.state.editingNote=null;
+    this.save(); this.renderPerson();
+  },
+  deletePerson(){
+    const p=this.person(); if(!p) return;
+    if(!confirm('Delete '+p.name+' and all their data (notes, fact-find, care tasks)? This cannot be undone.')) return;
+    this.data.people=this.data.people.filter(x=>x.id!==p.id);
+    this.save(); this.backFromPerson();
+    toast('Deleted.');
+  },
+
+  /* ---------- person modal ---------- */
+  openPersonModal(id, mode){
+    this.state.editingId=id||null;
+    this.state.modalMode=mode||'prospect';
+    const p=id?this.data.people.find(x=>x.id===id):null;
+    const asClient=this.state.modalMode==='client' && !p;
+    $('#pm_nextWrap').style.display=asClient?'none':'block';
+    $('#pm_onboardedWrap').style.display=asClient?'block':'none';
+    if(asClient) $('#pm_onboarded').value=todayStr();
+    $('#personModalTitle').textContent=p?'Edit details':(asClient?'Add existing client':'Add prospect');
+    $('#pm_name').value=p?p.name:'';
+    $('#pm_nickname').value=p?(p.nickname||''):'';
+    $('#pm_source').value=p?(p.source||SOURCES[0]):SOURCES[0];
+    $('#pm_phone').value=p?(p.phone||''):'';
+    $('#pm_email').value=p?(p.email||''):'';
+    $('#pm_dob').value=p?(p.dob||''):'';
+    $('#pm_next').value=p?(p.nextFollowUp||''):addDays(todayStr(),3);
+    $('#pm_notes').value=p?(p.notes||''):'';
+    $('#personModal').classList.add('open');
+    setTimeout(()=>$('#pm_name').focus(),50);
+  },
+  closeModal(){ $('#personModal').classList.remove('open'); },
+  savePersonModal(){
+    const name=$('#pm_name').value.trim();
+    if(!name){ toast('Name is required'); return; }
+    const fields={ name, nickname:$('#pm_nickname').value.trim(), source:$('#pm_source').value, phone:$('#pm_phone').value.trim(), email:$('#pm_email').value.trim(), dob:$('#pm_dob').value, nextFollowUp:$('#pm_next').value, notes:$('#pm_notes').value.trim() };
+    if(this.state.editingId){
+      const p=this.data.people.find(x=>x.id===this.state.editingId);
+      Object.assign(p,fields);
+      if(p.factFind && fields.dob) p.factFind.dob=fields.dob;
+    } else if(this.state.modalMode==='client'){
+      const onboardedAt=$('#pm_onboarded').value||todayStr();
+      const p={ id:uid(), stage:'onboarded', createdAt:todayStr(), onboardedAt, log:[], careTasks:[], factFind:null, ...fields, nextFollowUp:'' };
+      this.data.people.push(p);
+      this.generateCarePlan(p);
+      toast('Client added — care plan created'+(daysUntil(onboardedAt)<-60?' (welcome sequence skipped, they are not new)':''));
+    } else {
+      this.data.people.push({ id:uid(), stage:'new', createdAt:todayStr(), log:[], careTasks:[], factFind:null, ...fields });
+      toast('Added to pipeline');
+    }
+    this.save(); this.closeModal(); this.renderAll();
+    if(this.state.page==='person') this.renderPerson();
+  },
+
+  /* ---------- fact-find ---------- */
+  openFactFind(){
+    const p=this.person(); if(!p) return;
+    this.currentFF(); // ensure exists
+    this.showPage('factfind'); this.renderFactFind();
+  },
+  cpfBracket(age){
+    if(age===null||age===undefined) return null;
+    return this.data.cpfRates.find(r=>age>=r.min && age<=r.max) || null;
+  },
+  calcFF(ff){
+    const s=this.data.settings;
+    const age=ageFrom(ff.dob);
+    const br=this.cpfBracket(age);
+    const gross=num(ff.grossMonthly), other=num(ff.otherMonthly), sav=num(ff.savingsMonthly);
+    const capped=Math.min(gross, num(s.owCeiling)||8000);
+    const employed=ff.employment!=='self';
+    const eePct=(employed&&br)?br.ee/100:0;
+    const totPct=(employed&&br)?(br.er+br.ee)/100:0;
+    const employeeCPF=capped*eePct;
+    const takeHome=gross-employeeCPF;
+    const cpfContrib=capped*totPct;
+    const accessible55=br?cpfContrib*((br.oa+br.sa)/100):0;
+    const expTotal=(ff.expenses||[]).reduce((a,x)=>a+num(x.amt),0);
+    const bankTotal=(ff.bank||[]).reduce((a,x)=>a+num(x.amt),0);
+    const cpfBal=num(ff.cpf.OA)+num(ff.cpf.SA)+num(ff.cpf.MA)+num(ff.cpf.RA);
+    const invTotal=(ff.investments||[]).reduce((a,x)=>a+num(x.mth),0);
+    const insTotal=(ff.insurance||[]).reduce((a,x)=>a+num(x.mth),0);
+    const netCashflow=takeHome+other-expTotal-invTotal-insTotal-sav;
+    const totalAccessible=netCashflow+accessible55;
+    return {age,br,gross,other,sav,capped,employed,employeeCPF,takeHome,cpfContrib,accessible55,expTotal,bankTotal,cpfBal,invTotal,insTotal,netCashflow,totalAccessible};
+  },
+  renderFactFind(){
+    const p=this.person(); if(!p){ this.showPage('pipeline'); return; }
+    const ff=this.currentFF();
+    $('#ffName').textContent='Fact-Find — '+p.name;
+    // scalars
+    $$('[data-ff]').forEach(el=>{ const v=ff[el.dataset.ff]; el.value=(v===0||v)?v:''; });
+    // expenses
+    $('#expTable tbody').innerHTML=(ff.expenses||[]).map((x,i)=>`
+      <tr><td><input type="text" value="${esc(x.label)}" oninput="App.ffRow('expenses',${i},'label',this.value)"></td>
+      <td style="width:140px"><input type="number" value="${x.amt||''}" step="10" oninput="App.ffRow('expenses',${i},'amt',this.value)"></td>
+      <td style="width:36px"><button class="del" onclick="App.ffDelRow('expenses',${i})">&times;</button></td></tr>`).join('');
+    // bank
+    $('#bankTable tbody').innerHTML=(ff.bank||[]).map((x,i)=>`
+      <tr><td><input type="text" value="${esc(x.label)}" oninput="App.ffRow('bank',${i},'label',this.value)"></td>
+      <td style="width:160px"><input type="number" value="${x.amt||''}" step="100" oninput="App.ffRow('bank',${i},'amt',this.value)"></td>
+      <td style="width:36px"><button class="del" onclick="App.ffDelRow('bank',${i})">&times;</button></td></tr>`).join('');
+    // cpf balances
+    $('#cpfTable tbody').innerHTML=['OA','SA','MA','RA'].map(k=>`
+      <tr><td style="width:80px"><b>${k}</b></td>
+      <td><input type="number" value="${ff.cpf[k]||''}" step="100" oninput="App.ffCpf('${k}',this.value)"></td></tr>`).join('');
+    // plan name suggestions
+    $('#dlPlans').innerHTML=(this.data.planPresets||[]).map(n=>`<option value="${esc(n)}">`).join('');
+    // investments
+    $('#invTable tbody').innerHTML=(ff.investments||[]).map((x,i)=>`
+      <tr><td><input type="text" list="dlPlans" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('investments',${i},'name',this.value)"></td>
+      <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('investments',${i},'mth',this.value); App.ffAutoYr('investments',${i})"></td>
+      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('investments',${i},'yr',this.value)"></td>
+      <td><input type="text" value="${esc(x.notes)}" placeholder="Fund value, fund name..." oninput="App.ffRow('investments',${i},'notes',this.value)"></td>
+      <td><button class="del" onclick="App.ffDelRow('investments',${i})">&times;</button></td></tr>`).join('');
+    // insurance
+    $('#insTable tbody').innerHTML=(ff.insurance||[]).map((x,i)=>`
+      <tr><td><input type="text" list="dlPlans" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('insurance',${i},'name',this.value)"></td>
+      <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('insurance',${i},'mth',this.value); App.ffAutoYr('insurance',${i})"></td>
+      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('insurance',${i},'yr',this.value)"></td>
+      <td><input type="text" value="${esc(x.notes)}" placeholder="Coverage details" oninput="App.ffRow('insurance',${i},'notes',this.value)"></td>
+      <td><input type="number" value="${x.death||''}" oninput="App.ffRow('insurance',${i},'death',this.value)"></td>
+      <td><input type="number" value="${x.tpd||''}" oninput="App.ffRow('insurance',${i},'tpd',this.value)"></td>
+      <td><input type="number" value="${x.eci||''}" oninput="App.ffRow('insurance',${i},'eci',this.value)"></td>
+      <td><input type="number" value="${x.lci||''}" oninput="App.ffRow('insurance',${i},'lci',this.value)"></td>
+      <td><button class="del" onclick="App.ffDelRow('insurance',${i})">&times;</button></td></tr>`).join('');
+    this.ffCalc();
+  },
+  ffRow(section,i,key,val){
+    const ff=this.currentFF(); if(!ff||!ff[section]||!ff[section][i]) return;
+    ff[section][i][key]=(key==='label'||key==='name'||key==='notes')?val:num(val);
+    this.save(); this.ffCalc();
+  },
+  ffAutoYr(section,i){
+    const ff=this.currentFF(); const row=ff[section][i];
+    row.yr=Math.round(num(row.mth)*12*100)/100;
+    // update the yr input in the same row without full re-render
+    const tb=$(section==='investments'?'#invTable tbody':'#insTable tbody');
+    const input=tb.rows[i]&&tb.rows[i].cells[2].querySelector('input');
+    if(input) input.value=row.yr||'';
+    this.save(); this.ffCalc();
+  },
+  ffCpf(k,v){ const ff=this.currentFF(); ff.cpf[k]=num(v); this.save(); this.ffCalc(); },
+  ffAddRow(section){
+    const ff=this.currentFF(); if(!ff) return;
+    if(section==='expenses') ff.expenses.push({label:'',amt:0});
+    if(section==='bank') ff.bank.push({label:'',amt:0});
+    if(section==='investments') ff.investments.push({name:'',mth:0,yr:0,notes:''});
+    if(section==='insurance') ff.insurance.push({name:'',mth:0,yr:0,notes:'',death:0,tpd:0,eci:0,lci:0});
+    this.save(); this.renderFactFind();
+  },
+  ffDelRow(section,i){
+    const ff=this.currentFF(); ff[section].splice(i,1);
+    this.save(); this.renderFactFind();
+  },
+  show55(ff, c){
+    if(ff.show55===true) return true;
+    if(ff.show55===false) return false;
+    return c.age!==null && c.age>=50; // auto: only surface post-55 CPF projections from age 50
+  },
+  toggle55(){
+    const ff=this.currentFF(); if(!ff) return;
+    const c=this.calcFF(ff);
+    ff.show55=!this.show55(ff,c);
+    this.save(); this.ffCalc();
+  },
+  ffCalc(){
+    const ff=this.currentFF(); if(!ff) return;
+    const c=this.calcFF(ff);
+    const s55=this.show55(ff,c);
+    const b55=$('#btn55'); if(b55) b55.textContent=s55?'Hide CPF 55+ view':'Show CPF 55+ view';
+    $('#ff_age').value=c.age!==null?c.age+' yrs':'—';
+    $('#c_takehome').textContent=fmt(c.takeHome);
+    $('#c_cpfnote').textContent=c.employed&&c.br
+      ? `Employee CPF ${c.br.ee}% on capped income ${fmt(c.capped)} = ${fmt(c.employeeCPF)} deducted. OW ceiling ${fmt(num(this.data.settings.owCeiling))}.`
+      : (ff.employment==='self'?'Self-employed: no CPF salary deduction applied.':'Enter DOB to apply CPF rates.');
+    $('#c_expenses').textContent=fmt(c.expTotal);
+    $('#c_bank').textContent=fmt(c.bankTotal);
+    $('#c_cpfbal').textContent=fmt(c.cpfBal);
+    $('#c_cpfrates').textContent=c.br?`Age ${c.age}: employer ${c.br.er}% + employee ${c.br.ee}% = ${(c.br.er+c.br.ee).toFixed(1)}% · allocation OA ${c.br.oa}% / SA ${c.br.sa}% / MA ${c.br.ma}%`:'';
+    $('#c_inv').textContent=fmt(c.invTotal);
+    $('#c_ins').textContent=fmt(c.insTotal);
+    const hero=(l,n,s,cls)=>`<div class="card"><div class="l">${l}</div><div class="n ${cls||''}">${n}</div><div class="s">${s||''}</div></div>`;
+    let h =
+      hero('Net cashflow /mth', fmt(c.netCashflow), fmt(c.netCashflow*12)+' /yr', c.netCashflow>=0?'pos':'neg') +
+      hero('CPF contribution /mth', fmt(c.cpfContrib), c.br?('at '+(c.br.er+c.br.ee).toFixed(1)+'% of capped wage'):'') +
+      hero('Total expenses /mth', fmt(c.expTotal), 'living costs excl. premiums');
+    if(s55) h +=
+      hero('Accessible CPF after 55 /mth', fmt(c.accessible55), 'OA + SA portion of contributions') +
+      hero('Total net accessible /mth', fmt(c.totalAccessible), 'net cashflow + accessible CPF', c.totalAccessible>=0?'pos':'neg');
+    else h += hero('Liquid assets', fmt(c.bankTotal), 'bank, FD, T-Bills');
+    $('#ffHero').innerHTML = h;
+  },
+
+  /* ---------- print ---------- */
+  printFactFind(){
+    const p=this.person(); if(!p) return;
+    const ff=this.currentFF(); const c=this.calcFF(ff); const s=this.data.settings;
+    const rows=(arr)=>arr.map(r=>r).join('');
+    const money=(v)=>v?fmt(num(v)):'—';
+    let h=`<h1>Cashflow &amp; Financial Snapshot</h1>
+    <div class="pd-sub">Prepared for <b>${esc(p.name)}</b>${c.age!==null?' (age '+c.age+')':''} · ${new Date().toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'})}</div>
+    <div class="pd-hero">
+      <div><div class="l">Take-home /mth</div><div class="n">${fmt(c.takeHome)}</div></div>
+      <div><div class="l">Expenses /mth</div><div class="n">${fmt(c.expTotal)}</div></div>
+      <div><div class="l">Net cashflow /mth</div><div class="n">${fmt(c.netCashflow)}</div></div>
+      <div><div class="l">Net cashflow /yr</div><div class="n">${fmt(c.netCashflow*12)}</div></div>
+    </div>
+    <h3>Income</h3>
+    <table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr>
+    <tr><td>Gross income</td><td class="r">${fmt(c.gross)}</td><td class="r">${fmt(c.gross*12)}</td></tr>
+    <tr><td>Take-home income${c.employed?' (after employee CPF)':''}</td><td class="r">${fmt(c.takeHome)}</td><td class="r">${fmt(c.takeHome*12)}</td></tr>
+    <tr><td>Other income</td><td class="r">${fmt(c.other)}</td><td class="r">${fmt(c.other*12)}</td></tr></table>`;
+    h+=`<h3>Monthly expenses</h3><table><tr><th>Category</th><th class="r">Amount /mth</th></tr>
+    ${rows(ff.expenses.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}
+    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.expTotal)}</b></td></tr></table>`;
+    h+=`<h3>Liquid assets</h3><table><tr><th>Item</th><th class="r">Balance</th></tr>
+    ${rows(ff.bank.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}
+    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.bankTotal)}</b></td></tr></table>`;
+    h+=`<h3>CPF</h3><table><tr><th>Account</th><th class="r">Balance</th></tr>
+    ${['OA','SA','MA','RA'].map(k=>`<tr><td>${k}</td><td class="r">${money(ff.cpf[k])}</td></tr>`).join('')}
+    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.cpfBal)}</b></td></tr></table>`;
+    if(c.br&&c.employed){ const s55=this.show55(ff,c);
+    h+=`<table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr>
+    <tr><td>CPF contribution (OA, SA, MA) at ${(c.br.er+c.br.ee).toFixed(1)}%</td><td class="r">${fmt(c.cpfContrib)}</td><td class="r">${fmt(c.cpfContrib*12)}</td></tr>
+    ${s55?`<tr><td>Accessible CPF after 55 (OA + SA portion)</td><td class="r">${fmt(c.accessible55)}</td><td class="r">${fmt(c.accessible55*12)}</td></tr>
+    <tr><td><b>Total net accessible cashflow</b></td><td class="r"><b>${fmt(c.totalAccessible)}</b></td><td class="r"><b>${fmt(c.totalAccessible*12)}</b></td></tr>`:''}</table>
+    <div class="pd-note">CPF rates effective ${esc(s.cpfEffective||'')}, Ordinary Wage ceiling ${fmt(num(s.owCeiling))}/mth. Contribution allocation at age ${c.age}: OA ${c.br.oa}% / SA ${c.br.sa}% / MA ${c.br.ma}%.</div>`; }
+    if(ff.investments.length){ h+=`<h3>Investment / savings plans</h3><table><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr>
+    ${rows(ff.investments.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td></tr>`))}
+    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.invTotal)}</b></td><td class="r"><b>${fmt(c.invTotal*12)}</b></td><td></td></tr></table>`; }
+    if(ff.insurance.length){ h+=`<h3>Insurance plans</h3><table><tr><th>Plan</th><th class="r">Prem /mth</th><th class="r">Prem /yr</th><th>Coverage</th><th class="r">Death</th><th class="r">TPD</th><th class="r">Early/Int CI</th><th class="r">Late CI</th></tr>
+    ${rows(ff.insurance.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td><td class="r">${money(x.death)}</td><td class="r">${money(x.tpd)}</td><td class="r">${money(x.eci)}</td><td class="r">${money(x.lci)}</td></tr>`))}
+    </table>`; }
+    h+=`<div class="pd-footer">
+      <div><b>${esc(s.advisorName||'')}</b>${s.advisorTitle?' · '+esc(s.advisorTitle):''}<br>${esc(s.advisorPhone||'')}${s.advisorEmail?' · '+esc(s.advisorEmail):''}</div>
+      <div style="text-align:right">Figures as provided by client on ${new Date().toLocaleDateString('en-SG')}.<br>For discussion purposes; not a contract of insurance.</div>
+    </div>`;
+    $('#printDoc').innerHTML=h;
+    window.print();
+  },
+
+  /* ---------- settings ---------- */
+  renderSettings(){
+    const s=this.data.settings;
+    $$('[data-set]').forEach(el=>{ el.value=s[el.dataset.set]??''; });
+    if(document.activeElement!==$('#set_plans')) $('#set_plans').value=(this.data.planPresets||[]).join('\n');
+    $('#rateTable tbody').innerHTML=this.data.cpfRates.map((r,i)=>`
+      <tr>${['min','max','er','ee'].map(k=>`<td><input type="number" step="0.01" value="${r[k]}" oninput="App.setRate(${i},'${k}',this.value)"></td>`).join('')}
+      <td style="text-align:right; color:var(--ink-soft); padding-right:14px">${(r.er+r.ee).toFixed(1)}%</td>
+      ${['oa','sa','ma'].map(k=>`<td><input type="number" step="0.01" value="${r[k]}" oninput="App.setRate(${i},'${k}',this.value)"></td>`).join('')}</tr>`).join('');
+  },
+  setRate(i,k,v){ this.data.cpfRates[i][k]=num(v); this.save(); },
+  setPlans(v){ this.data.planPresets=v.split('\n').map(x=>x.trim()).filter(Boolean); this.save(); },
+
+  /* ---------- data ---------- */
+  exportData(){
+    const blob=new Blob([JSON.stringify(this.data,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='advisorflow-backup-'+todayStr()+'.json';
+    a.click(); URL.revokeObjectURL(a.href);
+    this.data.settings.lastExportAt=todayStr(); this.save(); this.renderToday();
+    toast('Backup downloaded');
+  },
+  importData(input){
+    const f=input.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const d=JSON.parse(r.result);
+        if(!d.people||!d.settings) throw new Error('bad format');
+        if(!confirm('Replace current data with this backup? Current data: '+this.data.people.length+' people. Backup: '+d.people.length+' people.')) return;
+        this.data=d; this.save(); this.renderAll(); toast('Imported.');
+      }catch(e){ toast('Not a valid AdvisorFlow backup file'); }
+      input.value='';
+    };
+    r.readAsText(f);
+  },
+  /* ---------- client import (Excel / CSV) ---------- */
+  loadSheetJS(){
+    return new Promise((res,rej)=>{
+      if(window.XLSX) return res(window.XLSX);
+      const sc=document.createElement('script');
+      sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      sc.onload=()=>res(window.XLSX); sc.onerror=rej;
+      document.head.appendChild(sc);
+    });
+  },
+  parseCSV(text){
+    const rows=[]; let row=[], cell='', inQ=false;
+    for(let i=0;i<text.length;i++){
+      const ch=text[i];
+      if(inQ){
+        if(ch==='"'){ if(text[i+1]==='"'){cell+='"'; i++;} else inQ=false; }
+        else cell+=ch;
+      } else {
+        if(ch==='"') inQ=true;
+        else if(ch===','){ row.push(cell); cell=''; }
+        else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&text[i+1]==='\n') i++; row.push(cell); rows.push(row); row=[]; cell=''; }
+        else cell+=ch;
+      }
+    }
+    if(cell!==''||row.length){ row.push(cell); rows.push(row); }
+    return rows;
+  },
+  parseDate(v){
+    if(!v) return '';
+    v=String(v).trim();
+    if(/^\d{4}-\d{1,2}-\d{1,2}/.test(v)){ const [y,m,d]=v.slice(0,10).split('-'); return y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0'); }
+    const m=v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/); // DD/MM/YYYY
+    if(m){ let y=m[3]; if(y.length===2) y=(num(y)>30?'19':'20')+y; return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); }
+    return '';
+  },
+  importClients(input){
+    const f=input.files[0]; if(!f) return;
+    const done=()=>{ input.value=''; };
+    if(f.name.toLowerCase().endsWith('.csv')){
+      const r=new FileReader();
+      r.onload=()=>{ this.ingestClientRows(this.parseCSV(r.result)); done(); };
+      r.readAsText(f);
+    } else {
+      this.loadSheetJS().then(XLSX=>{
+        const r=new FileReader();
+        r.onload=()=>{
+          const wb=XLSX.read(new Uint8Array(r.result),{type:'array', cellDates:false});
+          const ws=wb.Sheets[wb.SheetNames[0]];
+          this.ingestClientRows(XLSX.utils.sheet_to_json(ws,{header:1, raw:false, defval:''}));
+          done();
+        };
+        r.readAsArrayBuffer(f);
+      }).catch(()=>{ toast('Reading .xlsx needs internet once (loads a reader library). Or save as CSV and import that.'); done(); });
+    }
+  },
+  ingestClientRows(rows){
+    // find the header row: first row containing a "name" cell
+    const hi=rows.findIndex(r=>r.some(c=>String(c).trim().toLowerCase()==='name'));
+    if(hi<0){ toast('Could not find a header row with a "Name" column.'); return; }
+    const heads=rows[hi].map(c=>String(c).trim().toLowerCase());
+    const col=n=>heads.indexOf(n);
+    const iName=col('name'), iDob=col('dob'), iPhone=col('phone'), iEmail=col('email'),
+          iSource=col('lead source')>-1?col('lead source'):col('source'),
+          iOnb=col('onboarded date')>-1?col('onboarded date'):col('onboarded'),
+          iNotes=col('notes'), iPol=col('policies');
+    let added=0, skipped=[];
+    const existing=new Set(this.data.people.map(p=>p.name.trim().toLowerCase()));
+    for(let r=hi+1; r<rows.length; r++){
+      const row=rows[r]; if(!row) continue;
+      const name=String(row[iName]??'').trim();
+      if(!name) continue;
+      if(existing.has(name.toLowerCase())){ skipped.push(name); continue; }
+      const p={
+        id:uid(), name, stage:'onboarded', createdAt:todayStr(),
+        dob:this.parseDate(iDob>-1?row[iDob]:''),
+        phone:iPhone>-1?String(row[iPhone]??'').trim():'',
+        email:iEmail>-1?String(row[iEmail]??'').trim():'',
+        source:iSource>-1?String(row[iSource]??'').trim():'',
+        onboardedAt:this.parseDate(iOnb>-1?row[iOnb]:'')||todayStr(),
+        notes:iNotes>-1?String(row[iNotes]??'').trim():'',
+        nextFollowUp:'', log:[], careTasks:[], factFind:null,
+      };
+      // policies: "Plan name | prem/mth | prem/yr" separated by ";"
+      const polRaw=iPol>-1?String(row[iPol]??'').trim():'';
+      if(polRaw){
+        p.factFind=this.blankFF(p);
+        polRaw.split(';').map(x=>x.trim()).filter(Boolean).forEach(entry=>{
+          const parts=entry.split('|').map(x=>x.trim());
+          p.factFind.insurance.push({name:parts[0]||'', mth:num(parts[1]), yr:num(parts[2])||Math.round(num(parts[1])*12*100)/100, notes:'', death:0, tpd:0, eci:0, lci:0});
+        });
+      }
+      this.generateCarePlan(p);
+      this.data.people.push(p);
+      existing.add(name.toLowerCase());
+      added++;
+    }
+    this.save(); this.renderAll();
+    toast(`Imported ${added} client(s)`+(skipped.length?`, skipped ${skipped.length} duplicate(s): ${skipped.slice(0,3).join(', ')}${skipped.length>3?'…':''}`:'.'));
+  },
+
+  loadSample(){
+    const id=uid();
+    this.data.people.push({
+      id, name:'Kenneth (sample)', source:'Warm / friend', phone:'', email:'', dob:'1990-06-04',
+      stage:'factfind', createdAt:todayStr(), nextFollowUp:addDays(todayStr(),7),
+      notes:'Sample prospect based on a real cashflow breakdown. Safe to delete.',
+      log:[{date:todayStr(), text:'First appointment done — ran through cashflow together.'}],
+      careTasks:[],
+      factFind:{ dob:'1990-06-04', grossMonthly:12083.33, otherMonthly:0, savingsMonthly:0, employment:'employed',
+        expenses:[{label:'Food',amt:1200},{label:'Entertainment',amt:500},{label:'Bills',amt:600},{label:'Transport',amt:400},{label:'Parents',amt:1000},{label:'Rental / mortgage',amt:800}],
+        bank:[{label:'Bank / savings',amt:150000},{label:'Fixed deposits',amt:0},{label:'T-Bills / SSB',amt:0},{label:'Joint account',amt:30000}],
+        cpf:{OA:0,SA:0,MA:0,RA:0},
+        investments:[{name:'AIA Pro Achiever 3.0',mth:1000,yr:12000,notes:''},{name:'AIA Invest Easy Cash',mth:0,yr:30000,notes:'Fund value 17,000 — Global Dynamic Income Fund'}],
+        insurance:[
+          {name:'Supreme Health',mth:0,yr:628.77,notes:'Up to private hosp (paid by MediSave)',death:0,tpd:0,eci:0,lci:0},
+          {name:'GE rider',mth:30.58,yr:366.96,notes:'Private hosp 10% co-pay capped 6k/yr',death:0,tpd:0,eci:0,lci:0},
+          {name:'AIA Solitaire',mth:30.58,yr:366.96,notes:'Plan 2',death:0,tpd:0,eci:0,lci:0},
+          {name:'AIA Ultimate Critical Cover',mth:162.74,yr:1952.88,notes:'Critical illness',death:0,tpd:0,eci:0,lci:0},
+        ]},
+    });
+    this.save(); this.renderAll(); this.showPage('pipeline');
+    toast('Sample prospect added — open Kenneth to see a filled fact-find.');
+  },
+  wipe(){
+    if(!confirm('Erase ALL data? Export a backup first if you want to keep anything.')) return;
+    if(!confirm('Really sure? This deletes every prospect, client, fact-find and note.')) return;
+    this.data=this.blank(); this.save(); this.renderAll(); this.showPage('today');
+    toast('All data erased.');
+  },
+};
+
+App.init();
+</script>
+</body>
+</html>
