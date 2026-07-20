@@ -180,6 +180,14 @@
   .pill.stale{background:var(--warn-soft); color:var(--warn);}
   .pill.ref{background:var(--good-soft); color:var(--good);}
   .pill.case{background:#eee8f8; color:#5b3a9e;}
+  .pill.hnw{background:linear-gradient(135deg,#fdf3d7,#f7e7b4); color:#7a5d00; border:1px solid #e3c76a;}
+  tr.hnwrow{background:linear-gradient(90deg, rgba(201,162,39,.09), transparent 55%);}
+  tr.hnwrow td:first-child{box-shadow:inset 3px 0 0 #c9a227;}
+  select.tier-sel{font-weight:700; border-radius:14px; text-align:center;}
+  select.tier-sel.tA{background:#fdf0d0; color:#8a6100; border-color:#e3c76a;}
+  select.tier-sel.tB{background:var(--accent-soft); color:var(--accent); border-color:#b9d0e4;}
+  select.tier-sel.tC{background:#eef2f7; color:#41536b;}
+  select.tier-sel.tD{background:#f1f1f1; color:#999;}
   .casebox{background:var(--accent-soft); border-radius:8px; padding:12px 14px; margin-top:10px;}
   .casebox .form-row{margin-bottom:8px;}
   select.mini, input.mini{padding:3px 6px; font-size:12px; width:auto;}
@@ -315,6 +323,7 @@
         <option value="never">Never recorded</option>
       </select>
       <button class="chip" id="srFilterBtn" onclick="App.state.srOnly=!App.state.srOnly; App.renderClients()">🛠 Open requests</button>
+      <button class="chip" id="hnwFilterBtn" onclick="App.state.hnwOnly=!App.state.hnwOnly; App.renderClients()">💎 HNW</button>
       <div class="spacer"></div>
       <button class="btn" onclick="document.getElementById('clientImportFile').click()">Import Excel / CSV</button>
       <input type="file" id="clientImportFile" accept=".csv,.xlsx" style="display:none" onchange="App.importClients(this)">
@@ -379,6 +388,9 @@
           </select></div>
         <div><label>Last met (month is enough)</label><input type="month" id="pLastMet" onchange="App.setLastMet(App.state.currentPersonId, this.value); App.renderAll()"></div>
       </div>
+      <label style="display:flex; gap:8px; align-items:center; margin:-4px 0 12px; font-size:13px; font-weight:500">
+        <input type="checkbox" id="pHnw" style="width:auto" onchange="App.setHnw(this.checked)"> High-net-worth client 💎 (highlighted everywhere)
+      </label>
       <h2>Client care timeline</h2>
       <div id="careList"></div>
       <div style="margin-top:10px; display:flex; gap:8px">
@@ -664,8 +676,9 @@ function avatar(p, lg){
   const initials=p.name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
   return `<span class="avatar${lg?' lg':''}" style="background:hsl(${hue},42%,46%)">${esc(initials)}</span>`;
 }
+function hnwPill(p){ return p.hnw?' <span class="pill hnw">💎 HNW</span>':''; }
 function nameCell(p){
-  return `<span class="namecell">${avatar(p)}<span><b>${esc(p.name)}</b>${p.nickname?`<div class="nick">${esc(p.nickname)}</div>`:''}</span></span>`;
+  return `<span class="namecell">${avatar(p)}<span><b>${esc(p.name)}</b>${hnwPill(p)}${p.nickname?`<div class="nick">${esc(p.nickname)}</div>`:''}</span></span>`;
 }
 function matches(p,q){ return (p.name+' '+(p.nickname||'')).toLowerCase().includes(q); }
 function stagePill(id){ const s=stageObj(id); return `<span class="pill stage-${s.id}">${s.label}</span>`; }
@@ -682,7 +695,7 @@ function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('sh
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'' },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false },
 
   init(){
     this.load();
@@ -734,6 +747,16 @@ const App = {
     catch(e){ this.data=this.blank(); }
     if(!this.data.cpfRates||!this.data.cpfRates.length) this.data.cpfRates=JSON.parse(JSON.stringify(DEFAULT_RATES));
     if(!this.data.planPresets) this.data.planPresets=DEFAULT_PLANS.slice();
+    // one-time upgrade: promote "HNW" markers stashed in notes (from the AdvisorQuest migration) to a real flag
+    if(!this.data.hnwMigrated){
+      (this.data.people||[]).forEach(p=>{
+        if(p.hnw===undefined && p.notes && p.notes.split(' · ').some(x=>x.trim()==='HNW')){
+          p.hnw=true;
+          p.notes=p.notes.split(' · ').filter(x=>x.trim()!=='HNW').join(' · ');
+        }
+      });
+      this.data.hnwMigrated=true; this.save();
+    }
     if((this.data.planPresetsVersion||1) < PLAN_PRESETS_VERSION){
       // reseed with the list taken from the 2026 commission schedule; keep any lines the user added themselves
       const custom=(this.data.planPresets||[]).filter(x=>!x.startsWith('AIA '));
@@ -773,7 +796,7 @@ const App = {
       .sort((a,b)=>(a.nextFollowUp||'9999').localeCompare(b.nextFollowUp||'9999'));
     $('#presentList').innerHTML = appts.length ? appts.map(p=>`
       <div class="present-card" onclick="App.startMeeting('${p.id}')">
-        <div class="namecell" style="margin-bottom:6px">${avatar(p)}<span class="nm">${esc(p.name)}</span></div>
+        <div class="namecell" style="margin-bottom:6px">${avatar(p)}<span class="nm">${esc(p.name)}</span>${hnwPill(p)}</div>
         ${p.nickname?`<div class="nick">${esc(p.nickname)}</div>`:''}
         <div class="meta">${esc(p.source||'')}${p.nextFollowUp?' · '+fmtDate(p.nextFollowUp):''}${p.factFind?' · fact-find started':''}</div>
         <button class="btn small primary">Start meeting</button>
@@ -811,6 +834,7 @@ const App = {
   setTier(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.tier=v; this.save(); } },
   setLastMet(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.lastMetMonth=v; this.save(); } },
   setAskRef(v){ const p=this.person(); if(p){ p.askReferral=v; this.save(); this.renderAll(); } },
+  setHnw(v){ const p=this.person(); if(p){ p.hnw=v; this.save(); this.renderAll(); this.renderPerson(); } },
 
   /* ---------- service requests (admin work for existing clients) ---------- */
   openSRs(p){ return (p.serviceRequests||[]).filter(r=>!r.done); },
@@ -944,7 +968,7 @@ const App = {
     const cap=this.state.showAllDue?dueF.length:8;
     $('#dueFollowups').innerHTML = dueF.length ? dueF.slice(0,cap).map(p=>`
       <div class="care-item">
-        <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','pipeline')">${esc(p.name)}</b>${p.nickname?` <span class="nick">${esc(p.nickname)}</span>`:''} ${stagePill(effStage(p))}${p.stage==='onboarded'?' <span class="pill case">client case</span>':''}${p.askReferral?' <span class="pill ref">🤝</span>':''}
+        <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','pipeline')">${esc(p.name)}</b>${hnwPill(p)}${p.nickname?` <span class="nick">${esc(p.nickname)}</span>`:''} ${stagePill(effStage(p))}${p.stage==='onboarded'?' <span class="pill case">client case</span>':''}${p.askReferral?' <span class="pill ref">🤝</span>':''}
         <div class="when">${duePill(p.nextFollowUp)} · ${esc(p.stage==='onboarded'?(p.activeCase.label||'new case'):(p.source||''))}</div></div>
         <div class="quick">
           <button class="btn small" title="Push follow-up 1 month" onclick="App.snoozeById('${p.id}',30)">+1m</button>
@@ -1033,7 +1057,9 @@ const App = {
     const tf=$('#clientTierFilter').value, mf=$('#clientMetFilter').value;
     let list=this.data.people.filter(p=>p.stage==='onboarded');
     $('#srFilterBtn').classList.toggle('active', !!this.state.srOnly);
+    $('#hnwFilterBtn').classList.toggle('active', !!this.state.hnwOnly);
     if(this.state.srOnly) list=list.filter(p=>this.openSRs(p).length);
+    if(this.state.hnwOnly) list=list.filter(p=>p.hnw);
     if(q) list=list.filter(p=>matches(p,q));
     if(tf) list=list.filter(p=> tf==='-' ? !p.tier : p.tier===tf);
     if(mf){
@@ -1049,17 +1075,17 @@ const App = {
         return mb-ma;
       });
     } else {
-      list.sort((a,b)=>(a.tier||'Z').localeCompare(b.tier||'Z')||a.name.localeCompare(b.name));
+      list.sort((a,b)=>a.name.localeCompare(b.name)); // alphabetical A→Z by default
     }
     const tb=$('#clientTable tbody');
     tb.innerHTML=list.map(p=>{
       const open=(p.careTasks||[]).filter(t=>!t.done).sort((a,b)=>a.due.localeCompare(b.due));
       const done=(p.careTasks||[]).filter(t=>t.done).length, total=(p.careTasks||[]).length;
       const next=open[0];
-      return `<tr class="rowlink" onclick="App.openPerson('${p.id}','clients')">
+      return `<tr class="rowlink ${p.hnw?'hnwrow':''}" onclick="App.openPerson('${p.id}','clients')">
         <td>${nameCell(p)}</td>
         <td onclick="event.stopPropagation()">
-          <select class="mini" onchange="App.setTier('${p.id}',this.value); App.renderClients()">
+          <select class="mini tier-sel ${p.tier?'t'+p.tier:''}" onchange="App.setTier('${p.id}',this.value); App.renderClients()">
             <option value="">—</option>
             ${['A','B','C','D'].map(t=>`<option ${p.tier===t?'selected':''}>${t}</option>`).join('')}
           </select></td>
@@ -1077,7 +1103,7 @@ const App = {
   /* ---------- person detail ---------- */
   renderPerson(){
     const p=this.person(); if(!p){ this.showPage('pipeline'); return; }
-    $('#personName').innerHTML=`<span class="namecell">${avatar(p,true)}<span>${esc(p.name)}${p.nickname?` <span class="nick" style="font-size:14px">(${esc(p.nickname)})</span>`:''}</span></span>`;
+    $('#personName').innerHTML=`<span class="namecell">${avatar(p,true)}<span>${esc(p.name)}${hnwPill(p)}${p.nickname?` <span class="nick" style="font-size:14px">(${esc(p.nickname)})</span>`:''}</span></span>`;
     $('#personStagePill').outerHTML=stagePill(p.stage).replace('class="pill','id="personStagePill" class="pill');
     $('#pStage').value=p.stage;
     $('#pNextTouch').value=p.nextFollowUp||'';
@@ -1104,6 +1130,7 @@ const App = {
     if(isClient){
       $('#pTier').value=p.tier||'';
       $('#pLastMet').value=p.lastMetMonth||'';
+      $('#pHnw').checked=!!p.hnw;
       this.renderCare(p);
     }
     // ff summary
