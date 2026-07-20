@@ -105,6 +105,11 @@
   .minitable td, .minitable th{padding:6px 8px;}
   .minitable input{padding:5px 8px; font-size:13px;}
   .minitable textarea{padding:5px 8px; font-size:13px; resize:none; overflow:hidden; min-height:31px; line-height:1.4; field-sizing:content;}
+  input.money{text-align:right;}
+  td.namecol{position:relative; min-width:170px;}
+  .sugg{position:absolute; left:0; right:0; top:100%; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 6px 18px rgba(26,35,50,.15); z-index:60; max-height:190px; overflow-y:auto;}
+  .sugg div{padding:6px 10px; cursor:pointer; font-size:12.5px;}
+  .sugg div:hover{background:var(--accent-soft); color:var(--accent);}
   .addrow{margin-top:8px;}
   .calcnote{font-size:12px; color:var(--ink-faint); margin-top:8px;}
   .ff-computed{background:var(--accent-soft); border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; font-size:13px; margin-top:10px;}
@@ -447,11 +452,11 @@
           <div><label>Age</label><input type="text" id="ff_age" disabled></div>
         </div>
         <div class="form-row">
-          <div><label>Gross income (/mth)</label><input type="number" data-ff="grossMonthly" step="100"></div>
-          <div><label>Other income (/mth)</label><input type="number" data-ff="otherMonthly" step="100"></div>
+          <div><label>Gross income (/mth)</label><input type="text" inputmode="decimal" class="money" data-ff="grossMonthly"></div>
+          <div><label>Other income (/mth)</label><input type="text" inputmode="decimal" class="money" data-ff="otherMonthly"></div>
         </div>
         <div class="form-row">
-          <div><label title="Amount the client commits to setting aside every month, e.g. a standing instruction to a savings account. Counted as an outflow in net cashflow.">Savings set aside (/mth) ⓘ</label><input type="number" data-ff="savingsMonthly" step="50"></div>
+          <div><label title="Amount the client commits to setting aside every month, e.g. a standing instruction to a savings account. Counted as an outflow in net cashflow.">Savings set aside (/mth) ⓘ</label><input type="text" inputmode="decimal" class="money" data-ff="savingsMonthly"></div>
           <div><label>Employment</label><select data-ff="employment"><option value="employed">Employed (CPF applies)</option><option value="self">Self-employed (no CPF deduction)</option></select></div>
         </div>
         <div class="ff-computed"><span>Take-home income (/mth)</span><b id="c_takehome">—</b></div>
@@ -595,8 +600,6 @@
   </div>
 </div>
 
-<datalist id="dlPlansIns"></datalist>
-<datalist id="dlPlansInv"></datalist>
 <datalist id="dlSR">
   <option value="File hospitalisation claim"><option value="File accident claim"><option value="File CI claim">
   <option value="Change address"><option value="Update contact details"><option value="Update beneficiary / nomination">
@@ -683,7 +686,8 @@ function fmtDate(s){ if(!s) return '—'; const d=new Date(s+'T00:00'); return d
 function daysUntil(s){ if(!s) return null; return Math.round((new Date(s+'T00:00') - new Date(todayStr()+'T00:00'))/86400000); }
 function ageFrom(dob){ if(!dob) return null; const d=new Date(dob+'T00:00'), n=new Date(); let a=n.getFullYear()-d.getFullYear(); const m=n.getMonth()-d.getMonth(); if(m<0||(m===0&&n.getDate()<d.getDate())) a--; return a; }
 function nextBirthday(dob){ if(!dob) return null; const d=new Date(dob+'T00:00'), n=new Date(todayStr()+'T00:00'); const b=new Date(n.getFullYear(), d.getMonth(), d.getDate()); if(b<n) b.setFullYear(b.getFullYear()+1); return isoLocal(b); }
-function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+function num(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)?0:n; }
+function fmt2(n){ n=num(n); return n ? n.toLocaleString('en-SG',{minimumFractionDigits:2, maximumFractionDigits:2}) : ''; }
 function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '—'; const opts = Math.abs(n%1)>0.004 ? {minimumFractionDigits:2,maximumFractionDigits:2} : {maximumFractionDigits:0}; return 'S$' + n.toLocaleString('en-SG', opts); }
 function esc(s){ return String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function stageObj(id){ return STAGES.find(s=>s.id===id) || STAGES[0]; }
@@ -735,11 +739,16 @@ const App = {
     $$('[data-ff]').forEach(el=>{
       el.addEventListener('input', ()=>{
         const ff=this.currentFF(); if(!ff) return;
-        ff[el.dataset.ff] = el.type==='number' ? num(el.value) : el.value;
+        ff[el.dataset.ff] = (el.type==='number'||el.classList.contains('money')) ? num(el.value) : el.value;
         if(el.dataset.ff==='dob'){ const p=this.person(); if(p) p.dob=el.value; }
         this.save(); this.ffCalc();
       });
     });
+    // money fields: show 1,234.56 formatting once the user leaves the field (raw while typing)
+    document.addEventListener('blur', e=>{
+      const t=e.target;
+      if(t && t.classList && t.classList.contains('money')) t.value = t.value.trim()==='' ? '' : fmt2(t.value);
+    }, true);
     // modal close on backdrop / escape
     $('#personModal').addEventListener('click', e=>{ if(e.target.id==='personModal') this.closeModal(); });
     document.addEventListener('keydown', e=>{
@@ -1378,41 +1387,38 @@ const App = {
     const ff=this.currentFF();
     $('#ffName').textContent='Fact-Find — '+p.name;
     // scalars
-    $$('[data-ff]').forEach(el=>{ const v=ff[el.dataset.ff]; el.value=(v===0||v)?v:''; });
+    $$('[data-ff]').forEach(el=>{ const v=ff[el.dataset.ff]; el.value = el.classList.contains('money') ? fmt2(v) : ((v===0||v)?v:''); });
     // expenses
     $('#expTable tbody').innerHTML=(ff.expenses||[]).map((x,i)=>`
       <tr><td><input type="text" value="${esc(x.label)}" oninput="App.ffRow('expenses',${i},'label',this.value)"></td>
-      <td style="width:140px"><input type="number" value="${x.amt||''}" step="10" oninput="App.ffRow('expenses',${i},'amt',this.value)"></td>
+      <td style="width:140px"><input type="text" inputmode="decimal" class="money" value="${fmt2(x.amt)}" oninput="App.ffRow('expenses',${i},'amt',this.value)"></td>
       <td style="width:36px"><button class="del" onclick="App.ffDelRow('expenses',${i})">&times;</button></td></tr>`).join('');
     // bank
     $('#bankTable tbody').innerHTML=(ff.bank||[]).map((x,i)=>`
       <tr><td><input type="text" value="${esc(x.label)}" oninput="App.ffRow('bank',${i},'label',this.value)"></td>
-      <td style="width:160px"><input type="number" value="${x.amt||''}" step="100" oninput="App.ffRow('bank',${i},'amt',this.value)"></td>
+      <td style="width:160px"><input type="text" inputmode="decimal" class="money" value="${fmt2(x.amt)}" oninput="App.ffRow('bank',${i},'amt',this.value)"></td>
       <td style="width:36px"><button class="del" onclick="App.ffDelRow('bank',${i})">&times;</button></td></tr>`).join('');
     // cpf balances
     $('#cpfTable tbody').innerHTML=['OA','SA','MA','RA'].map(k=>`
       <tr><td style="width:80px"><b>${k}</b></td>
-      <td><input type="number" value="${ff.cpf[k]||''}" step="100" oninput="App.ffCpf('${k}',this.value)"></td></tr>`).join('');
-    // plan name suggestions, split by type
-    $('#dlPlansIns').innerHTML=(this.data.planPresetsIns||[]).map(n=>`<option value="${esc(n)}">`).join('');
-    $('#dlPlansInv').innerHTML=(this.data.planPresetsInv||[]).map(n=>`<option value="${esc(n)}">`).join('');
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(ff.cpf[k])}" oninput="App.ffCpf('${k}',this.value)"></td></tr>`).join('');
     // investments
     $('#invTable tbody').innerHTML=(ff.investments||[]).map((x,i)=>`
-      <tr><td><input type="text" list="dlPlansInv" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('investments',${i},'name',this.value)"></td>
-      <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('investments',${i},'mth',this.value); App.ffAutoYr('investments',${i})"></td>
-      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('investments',${i},'yr',this.value); App.ffAutoMth('investments',${i})"></td>
+      <tr><td class="namecol"><textarea rows="1" class="planname" placeholder="Plan name" oninput="App.ffName('investments',${i},this)" onfocus="App.ffName('investments',${i},this)" onblur="App.hideSugg(this)">${esc(x.name)}</textarea><div class="sugg" style="display:none"></div></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.mth)}" oninput="App.ffRow('investments',${i},'mth',this.value); App.ffAutoYr('investments',${i})"></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.yr)}" oninput="App.ffRow('investments',${i},'yr',this.value); App.ffAutoMth('investments',${i})"></td>
       <td><textarea rows="1" placeholder="Fund value, fund name..." oninput="App.ffRow('investments',${i},'notes',this.value); autoGrowTa(this)">${esc(x.notes)}</textarea></td>
       <td><button class="del" onclick="App.ffDelRow('investments',${i})">&times;</button></td></tr>`).join('');
     // insurance
     $('#insTable tbody').innerHTML=(ff.insurance||[]).map((x,i)=>`
-      <tr><td><input type="text" list="dlPlansIns" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('insurance',${i},'name',this.value)"></td>
-      <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('insurance',${i},'mth',this.value); App.ffAutoYr('insurance',${i})"></td>
-      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('insurance',${i},'yr',this.value); App.ffAutoMth('insurance',${i})"></td>
+      <tr><td class="namecol"><textarea rows="1" class="planname" placeholder="Plan name" oninput="App.ffName('insurance',${i},this)" onfocus="App.ffName('insurance',${i},this)" onblur="App.hideSugg(this)">${esc(x.name)}</textarea><div class="sugg" style="display:none"></div></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.mth)}" oninput="App.ffRow('insurance',${i},'mth',this.value); App.ffAutoYr('insurance',${i})"></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.yr)}" oninput="App.ffRow('insurance',${i},'yr',this.value); App.ffAutoMth('insurance',${i})"></td>
       <td><textarea rows="1" placeholder="Coverage details" oninput="App.ffRow('insurance',${i},'notes',this.value); autoGrowTa(this)">${esc(x.notes)}</textarea></td>
-      <td><input type="number" value="${x.death||''}" oninput="App.ffRow('insurance',${i},'death',this.value)"></td>
-      <td><input type="number" value="${x.tpd||''}" oninput="App.ffRow('insurance',${i},'tpd',this.value)"></td>
-      <td><input type="number" value="${x.eci||''}" oninput="App.ffRow('insurance',${i},'eci',this.value)"></td>
-      <td><input type="number" value="${x.lci||''}" oninput="App.ffRow('insurance',${i},'lci',this.value)"></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.death)}" oninput="App.ffRow('insurance',${i},'death',this.value)"></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.tpd)}" oninput="App.ffRow('insurance',${i},'tpd',this.value)"></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.eci)}" oninput="App.ffRow('insurance',${i},'eci',this.value)"></td>
+      <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.lci)}" oninput="App.ffRow('insurance',${i},'lci',this.value)"></td>
       <td><button class="del" onclick="App.ffDelRow('insurance',${i})">&times;</button></td></tr>`).join('');
     $$('#insTable textarea, #invTable textarea').forEach(autoGrowTa);
     this.ffCalc();
@@ -1428,7 +1434,7 @@ const App = {
     // update the yr input in the same row without full re-render
     const tb=$(section==='investments'?'#invTable tbody':'#insTable tbody');
     const input=tb.rows[i]&&tb.rows[i].cells[2].querySelector('input');
-    if(input) input.value=row.yr||'';
+    if(input) input.value=fmt2(row.yr);
     this.save(); this.ffCalc();
   },
   ffAutoMth(section,i){
@@ -1436,8 +1442,28 @@ const App = {
     row.mth=Math.round(num(row.yr)/12*100)/100;
     const tb=$(section==='investments'?'#invTable tbody':'#insTable tbody');
     const input=tb.rows[i]&&tb.rows[i].cells[1].querySelector('input');
-    if(input) input.value=row.mth||'';
+    if(input) input.value=fmt2(row.mth);
     this.save(); this.ffCalc();
+  },
+  /* plan-name type-ahead on a wrapping field (datalist only works on single-line inputs) */
+  ffName(section,i,el){
+    this.ffRow(section,i,'name',el.value);
+    autoGrowTa(el);
+    const presets = section==='insurance' ? (this.data.planPresetsIns||[]) : (this.data.planPresetsInv||[]);
+    const v=el.value.trim().toLowerCase();
+    const hits=presets.filter(n=>n.toLowerCase().includes(v)).slice(0,8);
+    const box=el.parentElement.querySelector('.sugg');
+    if(!box) return;
+    if(!hits.length || (hits.length===1 && hits[0]===el.value)){ box.style.display='none'; return; }
+    box.innerHTML=hits.map(n=>`<div onmousedown="App.pickSugg('${section}',${i},this)">${esc(n)}</div>`).join('');
+    box.style.display='block';
+  },
+  pickSugg(section,i,el){
+    this.ffRow(section,i,'name',el.textContent);
+    this.renderFactFind();
+  },
+  hideSugg(el){
+    setTimeout(()=>{ const box=el.parentElement && el.parentElement.querySelector('.sugg'); if(box) box.style.display='none'; },150);
   },
   ffCpf(k,v){ const ff=this.currentFF(); ff.cpf[k]=num(v); this.save(); this.ffCalc(); },
   ffAddRow(section){
