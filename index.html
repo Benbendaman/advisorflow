@@ -314,6 +314,7 @@
         <option value="12">Not met in 12+ mths</option>
         <option value="never">Never recorded</option>
       </select>
+      <button class="chip" id="srFilterBtn" onclick="App.state.srOnly=!App.state.srOnly; App.renderClients()">🛠 Open requests</button>
       <div class="spacer"></div>
       <button class="btn" onclick="document.getElementById('clientImportFile').click()">Import Excel / CSV</button>
       <input type="file" id="clientImportFile" accept=".csv,.xlsx" style="display:none" onchange="App.importClients(this)">
@@ -384,6 +385,16 @@
         <input type="text" id="careLabel" placeholder="Custom task (e.g. Send CNY greeting)" style="max-width:320px">
         <input type="date" id="careDate" style="max-width:170px">
         <button class="btn small" onclick="App.addCareTask()">Add task</button>
+      </div>
+    </div>
+    <div class="card" id="srCard" style="display:none">
+      <h2>Service requests 🛠</h2>
+      <div class="cardhint">Admin work for this client — claims, address changes, nominations. Stays visible on Today until done.</div>
+      <div id="srList"></div>
+      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
+        <input type="text" id="srLabel" list="dlSR" placeholder="e.g. File hospitalisation claim" style="max-width:300px">
+        <input type="date" id="srDue" style="max-width:170px" title="Optional target date">
+        <button class="btn small" onclick="App.addSR()">Add request</button>
       </div>
     </div>
     <div class="card">
@@ -558,6 +569,13 @@
 </div>
 
 <datalist id="dlPlans"></datalist>
+<datalist id="dlSR">
+  <option value="File hospitalisation claim"><option value="File accident claim"><option value="File CI claim">
+  <option value="Change address"><option value="Update contact details"><option value="Update beneficiary / nomination">
+  <option value="Change payment method / card"><option value="Fund switch"><option value="Partial withdrawal">
+  <option value="Policy loan"><option value="Policy reinstatement"><option value="Premium holiday request">
+  <option value="Medical card replacement"><option value="Update bank account (GIRO)">
+</datalist>
 <div id="toast"></div>
 <div id="printDoc"></div>
 
@@ -794,6 +812,43 @@ const App = {
   setLastMet(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.lastMetMonth=v; this.save(); } },
   setAskRef(v){ const p=this.person(); if(p){ p.askReferral=v; this.save(); this.renderAll(); } },
 
+  /* ---------- service requests (admin work for existing clients) ---------- */
+  openSRs(p){ return (p.serviceRequests||[]).filter(r=>!r.done); },
+  addSR(){
+    const p=this.person(); if(!p||p.stage!=='onboarded') return;
+    const label=$('#srLabel').value.trim(); if(!label){ toast('Describe the request first'); return; }
+    p.serviceRequests=p.serviceRequests||[];
+    p.serviceRequests.push({id:uid(), label, due:$('#srDue').value||'', openedAt:todayStr(), done:false});
+    $('#srLabel').value=''; $('#srDue').value='';
+    this.save(); this.renderPerson(); this.renderAll();
+  },
+  toggleSR(personId, srId, checked){
+    const p=this.data.people.find(x=>x.id===personId); if(!p) return;
+    const r=(p.serviceRequests||[]).find(x=>x.id===srId); if(!r) return;
+    r.done=checked; r.doneAt=checked?todayStr():'';
+    if(checked){ p.log=p.log||[]; p.log.unshift({date:todayStr(), text:'Service request done: '+r.label}); }
+    this.save(); this.renderAll();
+    if(this.state.page==='person') this.renderPerson();
+  },
+  removeSR(personId, srId){
+    const p=this.data.people.find(x=>x.id===personId); if(!p) return;
+    p.serviceRequests=(p.serviceRequests||[]).filter(r=>r.id!==srId);
+    this.save(); this.renderPerson(); this.renderAll();
+  },
+  renderSRCard(p){
+    const card=$('#srCard');
+    if(p.stage!=='onboarded'){ card.style.display='none'; return; }
+    card.style.display='block';
+    const list=(p.serviceRequests||[]).slice().sort((a,b)=>(a.done?1:0)-(b.done?1:0)||(a.due||'9999').localeCompare(b.due||'9999'));
+    $('#srList').innerHTML=list.length?list.map(r=>`
+      <div class="care-item ${r.done?'done':''}">
+        <input type="checkbox" ${r.done?'checked':''} onchange="App.toggleSR('${p.id}','${r.id}',this.checked)">
+        <div style="flex:1"><div class="t">${esc(r.label)}</div>
+        <div class="when">${r.done?('Done '+fmtDate(r.doneAt)):('Opened '+fmtDate(r.openedAt)+(r.due?' · target '+duePill(r.due):''))}</div></div>
+        <button class="del" title="Remove" onclick="App.removeSR('${p.id}','${r.id}')">&times;</button>
+      </div>`).join(''):'<div class="empty">No service requests.</div>';
+  },
+
   /* ---------- client cases (new business with existing clients, no duplicate records) ---------- */
   openCase(){
     const p=this.person(); if(!p || p.stage!=='onboarded' || p.activeCase) return;
@@ -803,7 +858,12 @@ const App = {
     this.save(); this.renderPerson(); this.renderAll();
     toast('Case opened — now visible in the Pipeline. '+p.name+' stays a client.');
   },
-  caseField(k,v){ const p=this.person(); if(p&&p.activeCase){ p.activeCase[k]=v; this.save(); this.renderAll(); if(k==='stage') this.renderPerson(); } },
+  caseField(k,v){
+    const p=this.person(); if(!p||!p.activeCase) return;
+    p.activeCase[k]=v; this.save();
+    // only re-render on stage changes — re-rendering while typing the label would rebuild the input and eat keystrokes
+    if(k==='stage'){ this.renderAll(); this.renderPerson(); }
+  },
   closeCase(won){
     const p=this.person(); if(!p||!p.activeCase) return;
     const label=p.activeCase.label||'case';
@@ -853,9 +913,11 @@ const App = {
   },
   dueCareList(){
     const out=[];
-    this.data.people.forEach(p=>(p.careTasks||[]).forEach(t=>{
-      if(!t.done && daysUntil(t.due)<=0) out.push({p,t});
-    }));
+    this.data.people.forEach(p=>{
+      (p.careTasks||[]).forEach(t=>{ if(!t.done && daysUntil(t.due)<=0) out.push({p,t}); });
+      // open service requests stay visible until done (due date optional)
+      this.openSRs(p).forEach(r=>out.push({p, t:{id:r.id, label:'🛠 '+r.label, due:r.due||r.openedAt}, sr:true}));
+    });
     return out.sort((a,b)=>a.t.due.localeCompare(b.t.due));
   },
   renderToday(){
@@ -892,9 +954,9 @@ const App = {
         </div>
       </div>`).join('') + (dueF.length>cap?`<button class="btn small showmore" onclick="App.state.showAllDue=true; App.renderToday()">Show all ${dueF.length} due</button>`:'')
       : '<div class="empty">Nothing due. Clean slate.</div>';
-    $('#dueCare').innerHTML = dueC.length ? dueC.map(({p,t})=>`
+    $('#dueCare').innerHTML = dueC.length ? dueC.map(({p,t,sr})=>`
       <div class="care-item">
-        <input type="checkbox" onchange="App.toggleCare('${p.id}','${t.id}', this.checked)">
+        <input type="checkbox" onchange="App.${sr?'toggleSR':'toggleCare'}('${p.id}','${t.id}', this.checked)">
         <div style="flex:1"><div class="t">${esc(t.label)}</div>
         <div class="when"><b style="cursor:pointer" onclick="App.openPerson('${p.id}','clients')">${esc(p.name)}</b> · ${duePill(t.due)}</div></div>
       </div>`).join('') : '<div class="empty">No care tasks due.</div>';
@@ -970,6 +1032,8 @@ const App = {
     const q=($('#clientSearch').value||'').toLowerCase();
     const tf=$('#clientTierFilter').value, mf=$('#clientMetFilter').value;
     let list=this.data.people.filter(p=>p.stage==='onboarded');
+    $('#srFilterBtn').classList.toggle('active', !!this.state.srOnly);
+    if(this.state.srOnly) list=list.filter(p=>this.openSRs(p).length);
     if(q) list=list.filter(p=>matches(p,q));
     if(tf) list=list.filter(p=> tf==='-' ? !p.tier : p.tier===tf);
     if(mf){
@@ -1002,7 +1066,7 @@ const App = {
         <td onclick="event.stopPropagation()">
           <input type="month" class="mini" value="${p.lastMetMonth||''}" onchange="App.setLastMet('${p.id}',this.value); App.renderClients()">
           ${this.metPill(p)}</td>
-        <td>${next?`${esc(next.label.split('—')[0])} ${duePill(next.due)}`:'<span class="pill ok">all done</span>'}</td>
+        <td>${this.openSRs(p).length?`<span class="pill stale">🛠 ${this.openSRs(p).length}</span> `:''}${next?`${esc(next.label.split('—')[0])} ${duePill(next.due)}`:'<span class="pill ok">all done</span>'}</td>
         <td style="color:var(--ink-soft)">${done}/${total}</td>
         <td onclick="event.stopPropagation()"><button class="btn small" onclick="App.openPerson('${p.id}','clients')">Open</button></td>
       </tr>`;
@@ -1032,6 +1096,7 @@ const App = {
       return `<div class="entry"><div class="d">${fmtDate(e.date)}<button onclick="App.editNote(${i})">edit</button><button onclick="App.deleteNote(${i})">delete</button></div><div class="txt">${esc(e.text)}</div></div>`;
     }).join('')||'<div class="empty">No notes yet.</div>';
     this.renderCaseBox(p);
+    this.renderSRCard(p);
     $('#pAskRef').checked=!!p.askReferral;
     // care card
     const isClient=p.stage==='onboarded';
