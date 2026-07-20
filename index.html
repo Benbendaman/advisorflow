@@ -104,6 +104,7 @@
   .hero .n.pos{color:var(--good);} .hero .n.neg{color:var(--bad);}
   .minitable td, .minitable th{padding:6px 8px;}
   .minitable input{padding:5px 8px; font-size:13px;}
+  .minitable textarea{padding:5px 8px; font-size:13px; resize:none; overflow:hidden; min-height:31px; line-height:1.4; field-sizing:content;}
   .addrow{margin-top:8px;}
   .calcnote{font-size:12px; color:var(--ink-faint); margin-top:8px;}
   .ff-computed{background:var(--accent-soft); border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; font-size:13px; margin-top:10px;}
@@ -497,7 +498,7 @@
       </table>
       <button class="btn small addrow" onclick="App.ffAddRow('insurance')">+ Add plan</button>
       <div class="ff-computed"><span>Total insurance premiums (cash /mth)</span><b id="c_ins">—</b></div>
-      <div class="calcnote">Tip: MediSave-paid premiums (e.g. Integrated Shield base) — enter yearly amount only and put "MediSave" in notes; leave /mth at 0 so it doesn't hit cash flow.</div>
+      <div class="calcnote">Tip: monthly and yearly premiums fill each other in automatically. For MediSave-paid premiums (e.g. Integrated Shield base): enter the yearly amount, then clear /mth back to 0 so it doesn't hit cash flow, and put "MediSave" in notes.</div>
     </div>
   </section>
 
@@ -697,6 +698,7 @@ function nameCell(p){
   return `<span class="namecell">${avatar(p)}<span><b>${esc(p.name)}</b>${hnwPill(p)}${p.nickname?`<div class="nick">${esc(p.nickname)}</div>`:''}</span></span>`;
 }
 function matches(p,q){ return (p.name+' '+(p.nickname||'')).toLowerCase().includes(q); }
+function autoGrowTa(el){ el.style.height='auto'; el.style.height=Math.max(el.scrollHeight,31)+'px'; }
 function stagePill(id){ const s=stageObj(id); return `<span class="pill stage-${s.id}">${s.label}</span>`; }
 function duePill(dateStr){
   const d = daysUntil(dateStr);
@@ -1398,20 +1400,21 @@ const App = {
     $('#invTable tbody').innerHTML=(ff.investments||[]).map((x,i)=>`
       <tr><td><input type="text" list="dlPlansInv" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('investments',${i},'name',this.value)"></td>
       <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('investments',${i},'mth',this.value); App.ffAutoYr('investments',${i})"></td>
-      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('investments',${i},'yr',this.value)"></td>
-      <td><input type="text" value="${esc(x.notes)}" placeholder="Fund value, fund name..." oninput="App.ffRow('investments',${i},'notes',this.value)"></td>
+      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('investments',${i},'yr',this.value); App.ffAutoMth('investments',${i})"></td>
+      <td><textarea rows="1" placeholder="Fund value, fund name..." oninput="App.ffRow('investments',${i},'notes',this.value); autoGrowTa(this)">${esc(x.notes)}</textarea></td>
       <td><button class="del" onclick="App.ffDelRow('investments',${i})">&times;</button></td></tr>`).join('');
     // insurance
     $('#insTable tbody').innerHTML=(ff.insurance||[]).map((x,i)=>`
       <tr><td><input type="text" list="dlPlansIns" value="${esc(x.name)}" placeholder="Plan name" oninput="App.ffRow('insurance',${i},'name',this.value)"></td>
       <td><input type="number" value="${x.mth||''}" oninput="App.ffRow('insurance',${i},'mth',this.value); App.ffAutoYr('insurance',${i})"></td>
-      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('insurance',${i},'yr',this.value)"></td>
-      <td><input type="text" value="${esc(x.notes)}" placeholder="Coverage details" oninput="App.ffRow('insurance',${i},'notes',this.value)"></td>
+      <td><input type="number" value="${x.yr||''}" oninput="App.ffRow('insurance',${i},'yr',this.value); App.ffAutoMth('insurance',${i})"></td>
+      <td><textarea rows="1" placeholder="Coverage details" oninput="App.ffRow('insurance',${i},'notes',this.value); autoGrowTa(this)">${esc(x.notes)}</textarea></td>
       <td><input type="number" value="${x.death||''}" oninput="App.ffRow('insurance',${i},'death',this.value)"></td>
       <td><input type="number" value="${x.tpd||''}" oninput="App.ffRow('insurance',${i},'tpd',this.value)"></td>
       <td><input type="number" value="${x.eci||''}" oninput="App.ffRow('insurance',${i},'eci',this.value)"></td>
       <td><input type="number" value="${x.lci||''}" oninput="App.ffRow('insurance',${i},'lci',this.value)"></td>
       <td><button class="del" onclick="App.ffDelRow('insurance',${i})">&times;</button></td></tr>`).join('');
+    $$('#insTable textarea, #invTable textarea').forEach(autoGrowTa);
     this.ffCalc();
   },
   ffRow(section,i,key,val){
@@ -1426,6 +1429,14 @@ const App = {
     const tb=$(section==='investments'?'#invTable tbody':'#insTable tbody');
     const input=tb.rows[i]&&tb.rows[i].cells[2].querySelector('input');
     if(input) input.value=row.yr||'';
+    this.save(); this.ffCalc();
+  },
+  ffAutoMth(section,i){
+    const ff=this.currentFF(); const row=ff[section][i];
+    row.mth=Math.round(num(row.yr)/12*100)/100;
+    const tb=$(section==='investments'?'#invTable tbody':'#insTable tbody');
+    const input=tb.rows[i]&&tb.rows[i].cells[1].querySelector('input');
+    if(input) input.value=row.mth||'';
     this.save(); this.ffCalc();
   },
   ffCpf(k,v){ const ff=this.currentFF(); ff.cpf[k]=num(v); this.save(); this.ffCalc(); },
