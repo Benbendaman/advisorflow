@@ -110,6 +110,10 @@
   .sugg{position:absolute; left:0; right:0; top:100%; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 6px 18px rgba(26,35,50,.15); z-index:60; max-height:190px; overflow-y:auto;}
   .sugg div{padding:6px 10px; cursor:pointer; font-size:12.5px;}
   .sugg div:hover{background:var(--accent-soft); color:var(--accent);}
+  .cov-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; margin-top:8px;}
+  .cov-grid .cc{background:var(--accent-soft); border-radius:8px; padding:8px 10px; text-align:center;}
+  .cov-grid .cc .l{font-size:10.5px; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-soft); font-weight:600;}
+  .cov-grid .cc .v{font-weight:700; color:var(--accent); font-size:14px;}
   .addrow{margin-top:8px;}
   .calcnote{font-size:12px; color:var(--ink-faint); margin-top:8px;}
   .ff-computed{background:var(--accent-soft); border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; font-size:13px; margin-top:10px;}
@@ -207,21 +211,31 @@
   @media print{
     body *{visibility:hidden;}
     #printDoc, #printDoc *{visibility:visible;}
-    #printDoc{display:block; position:absolute; top:0; left:0; width:100%; background:#fff; color:#111; font-size:11.5px;}
-    @page{margin:14mm;}
-    #printDoc h1{font-size:19px; margin-bottom:2px; color:#0f4c81;}
-    #printDoc .pd-sub{color:#555; margin-bottom:14px; font-size:11px;}
-    #printDoc h3{font-size:12.5px; margin:14px 0 6px; color:#0f4c81; border-bottom:1.5px solid #0f4c81; padding-bottom:3px; text-transform:uppercase; letter-spacing:.5px;}
+    #printDoc{display:block; position:absolute; top:0; left:0; width:100%; background:#fff; color:#1a2332; font-size:11px; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    @page{margin:12mm;}
+    #printDoc .pd-band{height:6px; background:#0f4c81; border-radius:3px; margin-bottom:12px;}
+    #printDoc .pd-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;}
+    #printDoc h1{font-size:20px; color:#0f4c81; margin:0 0 2px;}
+    #printDoc .pd-sub{color:#555; font-size:11px;}
+    #printDoc .pd-adv{text-align:right; font-size:10px; color:#444; line-height:1.5;}
+    #printDoc .pd-adv b{font-size:12px; color:#0f4c81;}
+    #printDoc h3{font-size:11.5px; margin:15px 0 6px; color:#0f4c81; text-transform:uppercase; letter-spacing:.6px; border-bottom:2px solid #0f4c81; padding-bottom:3px;}
     #printDoc table{width:100%; border-collapse:collapse; margin-bottom:4px;}
-    #printDoc th{background:#f0f4f8; color:#333; font-size:10px; padding:5px 7px; border:1px solid #d8dee6; text-align:left;}
-    #printDoc td{padding:5px 7px; border:1px solid #d8dee6;}
-    #printDoc td.r, #printDoc th.r{text-align:right;}
-    #printDoc .pd-hero{display:flex; gap:8px; margin:10px 0;}
-    #printDoc .pd-hero div{flex:1; border:1px solid #d8dee6; border-radius:6px; padding:8px 10px;}
-    #printDoc .pd-hero .l{font-size:9.5px; text-transform:uppercase; color:#666; letter-spacing:.4px;}
-    #printDoc .pd-hero .n{font-size:15px; font-weight:700;}
-    #printDoc .pd-footer{margin-top:18px; padding-top:8px; border-top:1px solid #ccc; font-size:10px; color:#555; display:flex; justify-content:space-between;}
-    #printDoc .pd-note{font-size:9.5px; color:#777; margin-top:6px;}
+    #printDoc th{background:#0f4c81; color:#fff; font-size:9px; letter-spacing:.4px; text-transform:uppercase; padding:5px 8px; text-align:left; border:1px solid #0f4c81;}
+    #printDoc td{padding:5px 8px; border:1px solid #dbe2ea;}
+    #printDoc tbody tr:nth-child(even) td{background:#f5f8fb;}
+    #printDoc tr.tot td{background:#e8f0f8 !important; font-weight:700; color:#0f4c81;}
+    #printDoc td.r, #printDoc th.r{text-align:right; white-space:nowrap;}
+    #printDoc .pd-hero{display:flex; gap:8px; margin:12px 0;}
+    #printDoc .pd-hero div{flex:1; border:1px solid #dbe2ea; border-top:3px solid #0f4c81; border-radius:6px; padding:8px 10px; background:#fbfcfe;}
+    #printDoc .pd-hero .l{font-size:8.5px; text-transform:uppercase; color:#666; letter-spacing:.5px;}
+    #printDoc .pd-hero .n{font-size:15px; font-weight:700; color:#1a2332;}
+    #printDoc .pd-hero .s{font-size:8.5px; color:#888;}
+    #printDoc .pd-hero div.hl{background:#0f4c81; border-color:#0f4c81;}
+    #printDoc .pd-hero div.hl .l, #printDoc .pd-hero div.hl .s{color:#bcd2e6;}
+    #printDoc .pd-hero div.hl .n{color:#fff;}
+    #printDoc .pd-note{font-size:9px; color:#777; margin-top:4px;}
+    #printDoc .pd-footer{margin-top:20px; padding-top:8px; border-top:2px solid #0f4c81; font-size:9.5px; color:#555; display:flex; justify-content:space-between;}
   }
 </style>
 </head>
@@ -503,6 +517,7 @@
       </table>
       <button class="btn small addrow" onclick="App.ffAddRow('insurance')">+ Add plan</button>
       <div class="ff-computed"><span>Total insurance premiums (cash /mth)</span><b id="c_ins">—</b></div>
+      <div class="cov-grid" id="c_cov"></div>
       <div class="calcnote">Tip: monthly and yearly premiums fill each other in automatically. For MediSave-paid premiums (e.g. Integrated Shield base): enter the yearly amount, then clear /mth back to 0 so it doesn't hit cash flow, and put "MediSave" in notes.</div>
     </div>
   </section>
@@ -1378,9 +1393,13 @@ const App = {
     const cpfBal=num(ff.cpf.OA)+num(ff.cpf.SA)+num(ff.cpf.MA)+num(ff.cpf.RA);
     const invTotal=(ff.investments||[]).reduce((a,x)=>a+num(x.mth),0);
     const insTotal=(ff.insurance||[]).reduce((a,x)=>a+num(x.mth),0);
+    const covDeath=(ff.insurance||[]).reduce((a,x)=>a+num(x.death),0);
+    const covTpd=(ff.insurance||[]).reduce((a,x)=>a+num(x.tpd),0);
+    const covEci=(ff.insurance||[]).reduce((a,x)=>a+num(x.eci),0);
+    const covLci=(ff.insurance||[]).reduce((a,x)=>a+num(x.lci),0);
     const netCashflow=takeHome+other-expTotal-invTotal-insTotal-sav;
     const totalAccessible=netCashflow+accessible55;
-    return {age,br,gross,other,sav,capped,employed,employeeCPF,takeHome,cpfContrib,accessible55,expTotal,bankTotal,cpfBal,invTotal,insTotal,netCashflow,totalAccessible};
+    return {age,br,gross,other,sav,capped,employed,employeeCPF,takeHome,cpfContrib,accessible55,expTotal,bankTotal,cpfBal,invTotal,insTotal,covDeath,covTpd,covEci,covLci,netCashflow,totalAccessible};
   },
   renderFactFind(){
     const p=this.person(); if(!p){ this.showPage('pipeline'); return; }
@@ -1505,6 +1524,8 @@ const App = {
     $('#c_cpfrates').textContent=c.br?`Age ${c.age}: employer ${c.br.er}% + employee ${c.br.ee}% = ${(c.br.er+c.br.ee).toFixed(1)}% · allocation OA ${c.br.oa}% / SA ${c.br.sa}% / MA ${c.br.ma}%`:'';
     $('#c_inv').textContent=fmt(c.invTotal);
     $('#c_ins').textContent=fmt(c.insTotal);
+    $('#c_cov').innerHTML=[['Death',c.covDeath],['TPD',c.covTpd],['Early/Int CI',c.covEci],['Late CI',c.covLci]]
+      .map(([l,v])=>`<div class="cc"><div class="l">Total ${l}</div><div class="v">${v?fmt(v):'—'}</div></div>`).join('');
     const hero=(l,n,s,cls)=>`<div class="card"><div class="l">${l}</div><div class="n ${cls||''}">${n}</div><div class="s">${s||''}</div></div>`;
     let h =
       hero('Net cashflow /mth', fmt(c.netCashflow), fmt(c.netCashflow*12)+' /yr', c.netCashflow>=0?'pos':'neg') +
@@ -1523,42 +1544,55 @@ const App = {
     const ff=this.currentFF(); const c=this.calcFF(ff); const s=this.data.settings;
     const rows=(arr)=>arr.map(r=>r).join('');
     const money=(v)=>v?fmt(num(v)):'—';
-    let h=`<h1>Cashflow &amp; Financial Snapshot</h1>
-    <div class="pd-sub">Prepared for <b>${esc(p.name)}</b>${c.age!==null?' (age '+c.age+')':''} · ${new Date().toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'})}</div>
+    const today=new Date().toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'});
+    let h=`<div class="pd-band"></div>
+    <div class="pd-head">
+      <div><h1>Cashflow &amp; Financial Snapshot</h1>
+      <div class="pd-sub">Prepared for <b>${esc(p.name)}</b>${c.age!==null?' (age '+c.age+')':''} · ${today}</div></div>
+      <div class="pd-adv"><b>${esc(s.advisorName||'Your Advisor')}</b><br>${esc(s.advisorTitle||'')}${s.advisorTitle?'<br>':''}${esc(s.advisorPhone||'')}${s.advisorEmail?' · '+esc(s.advisorEmail):''}</div>
+    </div>
     <div class="pd-hero">
-      <div><div class="l">Take-home /mth</div><div class="n">${fmt(c.takeHome)}</div></div>
-      <div><div class="l">Expenses /mth</div><div class="n">${fmt(c.expTotal)}</div></div>
-      <div><div class="l">Net cashflow /mth</div><div class="n">${fmt(c.netCashflow)}</div></div>
-      <div><div class="l">Net cashflow /yr</div><div class="n">${fmt(c.netCashflow*12)}</div></div>
+      <div><div class="l">Take-home income /mth</div><div class="n">${fmt(c.takeHome)}</div><div class="s">${fmt(c.takeHome*12)} /yr</div></div>
+      <div><div class="l">Expenses /mth</div><div class="n">${fmt(c.expTotal)}</div><div class="s">${fmt(c.expTotal*12)} /yr</div></div>
+      <div><div class="l">Premiums /mth</div><div class="n">${fmt(c.insTotal+c.invTotal)}</div><div class="s">insurance + investments</div></div>
+      <div class="hl"><div class="l">Net cashflow /mth</div><div class="n">${fmt(c.netCashflow)}</div><div class="s">${fmt(c.netCashflow*12)} /yr</div></div>
     </div>
     <h3>Income</h3>
-    <table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr>
+    <table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr><tbody>
     <tr><td>Gross income</td><td class="r">${fmt(c.gross)}</td><td class="r">${fmt(c.gross*12)}</td></tr>
     <tr><td>Take-home income${c.employed?' (after employee CPF)':''}</td><td class="r">${fmt(c.takeHome)}</td><td class="r">${fmt(c.takeHome*12)}</td></tr>
-    <tr><td>Other income</td><td class="r">${fmt(c.other)}</td><td class="r">${fmt(c.other*12)}</td></tr></table>`;
-    h+=`<h3>Monthly expenses</h3><table><tr><th>Category</th><th class="r">Amount /mth</th></tr>
-    ${rows(ff.expenses.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}
-    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.expTotal)}</b></td></tr></table>`;
-    h+=`<h3>Liquid assets</h3><table><tr><th>Item</th><th class="r">Balance</th></tr>
-    ${rows(ff.bank.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}
-    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.bankTotal)}</b></td></tr></table>`;
-    h+=`<h3>CPF</h3><table><tr><th>Account</th><th class="r">Balance</th></tr>
-    ${['OA','SA','MA','RA'].map(k=>`<tr><td>${k}</td><td class="r">${money(ff.cpf[k])}</td></tr>`).join('')}
-    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.cpfBal)}</b></td></tr></table>`;
+    <tr><td>Other income</td><td class="r">${fmt(c.other)}</td><td class="r">${fmt(c.other*12)}</td></tr></tbody></table>`;
+    h+=`<h3>Monthly expenses</h3><table><tr><th>Category</th><th class="r">Amount /mth</th></tr><tbody>
+    ${rows(ff.expenses.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}</tbody>
+    <tr class="tot"><td>Total</td><td class="r">${fmt(c.expTotal)}</td></tr></table>`;
+    h+=`<h3>Liquid assets</h3><table><tr><th>Item</th><th class="r">Balance</th></tr><tbody>
+    ${rows(ff.bank.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}</tbody>
+    <tr class="tot"><td>Total</td><td class="r">${fmt(c.bankTotal)}</td></tr></table>`;
+    h+=`<h3>CPF</h3><table><tr><th>Account</th><th class="r">Balance</th></tr><tbody>
+    ${['OA','SA','MA','RA'].map(k=>`<tr><td>${k}</td><td class="r">${money(ff.cpf[k])}</td></tr>`).join('')}</tbody>
+    <tr class="tot"><td>Total</td><td class="r">${fmt(c.cpfBal)}</td></tr></table>`;
     if(c.br&&c.employed){ const s55=this.show55(ff,c);
-    h+=`<table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr>
+    h+=`<table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr><tbody>
     <tr><td>CPF contribution (OA, SA, MA) at ${(c.br.er+c.br.ee).toFixed(1)}%</td><td class="r">${fmt(c.cpfContrib)}</td><td class="r">${fmt(c.cpfContrib*12)}</td></tr>
-    ${s55?`<tr><td>Accessible CPF after 55 (OA + SA portion)</td><td class="r">${fmt(c.accessible55)}</td><td class="r">${fmt(c.accessible55*12)}</td></tr>
-    <tr><td><b>Total net accessible cashflow</b></td><td class="r"><b>${fmt(c.totalAccessible)}</b></td><td class="r"><b>${fmt(c.totalAccessible*12)}</b></td></tr>`:''}</table>
+    ${s55?`<tr><td>Accessible CPF after 55 (OA + SA portion)</td><td class="r">${fmt(c.accessible55)}</td><td class="r">${fmt(c.accessible55*12)}</td></tr></tbody>
+    <tr class="tot"><td>Total net accessible cashflow</td><td class="r">${fmt(c.totalAccessible)}</td><td class="r">${fmt(c.totalAccessible*12)}</td></tr>`:'</tbody>'}</table>
     <div class="pd-note">CPF rates effective ${esc(s.cpfEffective||'')}, Ordinary Wage ceiling ${fmt(num(s.owCeiling))}/mth. Contribution allocation at age ${c.age}: OA ${c.br.oa}% / SA ${c.br.sa}% / MA ${c.br.ma}%.</div>`; }
-    if(ff.investments.length){ h+=`<h3>Investment / savings plans</h3><table><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr>
-    ${rows(ff.investments.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td></tr>`))}
-    <tr><td><b>Total</b></td><td class="r"><b>${fmt(c.invTotal)}</b></td><td class="r"><b>${fmt(c.invTotal*12)}</b></td><td></td></tr></table>`; }
-    if(ff.insurance.length){ h+=`<h3>Insurance plans</h3><table><tr><th>Plan</th><th class="r">Prem /mth</th><th class="r">Prem /yr</th><th>Coverage</th><th class="r">Death</th><th class="r">TPD</th><th class="r">Early/Int CI</th><th class="r">Late CI</th></tr>
-    ${rows(ff.insurance.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td><td class="r">${money(x.death)}</td><td class="r">${money(x.tpd)}</td><td class="r">${money(x.eci)}</td><td class="r">${money(x.lci)}</td></tr>`))}
-    </table>`; }
+    if(ff.insurance.length){
+    h+=`<h3>Protection summary</h3>
+    <div class="pd-hero">
+      <div><div class="l">Total Death cover</div><div class="n">${money(c.covDeath)}</div></div>
+      <div><div class="l">Total TPD cover</div><div class="n">${money(c.covTpd)}</div></div>
+      <div><div class="l">Total Early/Int CI</div><div class="n">${money(c.covEci)}</div></div>
+      <div><div class="l">Total Late CI</div><div class="n">${money(c.covLci)}</div></div>
+    </div>
+    <table><tr><th>Plan</th><th class="r">Prem /mth</th><th class="r">Prem /yr</th><th>Coverage</th><th class="r">Death</th><th class="r">TPD</th><th class="r">Early/Int CI</th><th class="r">Late CI</th></tr><tbody>
+    ${rows(ff.insurance.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td><td class="r">${money(x.death)}</td><td class="r">${money(x.tpd)}</td><td class="r">${money(x.eci)}</td><td class="r">${money(x.lci)}</td></tr>`))}</tbody>
+    <tr class="tot"><td>Total</td><td class="r">${fmt(c.insTotal)}</td><td class="r">${fmt(c.insTotal*12)}</td><td></td><td class="r">${money(c.covDeath)}</td><td class="r">${money(c.covTpd)}</td><td class="r">${money(c.covEci)}</td><td class="r">${money(c.covLci)}</td></tr></table>`; }
+    if(ff.investments.length){ h+=`<h3>Investment / savings plans</h3><table><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr><tbody>
+    ${rows(ff.investments.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td></tr>`))}</tbody>
+    <tr class="tot"><td>Total</td><td class="r">${fmt(c.invTotal)}</td><td class="r">${fmt(c.invTotal*12)}</td><td></td></tr></table>`; }
     h+=`<div class="pd-footer">
-      <div><b>${esc(s.advisorName||'')}</b>${s.advisorTitle?' · '+esc(s.advisorTitle):''}<br>${esc(s.advisorPhone||'')}${s.advisorEmail?' · '+esc(s.advisorEmail):''}</div>
+      <div>Prepared by <b>${esc(s.advisorName||'')}</b>${s.advisorTitle?' · '+esc(s.advisorTitle):''}<br>${esc(s.advisorPhone||'')}${s.advisorEmail?' · '+esc(s.advisorEmail):''}</div>
       <div style="text-align:right">Figures as provided by client on ${new Date().toLocaleDateString('en-SG')}.<br>For discussion purposes; not a contract of insurance.</div>
     </div>`;
     $('#printDoc').innerHTML=h;
