@@ -178,6 +178,10 @@
   .pill.tier-C{background:#eef2f7; color:#41536b;}
   .pill.tier-D{background:#f1f1f1; color:#999;}
   .pill.stale{background:var(--warn-soft); color:var(--warn);}
+  .pill.ref{background:var(--good-soft); color:var(--good);}
+  .pill.case{background:#eee8f8; color:#5b3a9e;}
+  .casebox{background:var(--accent-soft); border-radius:8px; padding:12px 14px; margin-top:10px;}
+  .casebox .form-row{margin-bottom:8px;}
   select.mini, input.mini{padding:3px 6px; font-size:12px; width:auto;}
 
   /* toast */
@@ -256,7 +260,7 @@
     <div class="chips" id="pipeChips"></div>
     <div class="toolbar">
       <input type="search" id="pipeSearch" placeholder="Search name..." oninput="App.renderPipeline()">
-      <select id="pipeStageFilter" onchange="App.renderPipeline()">
+      <select id="pipeStageFilter" onchange="App.state.pipeSpecial=''; App.renderPipeline()">
         <option value="">All stages</option>
       </select>
       <select id="pipeSourceFilter" onchange="App.renderPipeline()">
@@ -341,6 +345,10 @@
           <div><label>Stage</label><select id="pStage" onchange="App.changeStage(this.value)"></select></div>
           <div><label>Next follow-up</label><input type="date" id="pNextTouch" onchange="App.setNextTouch(this.value)"></div>
         </div>
+        <div id="caseBox" style="display:none"></div>
+        <label style="display:flex; gap:8px; align-items:center; margin-top:10px; font-size:13px; font-weight:500; color:var(--ink)">
+          <input type="checkbox" id="pAskRef" style="width:auto" onchange="App.setAskRef(this.checked)"> Ask them for referrals 🤝
+        </label>
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px">
           <span style="font-size:12px; color:var(--ink-soft); align-self:center">Snooze:</span>
           <button class="btn small" onclick="App.snooze(7)">1 wk</button>
@@ -539,6 +547,9 @@
       <div id="pm_onboardedWrap" style="display:none"><label>Onboarded date</label><input type="date" id="pm_onboarded"></div>
     </div>
     <div class="form-row single"><div><label>Context notes</label><textarea id="pm_notes" rows="2" placeholder="How you know them, what they mentioned..."></textarea></div></div>
+    <label style="display:flex; gap:8px; align-items:center; margin-bottom:4px; font-size:13px; font-weight:500">
+      <input type="checkbox" id="pm_askref" style="width:auto"> Ask them for referrals 🤝
+    </label>
     <div class="modal-actions">
       <button class="btn" onclick="App.closeModal()">Cancel</button>
       <button class="btn primary" onclick="App.savePersonModal()">Save</button>
@@ -564,6 +575,9 @@ const STAGES = [
   {id:'notnow',     label:'Not now — re-contact later'},
 ];
 const SOURCES = ['Referral','Warm / friend','Instagram','Existing client','Cold','Other'];
+const CASE_STAGES = ['contacted','appointment','factfind','proposal'];
+// effective pipeline stage: clients ride the pipeline only through an open case
+function effStage(p){ return p.stage==='onboarded' ? (p.activeCase ? p.activeCase.stage : null) : p.stage; }
 
 const DEFAULT_RATES = [
   {min:1, max:35, er:17,   ee:20,   oa:62.17, sa:16.21, ma:21.62},
@@ -650,7 +664,7 @@ function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('sh
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'' },
 
   init(){
     this.load();
@@ -737,7 +751,7 @@ const App = {
 
   /* ---------- meeting mode ---------- */
   renderPresent(){
-    const appts=this.data.people.filter(p=>p.stage==='appointment')
+    const appts=this.data.people.filter(p=>effStage(p)==='appointment')
       .sort((a,b)=>(a.nextFollowUp||'9999').localeCompare(b.nextFollowUp||'9999'));
     $('#presentList').innerHTML = appts.length ? appts.map(p=>`
       <div class="present-card" onclick="App.startMeeting('${p.id}')">
@@ -778,6 +792,52 @@ const App = {
   },
   setTier(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.tier=v; this.save(); } },
   setLastMet(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.lastMetMonth=v; this.save(); } },
+  setAskRef(v){ const p=this.person(); if(p){ p.askReferral=v; this.save(); this.renderAll(); } },
+
+  /* ---------- client cases (new business with existing clients, no duplicate records) ---------- */
+  openCase(){
+    const p=this.person(); if(!p || p.stage!=='onboarded' || p.activeCase) return;
+    p.activeCase={ label:'', stage:'contacted', openedAt:todayStr() };
+    if(!p.nextFollowUp) p.nextFollowUp=addDays(todayStr(),7);
+    p.log=p.log||[]; p.log.unshift({date:todayStr(), text:'Opened new case.'});
+    this.save(); this.renderPerson(); this.renderAll();
+    toast('Case opened — now visible in the Pipeline. '+p.name+' stays a client.');
+  },
+  caseField(k,v){ const p=this.person(); if(p&&p.activeCase){ p.activeCase[k]=v; this.save(); this.renderAll(); if(k==='stage') this.renderPerson(); } },
+  closeCase(won){
+    const p=this.person(); if(!p||!p.activeCase) return;
+    const label=p.activeCase.label||'case';
+    if(!confirm((won?'Mark won and close: ':'Drop case: ')+label+'?')) return;
+    p.log=p.log||[]; p.log.unshift({date:todayStr(), text:(won?'Case WON ✅: ':'Case dropped: ')+label});
+    p.activeCase=null; p.nextFollowUp='';
+    if(won){ const ym=todayStr().slice(0,7); p.lastMetMonth=p.lastMetMonth||ym; }
+    this.save(); this.renderPerson(); this.renderAll();
+    toast(won?'Case closed as won 🎉':'Case dropped.');
+  },
+  renderCaseBox(p){
+    const box=$('#caseBox');
+    if(p.stage!=='onboarded'){ box.style.display='none'; return; }
+    box.style.display='block';
+    if(!p.activeCase){
+      box.innerHTML=`<button class="btn" onclick="App.openCase()">+ Open new case (top-up / investment / review)</button>
+      <div class="calcnote">Puts them in the Pipeline for this case only — no duplicate record, they stay a client.</div>`;
+    } else {
+      const ac=p.activeCase;
+      box.innerHTML=`<div class="casebox">
+        <div class="form-row">
+          <div><label>What's the case?</label><input type="text" id="caseLabel" placeholder="e.g. Increase CI cover, start RSP" value="${esc(ac.label)}" oninput="App.caseField('label',this.value)"></div>
+          <div><label>Case stage</label><select onchange="App.caseField('stage',this.value)">
+            ${CASE_STAGES.map(s=>`<option value="${s}" ${ac.stage===s?'selected':''}>${stageObj(s).label}</option>`).join('')}
+          </select></div>
+        </div>
+        <div style="display:flex; gap:8px">
+          <button class="btn small primary" onclick="App.closeCase(true)">Case won ✓</button>
+          <button class="btn small danger" onclick="App.closeCase(false)">Drop case</button>
+          <span class="calcnote" style="align-self:center">Opened ${fmtDate(ac.openedAt)} · follow-up date above drives Today &amp; Pipeline</span>
+        </div>
+      </div>`;
+    }
+  },
   openPerson(id, from){
     this.state.currentPersonId=id;
     if(from) this.state.cameFrom=from;
@@ -788,7 +848,7 @@ const App = {
   /* ---------- today ---------- */
   dueFollowupsList(){
     return this.data.people
-      .filter(p=>p.stage!=='onboarded' && p.nextFollowUp && daysUntil(p.nextFollowUp)<=0)
+      .filter(p=>effStage(p)!==null && p.nextFollowUp && daysUntil(p.nextFollowUp)<=0)
       .sort((a,b)=>(a.nextFollowUp||'').localeCompare(b.nextFollowUp||''));
   },
   dueCareList(){
@@ -811,7 +871,7 @@ const App = {
     const staleDays=le?Math.floor((new Date(todayStr()+'T00:00')-new Date(le+'T00:00'))/86400000):null;
     $('#backupNudge').innerHTML=(this.data.people.length && (staleDays===null || staleDays>7))
       ? `<div class="backup-nudge">⚠︎ ${staleDays===null?'No backup yet':'Last backup '+staleDays+' days ago'} — your data lives only in this browser. <button class="btn small" onclick="App.exportData()">Export now</button></div>` : '';
-    const active=this.data.people.filter(p=>p.stage!=='onboarded').length;
+    const active=this.data.people.filter(p=>effStage(p)!==null).length;
     const clients=this.data.people.filter(p=>p.stage==='onboarded').length;
     const noDate=this.data.people.filter(p=>p.stage!=='onboarded' && !p.nextFollowUp).length;
     $('#todayStats').innerHTML = `
@@ -822,8 +882,8 @@ const App = {
     const cap=this.state.showAllDue?dueF.length:8;
     $('#dueFollowups').innerHTML = dueF.length ? dueF.slice(0,cap).map(p=>`
       <div class="care-item">
-        <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','pipeline')">${esc(p.name)}</b>${p.nickname?` <span class="nick">${esc(p.nickname)}</span>`:''} ${stagePill(p.stage)}
-        <div class="when">${duePill(p.nextFollowUp)} · ${esc(p.source||'')}</div></div>
+        <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','pipeline')">${esc(p.name)}</b>${p.nickname?` <span class="nick">${esc(p.nickname)}</span>`:''} ${stagePill(effStage(p))}${p.stage==='onboarded'?' <span class="pill case">client case</span>':''}${p.askReferral?' <span class="pill ref">🤝</span>':''}
+        <div class="when">${duePill(p.nextFollowUp)} · ${esc(p.stage==='onboarded'?(p.activeCase.label||'new case'):(p.source||''))}</div></div>
         <div class="quick">
           <button class="btn small" title="Push follow-up 1 month" onclick="App.snoozeById('${p.id}',30)">+1m</button>
           <button class="btn small" title="Push follow-up 3 months" onclick="App.snoozeById('${p.id}',90)">+3m</button>
@@ -852,27 +912,37 @@ const App = {
   },
 
   /* ---------- pipeline ---------- */
-  setPipeStage(v){ $('#pipeStageFilter').value=v; this.renderPipeline(); },
+  setPipeStage(v){
+    if(v.startsWith('__')){ this.state.pipeSpecial = this.state.pipeSpecial===v ? '' : v; $('#pipeStageFilter').value=''; }
+    else { this.state.pipeSpecial=''; $('#pipeStageFilter').value=v; }
+    this.renderPipeline();
+  },
   renderPipeline(){
     const q=($('#pipeSearch').value||'').toLowerCase();
-    const st=$('#pipeStageFilter').value, so=$('#pipeSourceFilter').value;
-    const all=this.data.people.filter(p=>p.stage!=='onboarded');
+    const st=this.state.pipeSpecial || $('#pipeStageFilter').value, so=$('#pipeSourceFilter').value;
+    const all=this.data.people.filter(p=>effStage(p)!==null);
+    const cases=all.filter(p=>p.stage==='onboarded');
+    const refs=all.filter(p=>p.askReferral);
     // funnel chips
-    const chip=(id,label,n)=>`<button class="chip ${st===id?'active':''}" onclick="App.setPipeStage('${id}')">${label}<span class="n">${n}</span></button>`;
+    const chip=(id,label,n,cls)=>`<button class="chip ${st===id?'active':''} ${cls||''}" onclick="App.setPipeStage('${id}')">${label}<span class="n">${n}</span></button>`;
     $('#pipeChips').innerHTML = chip('','All',all.length) +
-      STAGES.filter(s=>s.id!=='onboarded').map(s=>chip(s.id, s.label, all.filter(p=>p.stage===s.id).length)).join('');
+      STAGES.filter(s=>s.id!=='onboarded').map(s=>chip(s.id, s.label, all.filter(p=>effStage(p)===s.id).length)).join('') +
+      chip('__case','Client cases',cases.length) + chip('__ref','🤝 Referral asks',refs.length);
     let list=all;
     if(q) list=list.filter(p=>matches(p,q));
-    if(st) list=list.filter(p=>p.stage===st);
+    if(st==='__case') list=list.filter(p=>p.stage==='onboarded');
+    else if(st==='__ref') list=list.filter(p=>p.askReferral);
+    else if(st) list=list.filter(p=>effStage(p)===st);
     if(so) list=list.filter(p=>p.source===so);
     list.sort((a,b)=>(a.nextFollowUp||'9999').localeCompare(b.nextFollowUp||'9999'));
     const tb=$('#pipeTable tbody');
     tb.innerHTML=list.map(p=>{
-      const lastNote=(p.log&&p.log.length)?p.log[0].text:'';
+      const isCase=p.stage==='onboarded';
+      const lastNote=isCase?(p.activeCase.label||'New case'):((p.log&&p.log.length)?p.log[0].text:'');
       const od=p.nextFollowUp && daysUntil(p.nextFollowUp)<=0;
-      return `<tr class="rowlink ${od?'overdue':''}" onclick="App.openPerson('${p.id}','pipeline')">
+      return `<tr class="rowlink ${od?'overdue':''}" onclick="App.openPerson('${p.id}','${isCase?'clients':'pipeline'}')">
         <td>${nameCell(p)}</td>
-        <td>${stagePill(p.stage)}</td>
+        <td>${stagePill(effStage(p))}${isCase?' <span class="pill case">client case</span>':''}${p.askReferral?' <span class="pill ref">🤝 ref</span>':''}</td>
         <td style="color:var(--ink-soft)">${esc(p.source||'—')}</td>
         <td>${duePill(p.nextFollowUp)}</td>
         <td style="color:var(--ink-soft); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(lastNote)}</td>
@@ -961,6 +1031,8 @@ const App = {
         <div style="display:flex; gap:8px; margin-top:6px"><button class="btn small primary" onclick="App.saveNote(${i})">Save</button><button class="btn small" onclick="App.cancelNote()">Cancel</button></div></div>`;
       return `<div class="entry"><div class="d">${fmtDate(e.date)}<button onclick="App.editNote(${i})">edit</button><button onclick="App.deleteNote(${i})">delete</button></div><div class="txt">${esc(e.text)}</div></div>`;
     }).join('')||'<div class="empty">No notes yet.</div>';
+    this.renderCaseBox(p);
+    $('#pAskRef').checked=!!p.askReferral;
     // care card
     const isClient=p.stage==='onboarded';
     $('#careCard').style.display=isClient?'block':'none';
@@ -990,6 +1062,11 @@ const App = {
   },
   changeStage(stage){
     const p=this.person(); if(!p) return;
+    if(p.stage==='onboarded' && stage!=='onboarded'){
+      if(!confirm(p.name+' is an existing client. Moving them back to a pipeline stage demotes them to prospect (care timeline pauses).\n\nFor new business with an existing client (top-up, investment, review), use "Open new case" instead — no duplicate, they stay a client.\n\nDemote anyway?')){
+        $('#pStage').value='onboarded'; return;
+      }
+    }
     p.stage=stage;
     if(stage==='onboarded' && !p.onboardedAt){
       p.onboardedAt=todayStr();
@@ -1105,6 +1182,7 @@ const App = {
     $('#pm_dob').value=p?(p.dob||''):'';
     $('#pm_next').value=p?(p.nextFollowUp||''):addDays(todayStr(),3);
     $('#pm_notes').value=p?(p.notes||''):'';
+    $('#pm_askref').checked=p?!!p.askReferral:false;
     $('#personModal').classList.add('open');
     setTimeout(()=>$('#pm_name').focus(),50);
   },
@@ -1112,7 +1190,7 @@ const App = {
   savePersonModal(){
     const name=$('#pm_name').value.trim();
     if(!name){ toast('Name is required'); return; }
-    const fields={ name, nickname:$('#pm_nickname').value.trim(), source:$('#pm_source').value, phone:$('#pm_phone').value.trim(), email:$('#pm_email').value.trim(), dob:$('#pm_dob').value, nextFollowUp:$('#pm_next').value, notes:$('#pm_notes').value.trim() };
+    const fields={ name, nickname:$('#pm_nickname').value.trim(), source:$('#pm_source').value, phone:$('#pm_phone').value.trim(), email:$('#pm_email').value.trim(), dob:$('#pm_dob').value, nextFollowUp:$('#pm_next').value, notes:$('#pm_notes').value.trim(), askReferral:$('#pm_askref').checked };
     if(this.state.editingId){
       const p=this.data.people.find(x=>x.id===this.state.editingId);
       Object.assign(p,fields);
