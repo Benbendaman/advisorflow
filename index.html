@@ -1275,11 +1275,11 @@ const App = {
     const firstName=(this.data.settings.advisorName||'').trim().split(/\s+/)[0];
     $('#greeting').textContent=(hr<12?'Good morning':hr<18?'Good afternoon':'Good evening')+(firstName?', '+firstName:'');
     $('#todayDate').textContent = new Date().toLocaleDateString('en-SG',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
-    // backup nudge: data lives in this browser only, so remind when export is stale
+    // backup nudge: data syncs to the cloud automatically now, this is just a periodic reminder for an extra local export
     const le=this.data.settings.lastExportAt;
     const staleDays=le?Math.floor((new Date(todayStr()+'T00:00')-new Date(le+'T00:00'))/86400000):null;
-    $('#backupNudge').innerHTML=(this.data.people.length && (staleDays===null || staleDays>7))
-      ? `<div class="backup-nudge">⚠︎ ${staleDays===null?'No backup yet':'Last backup '+staleDays+' days ago'} — your data lives only in this browser. <button class="btn small" onclick="App.exportData()">Export now</button></div>` : '';
+    $('#backupNudge').innerHTML=(this.data.people.length && (staleDays===null || staleDays>60))
+      ? `<div class="backup-nudge">${staleDays===null?"Haven't exported a local backup yet":'Last local backup '+staleDays+' days ago'} — your data is synced to the cloud, this is just an extra copy. <button class="btn small" onclick="App.exportData()">Export now</button></div>` : '';
     const active=this.data.people.filter(p=>effStage(p)!==null).length;
     const clients=this.data.people.filter(p=>p.stage==='onboarded').length;
     const noDate=this.data.people.filter(p=>p.stage!=='onboarded' && !p.nextFollowUp).length;
