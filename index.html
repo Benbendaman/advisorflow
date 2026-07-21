@@ -10,22 +10,28 @@
     --bg:#f6f7f9; --card:#ffffff; --ink:#1a2332; --ink-soft:#5b6b7f; --ink-faint:#8a97a8;
     --line:#e4e8ee; --accent:#0f4c81; --accent-soft:#e8f0f8; --good:#1a7f5c; --good-soft:#e6f4ee;
     --warn:#b45309; --warn-soft:#fdf3e3; --bad:#b3261e; --bad-soft:#fbeae9;
-    --radius:10px; --shadow:0 1px 3px rgba(26,35,50,.07);
+    --radius:12px; --shadow:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e131d; --card:#161d2a; --ink:#e7ecf4; --ink-soft:#9aa7bd; --ink-faint:#6b7690;
+    --line:#2a3244; --accent:#5b9fdc; --accent-soft:#1c3350; --good:#3ecf8e; --good-soft:#123328;
+    --warn:#f0a742; --warn-soft:#3a2a10; --bad:#f16f6f; --bad-soft:#3a1a1a;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 2px 6px rgba(0,0,0,.25);
   }
   *{box-sizing:border-box; margin:0; padding:0;}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; background:var(--bg); color:var(--ink); font-size:14px; line-height:1.5;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif; background:var(--bg); color:var(--ink); font-size:14px; line-height:1.5; transition:background-color .18s ease, color .18s ease;}
   button{font:inherit; cursor:pointer;}
-  input,select,textarea{font:inherit; color:var(--ink); background:#fff; border:1px solid var(--line); border-radius:6px; padding:7px 10px; width:100%;}
+  input,select,textarea{font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:6px; padding:7px 10px; width:100%; transition:background-color .18s ease, border-color .18s ease, color .18s ease;}
   input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft); border-color:var(--accent);}
   input[type=number]{text-align:right;}
   label{display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:4px;}
 
-  header.app{background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50;}
+  header.app{background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:50; transition:background-color .18s ease, border-color .18s ease;}
   .header-inner{max-width:1180px; margin:0 auto; padding:0 20px; display:flex; align-items:center; gap:24px; height:56px;}
   .logo{font-weight:700; font-size:16px; color:var(--accent); letter-spacing:.2px; white-space:nowrap;}
   .logo span{color:var(--ink);}
   nav.tabs{display:flex; gap:4px; flex:1; overflow-x:auto;}
-  nav.tabs button{background:none; border:none; padding:8px 14px; border-radius:8px; color:var(--ink-soft); font-weight:600; font-size:13.5px; white-space:nowrap;}
+  nav.tabs button{background:none; border:none; padding:8px 14px; border-radius:8px; color:var(--ink-soft); font-weight:600; font-size:13.5px; white-space:nowrap; transition:background-color .15s ease, color .15s ease;}
   nav.tabs button:hover{background:var(--bg);}
   nav.tabs button.active{background:var(--accent-soft); color:var(--accent);}
   nav.tabs button .badge{display:inline-block; min-width:18px; padding:0 5px; margin-left:6px; border-radius:9px; background:var(--bad); color:#fff; font-size:11px; line-height:18px; text-align:center;}
@@ -36,14 +42,14 @@
   h1{font-size:20px; margin-bottom:4px;}
   .sub{color:var(--ink-soft); margin-bottom:20px; font-size:13.5px;}
   h2{font-size:15px; margin-bottom:10px;}
-  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:16px;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:16px; transition:background-color .18s ease, border-color .18s ease;}
   .grid{display:grid; gap:16px;}
   .grid.cols-2{grid-template-columns:1fr 1fr;}
   .grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
   .grid.cols-4{grid-template-columns:repeat(4,1fr);}
   @media(max-width:860px){.grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr;}}
 
-  .btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:#fff; border-radius:8px; padding:7px 14px; font-weight:600; font-size:13px; color:var(--ink);}
+  .btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:7px 14px; font-weight:600; font-size:13px; color:var(--ink);}
   .btn:hover{border-color:var(--accent); color:var(--accent);}
   .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
   .btn.primary:hover{filter:brightness(1.1); color:#fff;}
@@ -203,7 +209,7 @@
   select.mini, input.mini{padding:3px 6px; font-size:12px; width:auto;}
 
   /* toast */
-  #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none;}
+  #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a2332; color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,.25);}
   #toast.show{opacity:1;}
 
   /* ============ PRINT: fact-find document ============ */
@@ -237,9 +243,39 @@
     #printDoc .pd-note{font-size:9px; color:#777; margin-top:4px;}
     #printDoc .pd-footer{margin-top:20px; padding-top:8px; border-top:2px solid #0f4c81; font-size:9.5px; color:#555; display:flex; justify-content:space-between;}
   }
+
+  /* ============ DARK MODE: hardcoded colors that don't ride on variables ============ */
+  :root[data-theme="dark"] .pill.stage-new{background:#232a3a; color:#9aa7bd;}
+  :root[data-theme="dark"] .pill.stage-contacted{background:#16324f; color:#71b3ea;}
+  :root[data-theme="dark"] .pill.stage-appointment{background:#2a2140; color:#b79bec;}
+  :root[data-theme="dark"] .pill.stage-factfind{background:#123338; color:#5fc7d4;}
+  :root[data-theme="dark"] .pill.stage-notnow{background:#232838; color:#7c879c;}
+  :root[data-theme="dark"] .pill.tier-A, :root[data-theme="dark"] select.tier-sel.tA{background:#4a3a12; color:#f0c85a; border-color:#6b5420;}
+  :root[data-theme="dark"] .pill.tier-C, :root[data-theme="dark"] select.tier-sel.tC{background:#232a3a; color:#9aa7bd;}
+  :root[data-theme="dark"] .pill.tier-D, :root[data-theme="dark"] select.tier-sel.tD{background:#232838; color:#7c879c;}
+  :root[data-theme="dark"] .pill.hnw{background:linear-gradient(135deg,#4a3a12,#5c481a); color:#f0c85a; border:1px solid #6b5420;}
+  :root[data-theme="dark"] .pill.case{background:#2a2140; color:#b79bec;}
+  :root[data-theme="dark"] tr.hnwrow{background:linear-gradient(90deg, rgba(240,200,90,.09), transparent 55%);}
+  :root[data-theme="dark"] tr.hnwrow td:first-child{box-shadow:inset 3px 0 0 #cfa63a;}
+  :root[data-theme="dark"] .modal-back{background:rgba(0,0,0,.6);}
+  :root[data-theme="dark"] input:focus, :root[data-theme="dark"] select:focus, :root[data-theme="dark"] textarea:focus{outline-color:var(--accent-soft);}
+  :root[data-theme="dark"] ::selection{background:var(--accent-soft); color:var(--ink);}
+
+  /* theme toggle button */
+  #themeToggle{font-size:15px; padding:6px 10px;}
 </style>
 </head>
 <body>
+<script>
+  // set the theme before first paint of visible content, so there's no light-flash before dark mode kicks in
+  (function(){
+    try{
+      var saved=localStorage.getItem('advisorflow_theme');
+      var dark=saved?saved==='dark':(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+      if(dark) document.documentElement.setAttribute('data-theme','dark');
+    }catch(e){}
+  })();
+</script>
 
 <header class="app">
   <div class="header-inner">
@@ -251,6 +287,7 @@
       <button data-page="clients">Clients</button>
       <button data-page="settings">Settings</button>
     </nav>
+    <button class="btn small" id="themeToggle" onclick="App.toggleTheme()" title="Toggle dark mode">🌙</button>
     <button class="btn small" onclick="App.exportData()">Export</button>
   </div>
 </header>
@@ -721,7 +758,7 @@ function autoGrowTa(el){ el.style.height='auto'; el.style.height=Math.max(el.scr
 function stagePill(id){ const s=stageObj(id); return `<span class="pill stage-${s.id}">${s.label}</span>`; }
 function duePill(dateStr){
   const d = daysUntil(dateStr);
-  if(d===null) return '<span class="pill" style="background:#f1f1f1;color:#888">no date</span>';
+  if(d===null) return '<span class="pill" style="background:var(--line);color:var(--ink-faint)">no date</span>';
   if(d<0) return `<span class="pill due">${-d}d overdue</span>`;
   if(d===0) return '<span class="pill due">today</span>';
   if(d<=7) return `<span class="pill soon">in ${d}d</span>`;
@@ -771,7 +808,23 @@ const App = {
       if($('#personModal').classList.contains('open')) this.closeModal();
       else if(this.state.presenting) this.endMeeting();
     });
+    this.updateThemeBtn();
     this.renderAll();
+  },
+
+  /* ---------- theme ---------- */
+  toggleTheme(){
+    const next=document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+    if(next==='dark') document.documentElement.setAttribute('data-theme','dark');
+    else document.documentElement.removeAttribute('data-theme');
+    try{ localStorage.setItem('advisorflow_theme', next); }catch(e){}
+    this.updateThemeBtn();
+  },
+  updateThemeBtn(){
+    const dark=document.documentElement.getAttribute('data-theme')==='dark';
+    const b=$('#themeToggle'); if(!b) return;
+    b.textContent=dark?'☀️':'🌙';
+    b.title=dark?'Switch to light mode':'Switch to dark mode';
   },
 
   /* ---------- persistence ---------- */
@@ -1610,7 +1663,14 @@ const App = {
       <td style="text-align:right; color:var(--ink-soft); padding-right:14px">${(r.er+r.ee).toFixed(1)}%</td>
       ${['oa','sa','ma'].map(k=>`<td><input type="number" step="0.01" value="${r[k]}" oninput="App.setRate(${i},'${k}',this.value)"></td>`).join('')}</tr>`).join('');
   },
-  setRate(i,k,v){ this.data.cpfRates[i][k]=num(v); this.save(); },
+  setRate(i,k,v){
+    this.data.cpfRates[i][k]=num(v); this.save();
+    // live-update the Total % cell in the same row without rebuilding the table (rebuilding mid-type would steal focus)
+    if(k==='er'||k==='ee'){
+      const row=$('#rateTable tbody').rows[i];
+      if(row) row.cells[4].textContent=(this.data.cpfRates[i].er+this.data.cpfRates[i].ee).toFixed(1)+'%';
+    }
+  },
   setPlansIns(v){ this.data.planPresetsIns=v.split('\n').map(x=>x.trim()).filter(Boolean); this.save(); },
   setPlansInv(v){ this.data.planPresetsInv=v.split('\n').map(x=>x.trim()).filter(Boolean); this.save(); },
 
