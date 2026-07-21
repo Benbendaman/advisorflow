@@ -263,9 +263,13 @@
 
   /* theme toggle button */
   #themeToggle{font-size:15px; padding:6px 10px;}
+  #authScreen{position:fixed; inset:0; background:var(--bg); z-index:1000; align-items:center; justify-content:center; padding:20px;}
+  #authScreen .card{max-width:360px; width:100%;}
+  #syncStatus{font-size:11px; color:var(--ink-faint); white-space:nowrap;}
 </style>
 </head>
 <body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // set the theme before first paint of visible content, so there's no light-flash before dark mode kicks in
   (function(){
@@ -277,6 +281,21 @@
   })();
 </script>
 
+<div id="authScreen" style="display:flex">
+  <div class="card">
+    <div class="logo" style="margin-bottom:6px; font-size:18px">Advisor<span>Flow</span></div>
+    <div class="sub" style="margin-bottom:16px">Sign in to sync your data across devices.</div>
+    <div style="margin-bottom:10px"><label>Email</label><input type="email" id="authEmail" autocomplete="username"></div>
+    <div style="margin-bottom:14px"><label>Password</label><input type="password" id="authPassword" autocomplete="current-password"></div>
+    <div id="authError" style="display:none; color:var(--bad); font-size:12.5px; margin-bottom:12px"></div>
+    <div style="display:flex; gap:8px">
+      <button class="btn primary" style="flex:1" onclick="App.authSignIn()">Sign in</button>
+      <button class="btn" style="flex:1" onclick="App.authSignUp()">Create account</button>
+    </div>
+    <div class="calcnote" style="margin-top:12px">First time here? Click "Create account" with the email and password you want to use, this becomes your private login. Only you can see your data.</div>
+  </div>
+</div>
+
 <header class="app">
   <div class="header-inner">
     <div class="logo">Advisor<span>Flow</span></div>
@@ -287,8 +306,10 @@
       <button data-page="clients">Clients</button>
       <button data-page="settings">Settings</button>
     </nav>
+    <span id="syncStatus"></span>
     <button class="btn small" id="themeToggle" onclick="App.toggleTheme()" title="Toggle dark mode">🌙</button>
     <button class="btn small" onclick="App.exportData()">Export</button>
+    <button class="btn small" onclick="App.authSignOut()" title="Sign out">Sign out</button>
   </div>
 </header>
 
@@ -612,13 +633,13 @@
         <div class="spacer"></div>
         <button class="btn danger" onclick="App.wipe()">Erase all data</button>
       </div>
-      <div class="calcnote">Data lives in this browser only. Export a backup regularly, or to move to another device. Autosaves on every change.</div>
+      <div class="calcnote">Data syncs automatically to your private AdvisorFlow account, sign in on any device to see it. This device also keeps an offline copy so meeting mode still works without a connection. Export a backup periodically as an extra safety net.</div>
     </div>
   </section>
 
 </main>
 
-<footer class="app">AdvisorFlow — local-first advisor toolkit. Data stays on your device.</footer>
+<footer class="app">AdvisorFlow — syncs privately to your account, only you can see your data.</footer>
 
 <!-- person add/edit modal -->
 <div class="modal-back" id="personModal">
@@ -665,6 +686,10 @@
 <script>
 /* ================= AdvisorFlow ================= */
 'use strict';
+
+const SUPABASE_URL = 'https://yzuhzndzhaxccdednbhs.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Z_0sJfJUsbv8YxO1sBGADA_B_g212jO';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const STAGES = [
   {id:'new',        label:'New lead'},
@@ -766,13 +791,87 @@ function duePill(dateStr){
 }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
 
+/* ---------- cloud row <-> in-memory person mapping ---------- */
+function personToRow(p){
+  return {
+    id: p.id,
+    name: p.name || '',
+    nickname: p.nickname || null,
+    stage: p.stage || 'new',
+    source: p.source || null,
+    phone: p.phone || null,
+    email: p.email || null,
+    dob: p.dob || null,
+    notes: p.notes || null,
+    next_follow_up: p.nextFollowUp || null,
+    created_at: p.createdAt || null,
+    onboarded_at: p.onboardedAt || null,
+    tier: p.tier || null,
+    last_met_month: p.lastMetMonth || null,
+    hnw: !!p.hnw,
+    ask_referral: !!p.askReferral,
+    active_case: p.activeCase || null,
+    service_requests: p.serviceRequests || [],
+    care_tasks: p.careTasks || [],
+    log: p.log || [],
+    fact_find: p.factFind || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+function rowToPerson(row){
+  return {
+    id: row.id,
+    name: row.name || '',
+    nickname: row.nickname || '',
+    stage: row.stage || 'new',
+    source: row.source || '',
+    phone: row.phone || '',
+    email: row.email || '',
+    dob: row.dob || '',
+    notes: row.notes || '',
+    nextFollowUp: row.next_follow_up || '',
+    createdAt: row.created_at || '',
+    onboardedAt: row.onboarded_at || '',
+    tier: row.tier || '',
+    lastMetMonth: row.last_met_month || '',
+    hnw: !!row.hnw,
+    askReferral: !!row.ask_referral,
+    activeCase: row.active_case || null,
+    serviceRequests: row.service_requests || [],
+    careTasks: row.care_tasks || [],
+    log: row.log || [],
+    factFind: row.fact_find || null,
+  };
+}
+function settingsToRow(d){
+  return {
+    advisor_name: d.settings.advisorName || '',
+    advisor_phone: d.settings.advisorPhone || '',
+    advisor_email: d.settings.advisorEmail || '',
+    advisor_title: d.settings.advisorTitle || '',
+    ow_ceiling: num(d.settings.owCeiling) || 8000,
+    cpf_effective: d.settings.cpfEffective || '',
+    cpf_rates: d.cpfRates,
+    plan_presets_ins: d.planPresetsIns,
+    plan_presets_inv: d.planPresetsInv,
+    hnw_migrated: !!d.hnwMigrated,
+    updated_at: new Date().toISOString(),
+  };
+}
+function applySettingsRow(d, row){
+  d.settings = { advisorName:row.advisor_name||'', advisorPhone:row.advisor_phone||'', advisorEmail:row.advisor_email||'', advisorTitle:row.advisor_title||'', owCeiling:row.ow_ceiling||8000, cpfEffective:row.cpf_effective||'1 Jan 2026' };
+  d.cpfRates = (row.cpf_rates && row.cpf_rates.length) ? row.cpf_rates : JSON.parse(JSON.stringify(DEFAULT_RATES));
+  d.planPresetsIns = row.plan_presets_ins || DEFAULT_PLANS_INS.slice();
+  d.planPresetsInv = row.plan_presets_inv || DEFAULT_PLANS_INV.slice();
+  d.hnwMigrated = !!row.hnw_migrated;
+}
+
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false },
 
   init(){
-    this.load();
     // nav
     $('#navTabs').addEventListener('click', e=>{
       const b=e.target.closest('button'); if(!b) return;
@@ -809,7 +908,51 @@ const App = {
       else if(this.state.presenting) this.endMeeting();
     });
     this.updateThemeBtn();
+
+    // auth: onAuthStateChange fires once immediately with the current session (event INITIAL_SESSION),
+    // then again on every sign-in/sign-out. This is the single entry point into the app.
+    sb.auth.onAuthStateChange((event, session)=>{
+      if(session && session.user) this.enterApp(session.user);
+      else this.showAuthScreen();
+    });
+
+    window.addEventListener('online', ()=>{ if(this.state.dirty) this.flushSync(); });
+  },
+
+  /* ---------- auth ---------- */
+  async enterApp(user){
+    $('#authScreen').style.display='none';
+    $('#authError').style.display='none';
+    await this.load();
     this.renderAll();
+  },
+  showAuthScreen(){
+    this.data=null;
+    $('#authScreen').style.display='flex';
+  },
+  async authSignIn(){
+    const email=$('#authEmail').value.trim(), password=$('#authPassword').value;
+    if(!email||!password){ this.authErr('Enter your email and password.'); return; }
+    this.authErr('');
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error) this.authErr(error.message);
+  },
+  async authSignUp(){
+    const email=$('#authEmail').value.trim(), password=$('#authPassword').value;
+    if(!email||!password){ this.authErr('Enter your email and password.'); return; }
+    if(password.length<6){ this.authErr('Password must be at least 6 characters.'); return; }
+    this.authErr('');
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if(error){ this.authErr(error.message); return; }
+    if(!data.session) this.authErr('Account created — check your email to confirm it, then sign in here.');
+  },
+  authSignOut(){
+    if(!confirm('Sign out? Your data stays saved in the cloud.')) return;
+    sb.auth.signOut();
+  },
+  authErr(msg){
+    const el=$('#authError'); if(!el) return;
+    el.textContent=msg; el.style.display = msg?'block':'none';
   },
 
   /* ---------- theme ---------- */
@@ -838,10 +981,10 @@ const App = {
       people: [],
     };
   },
-  load(){
-    try{ const raw=localStorage.getItem('advisorflow_v1'); this.data = raw ? JSON.parse(raw) : this.blank(); }
-    catch(e){ this.data=this.blank(); }
+  // one-time shape upgrades, run after any full data replacement (cloud load or backup import)
+  runMigrations(){
     if(!this.data.cpfRates||!this.data.cpfRates.length) this.data.cpfRates=JSON.parse(JSON.stringify(DEFAULT_RATES));
+    let changed=false;
     // one-time upgrade: promote "HNW" markers stashed in notes (from the AdvisorQuest migration) to a real flag
     if(!this.data.hnwMigrated){
       (this.data.people||[]).forEach(p=>{
@@ -850,7 +993,7 @@ const App = {
           p.notes=p.notes.split(' · ').filter(x=>x.trim()!=='HNW').join(' · ');
         }
       });
-      this.data.hnwMigrated=true; this.save();
+      this.data.hnwMigrated=true; changed=true;
     }
     // migrate the old single preset list into insurance / investment splits, keeping user-added lines
     if(!this.data.planPresetsIns){
@@ -863,10 +1006,88 @@ const App = {
       DEFAULT_PLANS_INV.forEach(x=>{ if(!inv.includes(x)) inv.push(x); });
       this.data.planPresetsIns=ins; this.data.planPresetsInv=inv;
       delete this.data.planPresets;
-      this.save();
+      changed=true;
+    }
+    if(changed) this.save();
+  },
+  // loads from the cloud (source of truth). Falls back to the last locally cached copy if offline,
+  // so a dropped connection during a meeting doesn't blank the screen.
+  async load(){
+    this.data=this.blank();
+    try{
+      const [sRes, pRes] = await Promise.all([
+        sb.from('settings').select('*').maybeSingle(),
+        sb.from('people').select('*').order('created_at', {ascending:true}),
+      ]);
+      if(sRes.error) throw sRes.error;
+      if(pRes.error) throw pRes.error;
+      if(sRes.data) applySettingsRow(this.data, sRes.data);
+      else await sb.from('settings').upsert(settingsToRow(this.data)); // first-ever login: seed a settings row
+      this.data.people=(pRes.data||[]).map(rowToPerson);
+      this.state.online=true;
+      this.setSyncStatus('saved');
+      try{ localStorage.setItem('advisorflow_v1', JSON.stringify(this.data)); }catch(e){}
+    }catch(e){
+      console.warn('AdvisorFlow: cloud load failed, using last local cache', e);
+      this.state.online=false;
+      this.setSyncStatus('offline');
+      try{ const raw=localStorage.getItem('advisorflow_v1'); if(raw) this.data=JSON.parse(raw); }catch(e2){}
+      toast('Offline — showing last synced data.');
+    }
+    this.runMigrations();
+  },
+  // local cache write is instant and synchronous (same as before); the cloud sync is debounced in the background
+  save(){
+    try{ localStorage.setItem('advisorflow_v1', JSON.stringify(this.data)); }catch(e){ toast('Could not save locally — storage full?'); }
+    this.scheduleSync();
+  },
+  scheduleSync(){
+    this.state.dirty=true;
+    this.setSyncStatus('pending');
+    clearTimeout(this._syncTimer);
+    this._syncTimer=setTimeout(()=>this.flushSync(), 1200);
+  },
+  async flushSync(){
+    if(this.state.syncing){ clearTimeout(this._syncTimer); this._syncTimer=setTimeout(()=>this.flushSync(),1200); return; }
+    this.state.syncing=true;
+    this.setSyncStatus('saving');
+    try{
+      const rows=this.data.people.map(personToRow);
+      if(rows.length){
+        const { error } = await sb.from('people').upsert(rows, {onConflict:'id'});
+        if(error) throw error;
+      }
+      // remove cloud rows for people deleted locally (deletePerson/wipe don't call the cloud directly)
+      const { data: serverIds, error: idErr } = await sb.from('people').select('id');
+      if(idErr) throw idErr;
+      const localIds=new Set(this.data.people.map(p=>p.id));
+      const toDelete=(serverIds||[]).map(r=>r.id).filter(id=>!localIds.has(id));
+      if(toDelete.length){
+        const { error: delErr } = await sb.from('people').delete().in('id', toDelete);
+        if(delErr) throw delErr;
+      }
+      const { error: setErr } = await sb.from('settings').upsert(settingsToRow(this.data));
+      if(setErr) throw setErr;
+      this.state.dirty=false; this.state.online=true;
+      this.setSyncStatus('saved');
+    }catch(e){
+      console.warn('AdvisorFlow: sync failed, will retry', e);
+      this.state.online=false;
+      this.setSyncStatus('offline');
+      clearTimeout(this._retryTimer);
+      this._retryTimer=setTimeout(()=>{ if(this.state.dirty) this.flushSync(); }, 15000);
+    }finally{
+      this.state.syncing=false;
     }
   },
-  save(){ try{ localStorage.setItem('advisorflow_v1', JSON.stringify(this.data)); }catch(e){ toast('Could not save — storage full?'); } },
+  setSyncStatus(s){
+    const el=$('#syncStatus'); if(!el) return;
+    if(s==='saved') el.textContent='Synced ✓';
+    else if(s==='saving'||s==='pending') el.textContent='Saving…';
+    else if(s==='offline') el.textContent='Offline — will retry';
+    else el.textContent='';
+    el.title = s==='offline' ? "Changes are saved on this device and will sync once you're back online." : '';
+  },
 
   person(){ return this.data.people.find(p=>p.id===this.state.currentPersonId) || null; },
   currentFF(){ const p=this.person(); if(!p) return null; if(!p.factFind) p.factFind=this.blankFF(p); return p.factFind; },
@@ -1692,7 +1913,7 @@ const App = {
         const d=JSON.parse(r.result);
         if(!d.people||!d.settings) throw new Error('bad format');
         if(!confirm('Replace current data with this backup? Current data: '+this.data.people.length+' people. Backup: '+d.people.length+' people.')) return;
-        this.data=d; this.save(); this.renderAll(); toast('Imported.');
+        this.data=d; this.runMigrations(); this.save(); this.flushSync(); this.renderAll(); toast('Imported — syncing to cloud…');
       }catch(e){ toast('Not a valid AdvisorFlow backup file'); }
       input.value='';
     };
