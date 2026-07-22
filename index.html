@@ -519,15 +519,19 @@
     <div class="hero" id="ffHero"></div>
 
     <div class="card">
-      <h2>Meeting notes</h2>
-      <div class="cardhint">Notes stay on this person's record for good, including after they become a client.</div>
-      <div style="display:flex; gap:8px; margin-bottom:10px; align-items:flex-start">
-        <select id="ffNoteMeeting" style="width:150px; flex:none"></select>
-        <textarea id="ffNoteInput" rows="2" placeholder="Add a note. Enter to save, Shift+Enter for a new paragraph." onkeydown="App.noteKey(event)"></textarea>
-        <button class="btn" onclick="App.addNote()">Add</button>
+      <h2 onclick="App.toggleMeetingNotes()" style="cursor:pointer; user-select:none; display:flex; align-items:center; gap:8px">
+        <span id="ffNotesChevron">▾</span> Meeting notes <span id="ffNotesCount" style="font-weight:400; font-size:12px; color:var(--ink-faint)"></span>
+      </h2>
+      <div id="ffNotesBody">
+        <div class="cardhint">Notes stay on this person's record for good, including after they become a client.</div>
+        <div style="display:flex; gap:8px; margin-bottom:10px; align-items:flex-start">
+          <select id="ffNoteMeeting" style="width:150px; flex:none"></select>
+          <textarea id="ffNoteInput" rows="2" placeholder="Add a note. Enter to save, Shift+Enter for a new paragraph." onkeydown="App.noteKey(event)"></textarea>
+          <button class="btn" onclick="App.addNote()">Add</button>
+        </div>
+        <div id="ffNoteFilterBar"></div>
+        <div class="note-log" id="ffNoteLog"></div>
       </div>
-      <div id="ffNoteFilterBar"></div>
-      <div class="note-log" id="ffNoteLog"></div>
     </div>
 
     <div class="grid cols-2">
@@ -903,7 +907,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'' },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false },
 
   init(){
     // nav
@@ -1793,7 +1797,18 @@ const App = {
       <td><button class="del" onclick="App.ffDelRow('insurance',${i})">&times;</button></td></tr>`).join('');
     $$('#insTable textarea, #invTable textarea').forEach(autoGrowTa);
     this.renderNoteLog(p);
+    $('#ffNotesCount').textContent=(p.log&&p.log.length)?`(${p.log.length})`:'';
+    this.applyMeetingNotesCollapse();
     this.ffCalc();
+  },
+  toggleMeetingNotes(){
+    this.state.meetingNotesCollapsed=!this.state.meetingNotesCollapsed;
+    this.applyMeetingNotesCollapse();
+  },
+  applyMeetingNotesCollapse(){
+    const body=$('#ffNotesBody'), chev=$('#ffNotesChevron'); if(!body) return;
+    body.style.display=this.state.meetingNotesCollapsed?'none':'block';
+    if(chev) chev.textContent=this.state.meetingNotesCollapsed?'▸':'▾';
   },
   ffRow(section,i,key,val){
     const ff=this.currentFF(); if(!ff||!ff[section]||!ff[section][i]) return;
