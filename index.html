@@ -457,9 +457,11 @@
       <div class="card">
         <h2>Notes log</h2>
         <div style="display:flex; gap:8px; margin-bottom:10px; align-items:flex-start">
+          <select id="noteMeeting" style="width:150px; flex:none"></select>
           <textarea id="noteInput" rows="2" placeholder="Add a note. Enter to save, Shift+Enter for a new paragraph." onkeydown="App.noteKey(event)"></textarea>
           <button class="btn" onclick="App.addNote()">Add</button>
         </div>
+        <div id="noteFilterBar"></div>
         <div class="note-log" id="noteLog"></div>
       </div>
     </div>
@@ -515,6 +517,18 @@
       <button class="btn primary" onclick="App.printFactFind()">Download / Print PDF</button>
     </div>
     <div class="hero" id="ffHero"></div>
+
+    <div class="card">
+      <h2>Meeting notes</h2>
+      <div class="cardhint">Notes stay on this person's record for good, including after they become a client.</div>
+      <div style="display:flex; gap:8px; margin-bottom:10px; align-items:flex-start">
+        <select id="ffNoteMeeting" style="width:150px; flex:none"></select>
+        <textarea id="ffNoteInput" rows="2" placeholder="Add a note. Enter to save, Shift+Enter for a new paragraph." onkeydown="App.noteKey(event)"></textarea>
+        <button class="btn" onclick="App.addNote()">Add</button>
+      </div>
+      <div id="ffNoteFilterBar"></div>
+      <div class="note-log" id="ffNoteLog"></div>
+    </div>
 
     <div class="grid cols-2">
       <div class="card">
@@ -791,6 +805,26 @@ function duePill(dateStr){
 }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
 
+/* ---------- meeting-tagged notes ---------- */
+function meetingNumsFor(p){
+  const nums=new Set();
+  (p.log||[]).forEach(e=>{ if(e.meeting) nums.add(e.meeting); });
+  return [...nums].sort((a,b)=>a-b);
+}
+function nextMeetingNum(p){
+  const nums=meetingNumsFor(p);
+  return (nums.length?nums[nums.length-1]:0)+1;
+}
+function meetingOptionsHtml(p, def){
+  const nums=meetingNumsFor(p), next=nextMeetingNum(p);
+  const defStr=String(def==null?'':def);
+  let html=`<option value=""${defStr===''?' selected':''}>General note</option>`;
+  nums.forEach(n=>{ html+=`<option value="${n}"${defStr===String(n)?' selected':''}>Meeting ${n}</option>`; });
+  html+=`<option value="${next}"${defStr===String(next)?' selected':''}>Meeting ${next} (new)</option>`;
+  return html;
+}
+function meetingBadge(n){ return n?`<span class="pill" style="background:var(--accent-soft); color:var(--accent); margin-left:6px">Meeting ${n}</span>`:''; }
+
 /* ---------- cloud row <-> in-memory person mapping ---------- */
 function personToRow(p){
   return {
@@ -869,7 +903,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'' },
 
   init(){
     // nav
@@ -1135,6 +1169,7 @@ const App = {
     if(!id) return;
     const p=this.data.people.find(x=>x.id===id); if(!p){ toast('Pick a person first'); return; }
     this.state.currentPersonId=id;
+    this.state.noteFilter='';
     this.state.presenting=true;
     document.body.classList.add('present');
     this.currentFF();
@@ -1247,6 +1282,7 @@ const App = {
   },
   openPerson(id, from){
     this.state.currentPersonId=id;
+    this.state.noteFilter='';
     if(from) this.state.cameFrom=from;
     this.showPage('person'); this.renderPerson();
   },
@@ -1453,12 +1489,7 @@ const App = {
     if(p.notes) bits.push(esc(p.notes));
     $('#pContact').innerHTML=bits.join(' &nbsp;·&nbsp; ')||'No contact details yet — Edit details to add.';
     // notes
-    $('#noteLog').innerHTML=(p.log||[]).map((e,i)=>{
-      if(this.state.editingNote===i) return `<div class="entry"><div class="d">${fmtDate(e.date)}</div>
-        <textarea id="noteEdit" rows="4">${esc(e.text)}</textarea>
-        <div style="display:flex; gap:8px; margin-top:6px"><button class="btn small primary" onclick="App.saveNote(${i})">Save</button><button class="btn small" onclick="App.cancelNote()">Cancel</button></div></div>`;
-      return `<div class="entry"><div class="d">${fmtDate(e.date)}<button onclick="App.editNote(${i})">edit</button><button onclick="App.deleteNote(${i})">delete</button></div><div class="txt">${esc(e.text)}</div></div>`;
-    }).join('')||'<div class="empty">No notes yet.</div>';
+    this.renderNoteLog(p);
     this.renderCaseBox(p);
     this.renderSRCard(p);
     $('#pAskRef').checked=!!p.askReferral;
@@ -1560,31 +1591,78 @@ const App = {
     this.save(); this.renderAll();
     toast(p.name+' → '+fmtDate(p.nextFollowUp));
   },
+  /* notes are usable from both the person profile and the fact-find/meeting page, since meeting mode
+     lands on fact-find and hides navigation back to the profile. Both pages share the same p.log data;
+     which set of DOM ids to read/write is picked from the currently active page. */
+  noteEls(){
+    const onFF=this.state.page==='factfind';
+    return {
+      meetingSel: $(onFF?'#ffNoteMeeting':'#noteMeeting'),
+      input: $(onFF?'#ffNoteInput':'#noteInput'),
+      filterBar: $(onFF?'#ffNoteFilterBar':'#noteFilterBar'),
+      log: $(onFF?'#ffNoteLog':'#noteLog'),
+    };
+  },
+  rerenderNotePage(){ if(this.state.page==='factfind') this.renderFactFind(); else this.renderPerson(); },
+  renderNoteLog(p){
+    const els=this.noteEls(); if(!els.log) return;
+    // meeting select: default to next meeting number on the fact-find/meeting page (you're literally in one),
+    // default to "General note" on the profile page (used more broadly, e.g. logging a call)
+    const onFF=this.state.page==='factfind';
+    els.meetingSel.innerHTML=meetingOptionsHtml(p, onFF?nextMeetingNum(p):'');
+    // filter chips, only shown once there's at least one tagged meeting
+    const nums=meetingNumsFor(p);
+    if(nums.length){
+      const cur=this.state.noteFilter;
+      const chip=(val,label)=>`<button class="chip${cur===val?' active':''}" onclick="App.setNoteFilter('${val}')">${label}</button>`;
+      els.filterBar.innerHTML=`<div class="chips">${chip('','All')}${nums.map(n=>chip(String(n),'Meeting '+n)).join('')}${chip('general','General')}</div>`;
+    } else els.filterBar.innerHTML='';
+    const filter=this.state.noteFilter;
+    const entries=(p.log||[]).map((e,i)=>({e,i})).filter(({e})=>{
+      if(!filter) return true;
+      if(filter==='general') return !e.meeting;
+      return String(e.meeting)===filter;
+    });
+    els.log.innerHTML=entries.map(({e,i})=>{
+      if(this.state.editingNote===i) return `<div class="entry"><div class="d">${fmtDate(e.date)}</div>
+        <select id="noteEditMeeting" style="width:150px; margin:6px 0">${meetingOptionsHtml(p, e.meeting||'')}</select>
+        <textarea id="noteEdit" rows="4">${esc(e.text)}</textarea>
+        <div style="display:flex; gap:8px; margin-top:6px"><button class="btn small primary" onclick="App.saveNote(${i})">Save</button><button class="btn small" onclick="App.cancelNote()">Cancel</button></div></div>`;
+      return `<div class="entry"><div class="d">${fmtDate(e.date)}${meetingBadge(e.meeting)}<button onclick="App.editNote(${i})">edit</button><button onclick="App.deleteNote(${i})">delete</button></div><div class="txt">${esc(e.text)}</div></div>`;
+    }).join('')||`<div class="empty">${filter?'No notes for this meeting.':'No notes yet.'}</div>`;
+  },
+  setNoteFilter(v){ this.state.noteFilter=v; this.rerenderNotePage(); },
   noteKey(e){
     if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); this.addNote(); }
     // Shift+Enter falls through and inserts a paragraph break
   },
   addNote(){
     const p=this.person(); if(!p) return;
-    const v=$('#noteInput').value.trim(); if(!v) return;
-    p.log=p.log||[]; p.log.unshift({date:todayStr(), text:v});
-    $('#noteInput').value='';
-    this.save(); this.renderPerson();
+    const els=this.noteEls();
+    const v=els.input.value.trim(); if(!v) return;
+    const mv=els.meetingSel.value;
+    const meeting=mv?parseInt(mv,10):null;
+    p.log=p.log||[]; p.log.unshift({date:todayStr(), text:v, meeting});
+    els.input.value='';
+    if(meeting) this.state.noteFilter=String(meeting); // jump the filter to the meeting you just took a note under
+    this.save(); this.rerenderNotePage();
   },
-  editNote(i){ this.state.editingNote=i; this.renderPerson(); setTimeout(()=>{const t=$('#noteEdit'); if(t){t.focus(); t.selectionStart=t.value.length;}},50); },
-  cancelNote(){ this.state.editingNote=null; this.renderPerson(); },
+  editNote(i){ this.state.editingNote=i; this.rerenderNotePage(); setTimeout(()=>{const t=$('#noteEdit'); if(t){t.focus(); t.selectionStart=t.value.length;}},50); },
+  cancelNote(){ this.state.editingNote=null; this.rerenderNotePage(); },
   saveNote(i){
     const p=this.person(); if(!p||!p.log||!p.log[i]) return;
     const v=$('#noteEdit').value.trim();
-    if(v) p.log[i].text=v; else p.log.splice(i,1);
+    const msel=$('#noteEditMeeting');
+    const meeting=msel&&msel.value?parseInt(msel.value,10):null;
+    if(v){ p.log[i].text=v; p.log[i].meeting=meeting; } else p.log.splice(i,1);
     this.state.editingNote=null;
-    this.save(); this.renderPerson();
+    this.save(); this.rerenderNotePage();
   },
   deleteNote(i){
     const p=this.person(); if(!p||!p.log) return;
     if(!confirm('Delete this note?')) return;
     p.log.splice(i,1); this.state.editingNote=null;
-    this.save(); this.renderPerson();
+    this.save(); this.rerenderNotePage();
   },
   deletePerson(){
     const p=this.person(); if(!p) return;
@@ -1714,6 +1792,7 @@ const App = {
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.lci)}" oninput="App.ffRow('insurance',${i},'lci',this.value)"></td>
       <td><button class="del" onclick="App.ffDelRow('insurance',${i})">&times;</button></td></tr>`).join('');
     $$('#insTable textarea, #invTable textarea').forEach(autoGrowTa);
+    this.renderNoteLog(p);
     this.ffCalc();
   },
   ffRow(section,i,key,val){
