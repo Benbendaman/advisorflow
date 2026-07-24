@@ -108,6 +108,14 @@
   .hero .n{font-size:20px; font-weight:700; margin-top:2px;}
   .hero .s{font-size:11.5px; color:var(--ink-soft);}
   .hero .n.pos{color:var(--good);} .hero .n.neg{color:var(--bad);}
+  .cfb-card{cursor:pointer; transition:box-shadow .12s ease;}
+  .cfb-card:hover{box-shadow:0 2px 10px rgba(16,24,40,.1);}
+  .cfb-panel{margin-top:10px; padding-top:10px; border-top:1px solid var(--line); font-size:12.5px;}
+  .cfb-row{display:flex; justify-content:space-between; padding:3px 0;}
+  .cfb-row .amt.pos{color:var(--good); font-weight:600;}
+  .cfb-row .amt.neg{color:var(--bad); font-weight:600;}
+  .cfb-row.tot{border-top:1px solid var(--line); margin-top:5px; padding-top:7px; font-weight:700;}
+  .cfb-row.tot .amt.pos{color:var(--good);} .cfb-row.tot .amt.neg{color:var(--bad);}
   .minitable td, .minitable th{padding:6px 8px;}
   .minitable input{padding:5px 8px; font-size:13px;}
   .minitable textarea{padding:5px 8px; font-size:13px; resize:none; overflow:hidden; min-height:31px; line-height:1.4; field-sizing:content;}
@@ -907,7 +915,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false },
 
   init(){
     // nav
@@ -1174,6 +1182,7 @@ const App = {
     const p=this.data.people.find(x=>x.id===id); if(!p){ toast('Pick a person first'); return; }
     this.state.currentPersonId=id;
     this.state.noteFilter='';
+    this.state.cashflowBreakdownOpen=false;
     this.state.presenting=true;
     document.body.classList.add('present');
     this.currentFF();
@@ -1287,6 +1296,7 @@ const App = {
   openPerson(id, from){
     this.state.currentPersonId=id;
     this.state.noteFilter='';
+    this.state.cashflowBreakdownOpen=false;
     if(from) this.state.cameFrom=from;
     this.showPage('person'); this.renderPerson();
   },
@@ -1876,6 +1886,27 @@ const App = {
     ff.show55=!this.show55(ff,c);
     this.save(); this.ffCalc();
   },
+  netCashflowCard(c){
+    const rows=[];
+    rows.push(['Take-home income', c.takeHome, true]);
+    if(c.other) rows.push(['Other income', c.other, true]);
+    if(c.expTotal) rows.push(['Monthly expenses', -c.expTotal, false]);
+    if(c.invTotal) rows.push(['Investment premiums', -c.invTotal, false]);
+    if(c.insTotal) rows.push(['Insurance premiums', -c.insTotal, false]);
+    if(c.sav) rows.push(['Savings set aside', -c.sav, false]);
+    const rowHtml=rows.map(([l,v],idx)=>{
+      const sign = v>=0 ? (idx===0?'':'+ ') : '− ';
+      return `<div class="cfb-row"><span>${l}</span><span class="amt ${v>=0?'pos':'neg'}">${sign}${fmt(Math.abs(v))}</span></div>`;
+    }).join('');
+    const open=this.state.cashflowBreakdownOpen;
+    return `<div class="card cfb-card" onclick="App.toggleCashflowBreakdown()">
+      <div class="l">Net cashflow /mth <span>${open?'▾':'▸'}</span></div>
+      <div class="n ${c.netCashflow>=0?'pos':'neg'}">${fmt(c.netCashflow)}</div>
+      <div class="s">${fmt(c.netCashflow*12)} /yr · tap for breakdown</div>
+      ${open?`<div class="cfb-panel" onclick="event.stopPropagation()">${rowHtml}<div class="cfb-row tot"><span>Net cashflow</span><span class="amt ${c.netCashflow>=0?'pos':'neg'}">${fmt(c.netCashflow)}</span></div></div>`:''}
+    </div>`;
+  },
+  toggleCashflowBreakdown(){ this.state.cashflowBreakdownOpen=!this.state.cashflowBreakdownOpen; this.ffCalc(); },
   ffCalc(){
     const ff=this.currentFF(); if(!ff) return;
     const c=this.calcFF(ff);
@@ -1896,7 +1927,7 @@ const App = {
       .map(([l,v])=>`<div class="cc"><div class="l">Total ${l}</div><div class="v">${v?fmt(v):'—'}</div></div>`).join('');
     const hero=(l,n,s,cls)=>`<div class="card"><div class="l">${l}</div><div class="n ${cls||''}">${n}</div><div class="s">${s||''}</div></div>`;
     let h =
-      hero('Net cashflow /mth', fmt(c.netCashflow), fmt(c.netCashflow*12)+' /yr', c.netCashflow>=0?'pos':'neg') +
+      this.netCashflowCard(c) +
       hero('CPF contribution /mth', fmt(c.cpfContrib), c.br?('at '+(c.br.er+c.br.ee).toFixed(1)+'% of capped wage'):'') +
       hero('Total expenses /mth', fmt(c.expTotal), 'living costs excl. premiums');
     if(s55) h +=
