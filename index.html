@@ -898,8 +898,10 @@
 
     <div class="card">
       <h2>Your premiums</h2>
+      <div class="cardhint">Pulls straight from what you keyed into the policy pages above — no retyping. Re-run it any time you change a premium there.</div>
       <div id="propPremiumRows"></div>
       <button class="btn small" onclick="App.propAddRow('premium')">+ Add row</button>
+      <button class="btn small primary" onclick="App.syncPremiumFromPolicies()">↻ Sync from policy pages</button>
       <div class="form-row" style="margin-top:10px">
         <div style="grid-column:1/-1"><label>Payment note</label><textarea rows="2" id="propPremiumNote" placeholder="MediShield Life is fully payable via MediSave. The additional private premium is MediSave-payable up to the Additional Withdrawal Limit; riders are paid by cash." oninput="App.propScalar('premiumNote',this.value)"></textarea></div>
       </div>
@@ -2662,6 +2664,21 @@ const App = {
     const pr=this.currentProposal(); const t=ppPremiumTotals(pr);
     $('#propPremiumTotals').innerHTML=`Totals (auto-summed from the rows above): MediSave <b>${fmt(t.medisave)}</b>/yr &middot; Cash <b>${fmt(t.cash)}</b>/yr &middot; <b>${fmt(t.monthly)}</b>/month`;
   },
+  /* -- pull premium rows straight from the policy pages, so nothing gets typed twice -- */
+  syncPremiumFromPolicies(){
+    const pr=this.currentProposal(); if(!pr) return;
+    if(!pr.policies || !pr.policies.length){ toast('Add policy pages first — nothing to pull from yet.'); return; }
+    if((pr.premium||[]).length && !confirm('This replaces your current premium rows with values pulled from the policy pages. Continue?')) return;
+    pr.premium = pr.policies.map(pol=>{
+      if(pol.kind==='hospital') return { plan: pol.name||'', medisave: num(pol.medisave), cash: num(pol.cash) };
+      if(pol.kind==='accident') return { plan: pol.name||'', medisave: 0, cash: ppAccidentTotal(pol) };
+      // wholelife, term, ci all keep a single annual cash premium field
+      return { plan: pol.name||'', medisave: 0, cash: num(pol.premium) };
+    });
+    this.save();
+    this.renderProposalPremium();
+    toast('Premium rows synced from policy pages.');
+  },
   /* -- steps -- */
   renderProposalSteps(){
     const pr=this.currentProposal();
@@ -2783,7 +2800,7 @@ const App = {
             <div><label>Covered-to age</label><input type="number" placeholder="e.g. 99" value="${esc(pol.ages&&pol.ages.coverEnds)}" oninput="App.propPolicyAge(${i},'coverEnds',this.value)"></div>
           </div>
           <div class="form-row">
-            <div><label>Premium / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div>
+            <div><label>Premium / year (monthly shown automatically on the deck)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div>
             <div><label>Term (e.g. "20-year term")</label><input type="text" placeholder="e.g. 20-year term" value="${esc(pol.term)}" oninput="App.propPolicyField(${i},'term',this.value)"></div>
           </div>
           <div class="pp-editor-sub">Facts (left column on the deck)</div>${facts}
@@ -2801,7 +2818,7 @@ const App = {
             <div><label>Type / label</label><input type="text" placeholder="Critical Illness" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
             <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA Ultimate Critical Cover" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
           </div>
-          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (shown under the facts, e.g. "Premium <b>S$ 1,375.13</b> / year")</label><input type="text" placeholder="AIA Ultimate Critical Cover till 65yo — S$1,375.13 / year" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
+          <div class="form-row"><div><label>Premium / year (monthly shown automatically on the deck)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div></div>
           <div class="pp-editor-sub">Facts</div>${facts}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'facts')">+ Add fact</button>
           <div class="pp-editor-sub">Stages (Early / Intermediate / Major bar chart)</div>${stages}
@@ -2850,7 +2867,11 @@ const App = {
             <div><label>Type / label</label><input type="text" placeholder="Hospital & Surgical" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
             <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA HealthShield Gold Max A with Max VitalHealth A Value" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
           </div>
-          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (e.g. "Premium <b>S$ 1,891.90</b> / year")</label><input type="text" placeholder="MediSave S$300.00 + Cash S$434.76 / year" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
+          <div class="form-row">
+            <div><label>MediSave / year (leave blank if none)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 300.00" value="${fmt2(pol.medisave)}" oninput="App.propPolicyField(${i},'medisave',this.value)"></div>
+            <div><label>Cash / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 434.76" value="${fmt2(pol.cash)}" oninput="App.propPolicyField(${i},'cash',this.value)"></div>
+          </div>
+          <div class="cardhint">Monthly and the "MediSave + Cash / year" line on the deck are calculated automatically from these two fields.</div>
           <div class="pp-editor-sub">Benefits checklist</div>${benefits}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'benefits')">+ Add benefit</button>
           <div class="pp-editor-sub">Stat cards (usually 2)</div>${stats}
@@ -2944,11 +2965,21 @@ function blankPolicy(kind){
     ages:{start:'',paidUp:'',multiplierEnds:'',coverEnds:''}, facts:[], premium:'', term:'', surrender:[] };
   if(kind==='ci') return { kind, type:'Critical Illness', name:'AIA Ultimate Critical Cover', facts:[],
     stages:[{label:'Early',pct:50,val:'Up to 100% IA',note:'per claim'},{label:'Intermediate',pct:75,val:'Up to 100% IA',note:'per claim'},{label:'Major',pct:100,val:'100% IA',note:'lump sum'}],
-    features:[], premiumLine:'' };
+    features:[], premium:'' };
   if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', term:'30', startAge:'', premium:'' };
   if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
   // hospital
-  return { kind, type:'Hospital & Surgical', name:'', benefits:[], stats:[], premiumLine:'' };
+  return { kind, type:'Hospital & Surgical', name:'', benefits:[], stats:[], medisave:'', cash:'' };
+}
+// annual → monthly, everywhere premiums are shown in the deck. Uses the app's smart S$ formatter
+// (fmt: no decimals for whole numbers, comma thousands — S$1, S$1,000, S$1,375.13).
+function ppMonthly(annual){ return num(annual)/12; }
+function ppAccidentTotal(pol){
+  const T=SOLITAIRE_PA_TABLE;
+  const tier=Math.max(1,Math.min(4,num(pol.planTier)||2));
+  const occ=pol.occClass==='classes34'?'classes34':'classes12';
+  const premBasic=T.premium[occ].basic, premHosp=T.premium[occ].hosp;
+  return premBasic[tier-1] + (pol.includeHospRider ? premHosp[tier-1] : 0);
 }
 
 /* ---------- page renderers (return HTML strings) ---------- */
@@ -3033,7 +3064,7 @@ function ppWholeLifeSection(c){
       <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
       <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(c.name)}</h2>
       <div class="pp-facts pp-reveal" style="--i:2">${facts}</div>
-      <div class="pp-prem-line pp-reveal" style="--i:3">Premium <b>S$ ${esc(c.premium)}</b> / year${c.term?' · '+esc(c.term):''}</div>
+      <div class="pp-prem-line pp-reveal" style="--i:3">${num(c.premium)?`Premium <b>${fmt(num(c.premium))}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(c.premium))} / month)</span>`:''}${c.term?' · '+esc(c.term):''}</div>
       <div class="pp-scap pp-reveal" style="--i:4">${surr}</div>
     </div>
     <div class="pp-pchart pp-reveal" style="--i:2">${ppGppChart(c)}</div>
@@ -3043,23 +3074,26 @@ function ppBenefitSection(c){
   const check='<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const bens=(c.benefits||[]).map(b=>`<div class="pp-hbenefit">${check}<div><b>${esc(b.title)}</b><p>${esc(b.desc)}</p></div></div>`).join('');
   const stats=(c.stats||[]).map((s,i)=>`<div class="pp-hstat ${s.alt?'alt':''} pp-reveal" style="--i:${3+i}"><div class="pp-v">${esc(s.v)}</div><small>${esc(s.label)}</small></div>`).join('');
+  const medisave=num(c.medisave), cash=num(c.cash), total=medisave+cash;
+  const premLine = total ? `${medisave?`MediSave <b>${fmt(medisave)}</b> + `:''}Cash <b>${fmt(cash)}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(total))} / month)</span>` : '';
   return `<section class="pp-slide pp-hosp"><div class="pp-pad" style="width:100%;display:flex;flex-direction:column;justify-content:center">
     <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
     <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0 0">${esc(c.name)}</h2>
     <div class="pp-hgrid"><div class="pp-hbenefits pp-reveal" style="--i:2">${bens}</div><div class="pp-hside">${stats}</div></div>
-    <div class="pp-prem-line pp-reveal" style="--i:5">${c.premiumLine||''}</div>
+    <div class="pp-prem-line pp-reveal" style="--i:5">${premLine}</div>
   </div>${ppPolicyFoot()}</section>`;
 }
 function ppCiSection(c){
   const facts=(c.facts||[]).map(f=>`<div class="pp-fact"><div class="pp-fl">${esc(f.label)}</div><div class="pp-fv">${esc(f.value)}</div></div>`).join('');
   const stages=(c.stages||[]).map((s,i)=>`<div class="pp-cistage"><div class="pp-cival">${esc(s.val)}</div><div class="pp-cibar" style="--h:${num(s.pct)}%;transition-delay:${0.45+i*0.15}s"></div><div class="pp-cl">${esc(s.label)}</div><div class="pp-cnote">${esc(s.note)}</div></div>`).join('');
   const chips=(c.features||[]).map(f=>`<span class="pp-cichip">${esc(f)}</span>`).join('');
+  const premLine = num(c.premium) ? `Premium <b>${fmt(num(c.premium))}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(c.premium))} / month)</span>` : '';
   return `<section class="pp-slide pp-policy"><div class="pp-pad pp-cigrid">
     <div class="pp-pcol">
       <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
       <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(c.name)}</h2>
       <div class="pp-facts pp-reveal" style="--i:2">${facts}</div>
-      <div class="pp-prem-line pp-reveal" style="--i:3">${c.premiumLine||''}</div>
+      <div class="pp-prem-line pp-reveal" style="--i:3">${premLine}</div>
     </div>
     <div class="pp-reveal" style="--i:2"><div class="pp-cistages">${stages}</div><div class="pp-cichips">${chips}</div></div>
   </div>${ppPolicyFoot()}</section>`;
@@ -3143,7 +3177,7 @@ function ppTermSection(pol){
       <div class="pp-lead pp-reveal" style="--i:2">1x Death and Total Permanent Disability coverage of <b>S$ ${num(pol.sumAssured).toLocaleString('en-SG')}</b></div>
       <div class="pp-facts pp-reveal" style="--i:3">
         <div class="pp-fact"><div class="pp-fl">Premium Term</div><div class="pp-fv">${years} years</div></div>
-        <div class="pp-fact"><div class="pp-fl">Total Premium (with all riders) per year</div><div class="pp-fv">S$ ${fmt2(pol.premium)}</div></div>
+        <div class="pp-fact"><div class="pp-fl">Total Premium (with all riders)</div><div class="pp-fv">${fmt(num(pol.premium))} / year <span style="font-size:.8rem;color:var(--pp-muted)">(${fmt(ppMonthly(pol.premium))} / month)</span></div></div>
       </div>
     </div>
     <div class="pp-pchart pp-reveal" style="--i:2">${ppTermChart(pol)}</div>
@@ -3161,7 +3195,7 @@ function ppSolitairePaSection(pol){
   const premBasic=T.premium[occ].basic, premHosp=T.premium[occ].hosp;
   const premRowBasic=`<tr><td>Basic Benefits</td>${premBasic.map((v,idx)=>`<td class="${idx+1===tier?'sel':''}">S$ ${v.toFixed(2)}</td>`).join('')}</tr>`;
   const premRowHosp=pol.includeHospRider ? `<tr><td>Optional: Accidental Hospitalisation</td>${premHosp.map((v,idx)=>`<td class="${idx+1===tier?'sel':''}">S$ ${v.toFixed(2)}</td>`).join('')}</tr>` : '';
-  const total=premBasic[tier-1] + (pol.includeHospRider ? premHosp[tier-1] : 0);
+  const total=ppAccidentTotal(pol);
   const headRow=`<tr><th>Basic Benefits (S$)</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
   const headRowHosp=`<tr><th>Optional Hospitalisation Benefits (S$)</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
   const headRowPrem=`<tr><th>Annual Premium (S$, ${occ==='classes34'?'Occ. Classes 3 &amp; 4':'Occ. Classes 1 &amp; 2'})</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
@@ -3171,7 +3205,7 @@ function ppSolitairePaSection(pol){
     <table class="pp-reveal" style="--i:2"><thead>${headRow}</thead><tbody>${rowsBasic}</tbody></table>
     ${pol.includeHospRider?`<table class="pp-reveal" style="--i:3"><thead>${headRowHosp}</thead><tbody>${rowsHosp}</tbody></table>`:''}
     <table class="pp-reveal" style="--i:4"><thead>${headRowPrem}</thead><tbody>${premRowBasic}${premRowHosp}</tbody></table>
-    <div class="pp-mech-total pp-reveal" style="--i:5">Your total premium: <b>S$ ${total.toFixed(2)}</b> / year</div>
+    <div class="pp-mech-total pp-reveal" style="--i:5">Your total premium: <b>${fmt(total)}</b> / year <span style="font-size:.9rem;color:var(--pp-muted)">(${fmt(ppMonthly(total))} / month)</span></div>
   </div>${ppPolicyFoot()}</section>`;
 }
 function ppPolicySection(pol){
@@ -3204,7 +3238,7 @@ function ppPremiumHtml(pr){
   const tot=ppPremiumTotals(pr);
   const rows=(pr.premium||[]).map(pr2=>{
     const rowTotal=num(pr2.medisave)+num(pr2.cash);
-    return `<tr><td class="pp-pl">${esc(pr2.plan)}</td><td class="c">${num(pr2.medisave)?'S$ '+fmt2(pr2.medisave):'—'}</td><td class="r">S$ ${fmt2(pr2.cash)}</td><td class="r pp-tot">S$ ${fmt2(rowTotal)}</td></tr>`;
+    return `<tr><td class="pp-pl">${esc(pr2.plan)}</td><td class="c">${num(pr2.medisave)?fmt(num(pr2.medisave)):'—'}</td><td class="r">${fmt(num(pr2.cash))}</td><td class="r pp-tot">${fmt(rowTotal)}</td></tr>`;
   }).join('');
   return `<section class="pp-slide pp-prem-wrap">
     <div class="pp-pad pp-prem" style="width:100%;justify-content:center">
