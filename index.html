@@ -3140,10 +3140,10 @@ function ppTermSection(pol){
     <div class="pp-pcol">
       <div class="pp-kicker pp-reveal" style="--i:0">Proposed Coverage</div>
       <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(pol.name)}</h2>
-      <div class="pp-lead pp-reveal" style="--i:2">1x Death and Total Permanent Disability coverage of <b>S$ ${esc(pol.sumAssured)}</b></div>
+      <div class="pp-lead pp-reveal" style="--i:2">1x Death and Total Permanent Disability coverage of <b>S$ ${num(pol.sumAssured).toLocaleString('en-SG')}</b></div>
       <div class="pp-facts pp-reveal" style="--i:3">
         <div class="pp-fact"><div class="pp-fl">Premium Term</div><div class="pp-fv">${years} years</div></div>
-        <div class="pp-fact"><div class="pp-fl">Total Premium (with all riders) per year</div><div class="pp-fv">S$ ${esc(pol.premium)}</div></div>
+        <div class="pp-fact"><div class="pp-fl">Total Premium (with all riders) per year</div><div class="pp-fv">S$ ${fmt2(pol.premium)}</div></div>
       </div>
     </div>
     <div class="pp-pchart pp-reveal" style="--i:2">${ppTermChart(pol)}</div>
