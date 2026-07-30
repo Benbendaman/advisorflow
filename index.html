@@ -876,9 +876,9 @@
         <button class="btn small" onclick="App.propAddPolicy('term','AIA Secure Flexi Term')">+ Secure Flexi Term</button>
         <button class="btn small" onclick="App.propAddPolicy('ci','AIA Ultimate Critical Cover')">+ Ultimate Critical Cover</button>
         <button class="btn small" onclick="App.propAddPolicy('accident','AIA Solitaire Personal Accident')">+ Solitaire Personal Accident</button>
-        <button class="btn small" onclick="App.propAddPolicy('hospital','AIA HealthShield Gold Max A')">+ HealthShield Gold Max A</button>
-        <button class="btn small" onclick="App.propAddPolicy('hospital','AIA HealthShield Gold Max B')">+ HealthShield Gold Max B</button>
-        <button class="btn small" onclick="App.propAddPolicy('hospital','AIA HealthShield Gold Max B Lite')">+ HealthShield Gold Max B Lite</button>
+        <button class="btn small" onclick="App.propAddPolicy('hospital','A')">+ HealthShield Gold Max A</button>
+        <button class="btn small" onclick="App.propAddPolicy('hospital','B')">+ HealthShield Gold Max B</button>
+        <button class="btn small" onclick="App.propAddPolicy('hospital','BLite')">+ HealthShield Gold Max B Lite</button>
         <span class="spacer"></span>
         <select id="propOtherPolicyKind" style="max-width:150px">
           <option value="wholelife">Whole Life</option>
@@ -2670,7 +2670,7 @@ const App = {
     if(!pr.policies || !pr.policies.length){ toast('Add policy pages first — nothing to pull from yet.'); return; }
     if((pr.premium||[]).length && !confirm('This replaces your current premium rows with values pulled from the policy pages. Continue?')) return;
     pr.premium = pr.policies.map(pol=>{
-      if(pol.kind==='hospital') return { plan: pol.name||'', medisave: num(pol.medisave), cash: num(pol.cash) };
+      if(pol.kind==='hospital'){ const t=ppHospitalTotals(pol); return { plan: (pol.name||'')+(pol.riderName?' + '+pol.riderName:''), medisave: t.totalMedisave, cash: t.totalCash }; }
       if(pol.kind==='accident') return { plan: pol.name||'', medisave: 0, cash: ppAccidentTotal(pol) };
       // wholelife, term, ci all keep a single annual cash premium field
       return { plan: pol.name||'', medisave: 0, cash: num(pol.premium) };
@@ -2725,7 +2725,11 @@ const App = {
     const pr=this.currentProposal(); if(!pr) return;
     if(!pr.policies) pr.policies=[];
     const pol=blankPolicy(kind);
-    if(name) pol.name=name;
+    if(kind==='hospital' && HOSPITAL_TIERS[name]){
+      pol.tier=name; pol.name=HOSPITAL_TIERS[name].planName; pol.riderName=HOSPITAL_TIERS[name].riderName;
+    } else if(name){
+      pol.name=name;
+    }
     if(kind==='term'){
       const p=this.person();
       if(p && p.dob){ const a=ageFrom(p.dob); if(a!=null) pol.startAge=String(a); }
@@ -2746,6 +2750,12 @@ const App = {
   propPolicyField(i,key,val){
     const pr=this.currentProposal(); const pol=pr.policies[i]; if(!pol) return;
     pol[key]=val; this.save();
+  },
+  propHospitalTier(i,tier){
+    const pr=this.currentProposal(); const pol=pr.policies[i]; if(!pol) return;
+    const t=HOSPITAL_TIERS[tier]?tier:'A';
+    pol.tier=t; pol.name=HOSPITAL_TIERS[t].planName; pol.riderName=HOSPITAL_TIERS[t].riderName;
+    this.save(); this.renderProposalPolicies();
   },
   propPolicyAge(i,key,val){
     const pr=this.currentProposal(); const pol=pr.policies[i]; if(!pol) return;
@@ -2862,16 +2872,25 @@ const App = {
           <div class="prow-flat"><input type="text" placeholder="e.g. As Charged Coverage" value="${esc(b.title)}" oninput="App.propPolicySubField(${i},'benefits',${j},'title',this.value)"><input type="text" placeholder="e.g. Reimburses deductible and co-insurance, subject to a co-payment capped per Policy Year" value="${esc(b.desc)}" oninput="App.propPolicySubField(${i},'benefits',${j},'desc',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'benefits',${j})">&times;</button></div>`).join('');
         const stats=(pol.stats||[]).map((s,j)=>`
           <div class="prow-flat"><input type="text" placeholder="e.g. S$450,000" value="${esc(s.v)}" oninput="App.propPolicySubField(${i},'stats',${j},'v',this.value)"><input type="text" placeholder="e.g. Limit per Policy Year" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stats',${j},'label',this.value)"><label style="display:flex;align-items:center;gap:4px;font-size:12px;flex:0 0 auto"><input type="checkbox" style="width:auto" ${s.alt?'checked':''} onchange="App.propPolicySubField(${i},'stats',${j},'alt',this.checked)">terracotta</label><button class="del" onclick="App.propPolicySubDel(${i},'stats',${j})">&times;</button></div>`).join('');
+        const tier=HOSPITAL_TIERS[pol.tier]?pol.tier:'A';
         body=`
           <div class="form-row">
-            <div><label>Type / label</label><input type="text" placeholder="Hospital & Surgical" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
-            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA HealthShield Gold Max A with Max VitalHealth A Value" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+            <div><label>Plan tier</label><select onchange="App.propHospitalTier(${i},this.value)">
+              <option value="A" ${tier==='A'?'selected':''}>HSG Max A (Private Hospital, Standard Room &amp; below) — with Pro A</option>
+              <option value="B" ${tier==='B'?'selected':''}>HSG Max B (Public Hospital, A Class Ward &amp; below) — with Pro B</option>
+              <option value="BLite" ${tier==='BLite'?'selected':''}>HSG Max B Lite (Public Hospital, B1 Class Ward &amp; below) — with Pro B Lite</option>
+            </select></div>
+          </div>
+          <div class="cardhint">Plan name (<b>${esc(pol.name)}</b>) and rider (<b>${esc(pol.riderName)}</b>) are auto-tagged from the tier — you can't mix HSG A with a B/B Lite rider, so this locks them together.</div>
+          <div class="form-row">
+            <div><label>MediShield Life / year (100% MediSave)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 503.00" value="${fmt2(pol.medishieldLife)}" oninput="App.propPolicyField(${i},'medishieldLife',this.value)"></div>
+            <div><label>${esc(pol.name)} / year (Integrated Shield Plan)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 484.00" value="${fmt2(pol.ipTotal)}" oninput="App.propPolicyField(${i},'ipTotal',this.value)"></div>
           </div>
           <div class="form-row">
-            <div><label>MediSave / year (leave blank if none)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 300.00" value="${fmt2(pol.medisave)}" oninput="App.propPolicyField(${i},'medisave',this.value)"></div>
-            <div><label>Cash / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 434.76" value="${fmt2(pol.cash)}" oninput="App.propPolicyField(${i},'cash',this.value)"></div>
+            <div><label>↳ of which payable by MediSave</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 484.00" value="${fmt2(pol.ipMedisave)}" oninput="App.propPolicyField(${i},'ipMedisave',this.value)"></div>
+            <div><label>${esc(pol.riderName)} / year (100% cash rider)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 788.00" value="${fmt2(pol.riderPremium)}" oninput="App.propPolicyField(${i},'riderPremium',this.value)"></div>
           </div>
-          <div class="cardhint">Monthly and the "MediSave + Cash / year" line on the deck are calculated automatically from these two fields.</div>
+          <div class="cardhint">MediShield Life is always 100% MediSave. The Integrated Shield Plan premium is split MediSave / cash (key in the MediSave-payable portion from your quotation). The rider is always 100% cash. Monthly and totals on the deck are calculated automatically.</div>
           <div class="pp-editor-sub">Benefits checklist</div>${benefits}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'benefits')">+ Add benefit</button>
           <div class="pp-editor-sub">Stat cards (usually 2)</div>${stats}
@@ -2960,6 +2979,13 @@ const SOLITAIRE_PA_TABLE = {
     classes34: { basic:[385.00,640.00,1025.00,1485.00], hosp:[69.92,121.34,182.84,241.86] },
   }
 };
+// HealthShield Gold Max tiers — plan name and rider are locked together because you cannot mix
+// HSG A with VitalHealth Pro B/B Lite etc. Selecting a tier auto-tags the correct rider.
+const HOSPITAL_TIERS = {
+  A:    { planName:'AIA HealthShield Gold Max A',      riderName:'AIA Max VitalHealth Pro A',      ward:'Private Hospital (Standard Room & below)' },
+  B:    { planName:'AIA HealthShield Gold Max B',       riderName:'AIA Max VitalHealth Pro B',      ward:'Public Hospital (A Class Ward & below)' },
+  BLite:{ planName:'AIA HealthShield Gold Max B Lite',  riderName:'AIA Max VitalHealth Pro B Lite', ward:'Public Hospital (B1 Class Ward & below)' },
+};
 function blankPolicy(kind){
   if(kind==='wholelife') return { kind, type:'Whole Life · Death / TPD / Critical Illness', name:'AIA Guaranteed Protect Plus', base:'', boosted:'', multiplier:'',
     ages:{start:'',paidUp:'',multiplierEnds:'',coverEnds:''}, facts:[], premium:'', term:'', surrender:[] };
@@ -2968,12 +2994,26 @@ function blankPolicy(kind){
     features:[], premium:'' };
   if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', term:'30', startAge:'', premium:'' };
   if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
-  // hospital
-  return { kind, type:'Hospital & Surgical', name:'', benefits:[], stats:[], medisave:'', cash:'' };
+  // hospital — Integrated Shield Plan. tier drives plan name + rider name automatically.
+  return { kind, type:'Integrated Shield Plan', tier:'A', name:HOSPITAL_TIERS.A.planName, riderName:HOSPITAL_TIERS.A.riderName,
+    medishieldLife:'', ipTotal:'', ipMedisave:'', riderPremium:'', benefits:[], stats:[] };
 }
 // annual → monthly, everywhere premiums are shown in the deck. Uses the app's smart S$ formatter
 // (fmt: no decimals for whole numbers, comma thousands — S$1, S$1,000, S$1,375.13).
 function ppMonthly(annual){ return num(annual)/12; }
+// Hospital & Surgical premium breakdown: MediShield Life is 100% MediSave; the Integrated Shield
+// Plan portion (HSG Max tier) is split MediSave/Cash (Ben keys the MediSave-payable slice in from
+// his quotation tool); the VitalHealth rider is 100% cash.
+function ppHospitalTotals(pol){
+  const medishieldLife=num(pol.medishieldLife), ipTotal=num(pol.ipTotal), ipMedisave=Math.min(num(pol.ipMedisave),ipTotal), riderPremium=num(pol.riderPremium);
+  const ipCash=ipTotal-ipMedisave;
+  return {
+    medishieldLife, ipTotal, ipMedisave, ipCash, riderPremium,
+    totalMedisave: medishieldLife+ipMedisave,
+    totalCash: ipCash+riderPremium,
+    grandTotal: medishieldLife+ipTotal+riderPremium,
+  };
+}
 function ppAccidentTotal(pol){
   const T=SOLITAIRE_PA_TABLE;
   const tier=Math.max(1,Math.min(4,num(pol.planTier)||2));
@@ -3074,13 +3114,22 @@ function ppBenefitSection(c){
   const check='<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const bens=(c.benefits||[]).map(b=>`<div class="pp-hbenefit">${check}<div><b>${esc(b.title)}</b><p>${esc(b.desc)}</p></div></div>`).join('');
   const stats=(c.stats||[]).map((s,i)=>`<div class="pp-hstat ${s.alt?'alt':''} pp-reveal" style="--i:${3+i}"><div class="pp-v">${esc(s.v)}</div><small>${esc(s.label)}</small></div>`).join('');
-  const medisave=num(c.medisave), cash=num(c.cash), total=medisave+cash;
-  const premLine = total ? `${medisave?`MediSave <b>${fmt(medisave)}</b> + `:''}Cash <b>${fmt(cash)}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(total))} / month)</span>` : '';
+  const t=ppHospitalTotals(c);
+  const premTable = t.grandTotal ? `<div class="pp-mech pp-reveal" style="--i:5"><table>
+    <thead><tr><th>Plan / Rider</th><th>MediSave</th><th>Cash</th><th>Total / year</th></tr></thead>
+    <tbody>
+      <tr><td>MediShield Life</td><td>${fmt(t.medishieldLife)}</td><td>—</td><td>${fmt(t.medishieldLife)}</td></tr>
+      <tr><td>${esc(c.name)}</td><td>${t.ipMedisave?fmt(t.ipMedisave):'—'}</td><td>${fmt(t.ipCash)}</td><td>${fmt(t.ipTotal)}</td></tr>
+      <tr><td>${esc(c.riderName)}</td><td>—</td><td>${fmt(t.riderPremium)}</td><td>${fmt(t.riderPremium)}</td></tr>
+    </tbody>
+    <tfoot><tr style="font-weight:700"><td>Total</td><td>${fmt(t.totalMedisave)}</td><td>${fmt(t.totalCash)}</td><td>${fmt(t.grandTotal)}</td></tr></tfoot>
+  </table></div>
+  <div class="pp-mech-total pp-reveal" style="--i:6">Your total premium: <b>${fmt(t.grandTotal)}</b> / year <span style="font-size:.9rem;color:var(--pp-muted)">(${fmt(ppMonthly(t.grandTotal))} / month) &middot; Payable <b>${fmt(t.totalMedisave)}</b> MediSave + <b>${fmt(t.totalCash)}</b> cash</span></div>` : '';
   return `<section class="pp-slide pp-hosp"><div class="pp-pad" style="width:100%;display:flex;flex-direction:column;justify-content:center">
     <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
     <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0 0">${esc(c.name)}</h2>
     <div class="pp-hgrid"><div class="pp-hbenefits pp-reveal" style="--i:2">${bens}</div><div class="pp-hside">${stats}</div></div>
-    <div class="pp-prem-line pp-reveal" style="--i:5">${premLine}</div>
+    ${premTable}
   </div>${ppPolicyFoot()}</section>`;
 }
 function ppCiSection(c){
