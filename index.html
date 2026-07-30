@@ -453,15 +453,15 @@
 
 /* ---- plan-mechanics comparison table (e.g. Solitaire Personal Accident) ---- */
 #proposalLayer .pp-mech{width:100%;overflow-y:auto;max-height:100%}
-#proposalLayer .pp-mech table{width:100%;border-collapse:collapse;margin-top:.9rem;font-size:.74rem}
-#proposalLayer .pp-mech th,#proposalLayer .pp-mech td{padding:.4rem .55rem;text-align:center;border-bottom:1px solid var(--pp-line);color:var(--pp-text)}
+#proposalLayer .pp-mech table{width:100%;border-collapse:collapse;margin-top:.6rem;font-size:.68rem}
+#proposalLayer .pp-mech th,#proposalLayer .pp-mech td{padding:.3rem .5rem;text-align:center;border-bottom:1px solid var(--pp-line);color:var(--pp-text);line-height:1.25}
 #proposalLayer .pp-mech th:first-child,#proposalLayer .pp-mech td:first-child{text-align:left;font-weight:500;color:var(--pp-ink)}
-#proposalLayer .pp-mech thead th{background:var(--pp-ink);color:var(--pp-cream);font-weight:600;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase}
+#proposalLayer .pp-mech thead th{background:var(--pp-ink);color:var(--pp-cream);font-weight:600;font-size:.64rem;letter-spacing:.05em;text-transform:uppercase}
 #proposalLayer .pp-mech tbody tr:nth-child(even){background:var(--pp-cream2)}
 #proposalLayer .pp-mech td.sel{background:rgba(195,155,90,.22);font-weight:700;color:var(--pp-ink)}
 #proposalLayer .pp-mech thead th.sel{background:var(--pp-gold);color:var(--pp-ink)}
-#proposalLayer .pp-mech-total{margin-top:.9rem;text-align:right;font-family:var(--pp-serif);font-size:1.15rem;color:var(--pp-pine)}
-#proposalLayer .pp-mech-sub{margin-top:.9rem;font-family:var(--pp-serif);font-size:.95rem;color:var(--pp-ink);font-weight:600}
+#proposalLayer .pp-mech-total{margin-top:.6rem;text-align:right;font-family:var(--pp-serif);font-size:1.05rem;color:var(--pp-pine)}
+#proposalLayer .pp-mech-sub{margin-top:.55rem;font-family:var(--pp-serif);font-size:.85rem;color:var(--pp-ink);font-weight:600}
 #proposalLayer .pp-mech-total b{color:var(--pp-terra)}
 
 /* ---- chrome (nav) ---- */
@@ -3159,7 +3159,7 @@ function ppNeedsHtml(pr){
     <div class="pp-intro pp-pad">
       <div class="pp-kicker pp-reveal" style="--i:0;color:var(--pp-terra-soft)">Needs analysis</div>
       <div class="pp-big pp-reveal" style="--i:1">How much cover makes sense for you.</div>
-      <div class="pp-inc pp-reveal" style="--i:2"><span>Based on an annual income of</span><b>S$ ${esc(String(pr.income||'0'))}</b></div>
+      <div class="pp-inc pp-reveal" style="--i:2"><span>Based on an annual income of</span><b>S$ ${Math.round(num(pr.income)).toLocaleString('en-SG')}</b></div>
     </div>
     <div class="pp-list pp-pad" id="ppNeedsList">${ppNeedsRows(pr)}</div>
   </section>`;
@@ -3224,7 +3224,7 @@ function ppBenefitSection(c, person){
   const ageNext=person?awlAgeNextBirthday(person.dob):null;
   const band=awlBandFor(ageNext);
   const awlLine=band ? `<div class="pp-reveal" style="--i:7;font-size:.7rem;color:var(--pp-muted);font-weight:400;margin-top:.5rem">MediSave Additional Withdrawal Limit (AWL)${ageNext?` for age next birthday ${ageNext}`:''}: up to <b style="color:var(--pp-ink)">${fmt(band.awl)}</b> / year of the Integrated Shield Plan premium may be paid from MediSave.</div>` : '';
-  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-mech" style="width:100%;display:flex;flex-direction:column;justify-content:center">
+  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-mech" style="width:100%;display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;max-height:100%">
     <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
     <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.5rem,2.2vw,2.1rem);margin:.3rem 0 .5rem">${esc(c.name)} <span style="font-size:.85rem;font-weight:400;color:var(--pp-muted)">with ${esc(c.riderName)}</span></h2>
     <div class="pp-mech-sub pp-reveal" style="--i:2">Overview of AIA HealthShield Gold Max Plans</div>
@@ -3272,8 +3272,8 @@ function ppGppChart(c){
     </g>`;}).join('');
   return `<svg class="pp-chartsvg" viewBox="0 0 680 440" xmlns="http://www.w3.org/2000/svg">
     <line x1="${x0}" y1="${base}" x2="${x1+20}" y2="${base}" stroke="${INK}" stroke-width="2"/>
-    <text x="${x0-12}" y="${top+6}" text-anchor="end" font-size="16" font-weight="700" fill="${INK}" font-family="Inter,sans-serif">S$ ${esc(c.boosted)}</text>
-    <text x="${x0-12}" y="${floor+6}" text-anchor="end" font-size="16" font-weight="700" fill="${INK}" font-family="Inter,sans-serif">S$ ${esc(c.base)}</text>
+    <text x="${x0-12}" y="${top+6}" text-anchor="end" font-size="16" font-weight="700" fill="${INK}" font-family="Inter,sans-serif">S$ ${num(c.boosted).toLocaleString('en-SG')}</text>
+    <text x="${x0-12}" y="${floor+6}" text-anchor="end" font-size="16" font-weight="700" fill="${INK}" font-family="Inter,sans-serif">S$ ${num(c.base).toLocaleString('en-SG')}</text>
     <rect x="${sx}" y="${top}" width="${mx-sx}" height="${base-top}" fill="none" stroke="${INK}" stroke-width="1.5" stroke-dasharray="7 6" opacity="0.55"/>
     <line x1="${sx}" y1="${floor}" x2="${ex}" y2="${floor}" stroke="${INK}" stroke-width="1.2" stroke-dasharray="4 5" opacity="0.4"/>
     <rect x="${mx}" y="${floor}" width="${ex-mx}" height="${base-floor}" fill="${GOLD}" opacity="0.12"/>
@@ -3351,7 +3351,7 @@ function ppSolitairePaSection(pol){
   const headRow=`<tr><th>Basic Benefits (S$)</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
   const headRowHosp=`<tr><th>Optional Hospitalisation Benefits (S$)</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
   const headRowPrem=`<tr><th>Annual Premium (S$, ${occ==='classes34'?'Occ. Classes 3 &amp; 4':'Occ. Classes 1 &amp; 2'})</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
-  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-mech" style="width:100%;display:flex;flex-direction:column;justify-content:center">
+  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-mech" style="width:100%;display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;max-height:100%">
     <div class="pp-kicker pp-reveal" style="--i:0">${esc(pol.type)}</div>
     <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.6rem,2.4vw,2.2rem);margin:.3rem 0 .6rem">${esc(pol.name)} <span style="font-size:.85rem;font-weight:400;color:var(--pp-muted)">— Plan ${tier}</span></h2>
     <table class="pp-reveal" style="--i:2"><thead>${headRow}</thead><tbody>${rowsBasic}</tbody></table>
