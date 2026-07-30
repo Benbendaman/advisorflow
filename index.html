@@ -860,10 +860,20 @@
       <div class="cardhint">One page per recommended plan, in the order they'll be presented. Every value redraws the chart automatically.</div>
       <div id="propPolicyBlocks"></div>
       <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
-        <button class="btn small" onclick="App.propAddPolicy('wholelife')">+ Whole Life</button>
-        <button class="btn small" onclick="App.propAddPolicy('hospital')">+ Hospital</button>
-        <button class="btn small" onclick="App.propAddPolicy('accident')">+ Personal Accident</button>
-        <button class="btn small" onclick="App.propAddPolicy('ci')">+ Critical Illness</button>
+        <button class="btn small" onclick="App.propAddPolicy('wholelife','AIA Guaranteed Protect Plus')">+ Guaranteed Protect Plus</button>
+        <button class="btn small" onclick="App.propAddPolicy('ci','AIA Ultimate Critical Cover')">+ Ultimate Critical Cover</button>
+        <button class="btn small" onclick="App.propAddPolicy('accident','AIA Solitaire Personal Accident')">+ Solitaire Personal Accident</button>
+        <button class="btn small" onclick="App.propAddPolicy('hospital','AIA HealthShield Gold Max A')">+ HealthShield Gold Max A</button>
+        <button class="btn small" onclick="App.propAddPolicy('hospital','AIA HealthShield Gold Max B')">+ HealthShield Gold Max B</button>
+        <button class="btn small" onclick="App.propAddPolicy('hospital','AIA HealthShield Gold Max B Lite')">+ HealthShield Gold Max B Lite</button>
+        <span class="spacer"></span>
+        <select id="propOtherPolicyKind" style="max-width:150px">
+          <option value="wholelife">Whole Life</option>
+          <option value="ci">Critical Illness</option>
+          <option value="hospital">Hospital & Surgical</option>
+          <option value="accident">Personal Accident</option>
+        </select>
+        <button class="btn small" onclick="App.propAddPolicy($('#propOtherPolicyKind').value)">+ Other plan…</button>
       </div>
     </div>
 
@@ -2681,10 +2691,12 @@ const App = {
   },
 
   /* -- policy pages (kind-specific blocks) -- */
-  propAddPolicy(kind){
+  propAddPolicy(kind,name){
     const pr=this.currentProposal(); if(!pr) return;
     if(!pr.policies) pr.policies=[];
-    pr.policies.push(blankPolicy(kind));
+    const pol=blankPolicy(kind);
+    if(name) pol.name=name;
+    pr.policies.push(pol);
     this.save();
     this.renderProposalPolicies();
   },
@@ -2800,7 +2812,7 @@ const App = {
       }
       return `<div class="policy-block">
         <div class="prow-flat" style="align-items:center">
-          <b style="flex:0 0 auto">${i+1}. ${kindLabel[pol.kind]||pol.kind}</b>
+          <b style="flex:0 0 auto">${i+1}. ${esc(pol.name)||kindLabel[pol.kind]||pol.kind} <span style="font-weight:400;color:var(--ink-faint);font-size:12px">(${kindLabel[pol.kind]||pol.kind})</span></b>
           <div class="spacer"></div>
           <button class="btn small" ${i===0?'disabled':''} onclick="App.propPolicyMove(${i},-1)">↑</button>
           <button class="btn small" ${i===(pr.policies.length-1)?'disabled':''} onclick="App.propPolicyMove(${i},1)">↓</button>
