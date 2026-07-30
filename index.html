@@ -289,6 +289,10 @@
 #proposalLayer.open{display:block}
 #proposalLayer *{margin:0;padding:0;box-sizing:border-box;min-width:0}
 #proposalLayer table{max-width:100%}
+/* Reset the app's own global `th{...position:sticky;background:var(--card)...}` table-header
+   styling (meant for app data tables) so it can't leak into the deck's tables — every deck
+   table sets its own header look explicitly (.pp-cov, .pp-prem-wrap, .pp-mech, etc). */
+#proposalLayer th{position:static;top:auto;background:none;z-index:auto}
 #proposalLayer .pp-deck{display:flex;height:100vh;width:100vw;transition:transform 1s var(--pp-ease);will-change:transform}
 #proposalLayer .pp-slide{position:relative;flex:0 0 100vw;height:100vh;overflow:hidden;display:flex;background:var(--pp-cream)}
 #proposalLayer .pp-pad{padding:clamp(2.2rem,5vw,5rem)}
@@ -457,6 +461,7 @@
 #proposalLayer .pp-mech td.sel{background:rgba(195,155,90,.22);font-weight:700;color:var(--pp-ink)}
 #proposalLayer .pp-mech thead th.sel{background:var(--pp-gold);color:var(--pp-ink)}
 #proposalLayer .pp-mech-total{margin-top:.9rem;text-align:right;font-family:var(--pp-serif);font-size:1.15rem;color:var(--pp-pine)}
+#proposalLayer .pp-mech-sub{margin-top:.9rem;font-family:var(--pp-serif);font-size:.95rem;color:var(--pp-ink);font-weight:600}
 #proposalLayer .pp-mech-total b{color:var(--pp-terra)}
 
 /* ---- chrome (nav) ---- */
@@ -2868,10 +2873,6 @@ const App = {
           <div class="cardhint">This page draws the full AIA Solitaire Personal Accident (II) benefits &amp; premium table automatically — no benefit typing needed, just pick the tier and class above.</div>
         `;
       } else { // hospital
-        const benefits=(pol.benefits||[]).map((b,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. As Charged Coverage" value="${esc(b.title)}" oninput="App.propPolicySubField(${i},'benefits',${j},'title',this.value)"><input type="text" placeholder="e.g. Reimburses deductible and co-insurance, subject to a co-payment capped per Policy Year" value="${esc(b.desc)}" oninput="App.propPolicySubField(${i},'benefits',${j},'desc',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'benefits',${j})">&times;</button></div>`).join('');
-        const stats=(pol.stats||[]).map((s,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. S$450,000" value="${esc(s.v)}" oninput="App.propPolicySubField(${i},'stats',${j},'v',this.value)"><input type="text" placeholder="e.g. Limit per Policy Year" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stats',${j},'label',this.value)"><label style="display:flex;align-items:center;gap:4px;font-size:12px;flex:0 0 auto"><input type="checkbox" style="width:auto" ${s.alt?'checked':''} onchange="App.propPolicySubField(${i},'stats',${j},'alt',this.checked)">terracotta</label><button class="del" onclick="App.propPolicySubDel(${i},'stats',${j})">&times;</button></div>`).join('');
         const tier=HOSPITAL_TIERS[pol.tier]?pol.tier:'A';
         body=`
           <div class="form-row">
@@ -2891,10 +2892,7 @@ const App = {
             <div><label>${esc(pol.riderName)} / year (100% cash rider)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 788.00" value="${fmt2(pol.riderPremium)}" oninput="App.propPolicyField(${i},'riderPremium',this.value)"></div>
           </div>
           <div class="cardhint">MediShield Life is always 100% MediSave. The Integrated Shield Plan premium is split MediSave / cash (key in the MediSave-payable portion from your quotation). The rider is always 100% cash. Monthly and totals on the deck are calculated automatically.</div>
-          <div class="pp-editor-sub">Benefits checklist</div>${benefits}
-          <button class="btn small" onclick="App.propPolicySubAdd(${i},'benefits')">+ Add benefit</button>
-          <div class="pp-editor-sub">Stat cards (usually 2)</div>${stats}
-          <button class="btn small" onclick="App.propPolicySubAdd(${i},'stats')">+ Add stat</button>
+          <div class="cardhint">This page draws the full Overview of AIA HealthShield Gold Max Plans &amp; Benefits of AIA Max VitalHealth Pro tables automatically — no benefit typing needed, just pick the tier above.</div>
         `;
       }
       return `<div class="policy-block">
@@ -2986,6 +2984,46 @@ const HOSPITAL_TIERS = {
   B:    { planName:'AIA HealthShield Gold Max B',       riderName:'AIA Max VitalHealth Pro B',      ward:'Public Hospital (A Class Ward & below)' },
   BLite:{ planName:'AIA HealthShield Gold Max B Lite',  riderName:'AIA Max VitalHealth Pro B Lite', ward:'Public Hospital (B1 Class Ward & below)' },
 };
+// AIA HealthShield Gold Max — fixed plan-mechanics tables (coverage doesn't change per client,
+// only which tier column applies to them). Source: Ben's Odyssey plan-mechanics deck. Columns
+// are always [A, B, B Lite]. A cell is either {v} or {v, note} (note renders as a smaller caption).
+const HOSPITAL_TABLE = {
+  ward: ['Private Hospital (Standard Room & below)','Public Hospital (A Class Ward & below)','Public Hospital (B1 Class Ward & below)'],
+  overview: [
+    ['Key Benefits at a Glance', null],
+    ['As Charged Coverage', [{v:'✓'},{v:'✓'},{v:'✓'}]],
+    ['Pre- and Post-Hospitalisation Benefits', [
+      {v:'✓', note:'within 13 months before/after confinement in/treatment by AIA Quality Healthcare Partners or Public Hospital'},
+      {v:'✓', note:'within 12 months before/after confinement'},
+      {v:'✓', note:'within 100 days before/after confinement'},
+    ]],
+    ['As Charged Outpatient Benefits', [{v:'✓'},{v:'✓'},{v:'✓'}]],
+    ['Other Benefits', null],
+    ['Limit Per Policy Year', [
+      {v:'S$2,000,000', note:'Admission in/treatment by AIA Quality Healthcare Partners or Public Hospital'},
+      {v:'S$1,200,000'},
+      {v:'S$300,000'},
+    ]],
+    ['Unlimited Lifetime Claims', [{v:'✓'},{v:'✓'},{v:'✓'}]],
+  ],
+  rider: [
+    ['Deductible & Co-Insurance', [
+      {v:'If admitted to / treated by AIA Preferred Providers: Reimburses the Co-insurance incurred, subject to Deductible and a co-payment of 5% for every claim, capped at 6,000 per Policy Year'},
+      {v:'If admitted to / treated by AIA Preferred Providers: Reimburses the Co-insurance incurred, subject to Deductible and a co-payment of 5% for every claim, capped at 6,000 per Policy Year'},
+      {v:'If admitted to / treated by AIA Preferred Providers: Reimburses the Co-insurance incurred, subject to Deductible and a co-payment of 5% for every claim, capped at 6,000 per Policy Year'},
+    ]],
+    ['Post Hospitalisation Home Nursing Benefit', [
+      {v:'500 per day', note:'Limited to 5,000 per Policy Year'},
+      {v:'300 per day', note:'Limited to 3,000 per Policy Year'},
+      {v:'200 per day', note:'Limited to 2,000 per Policy Year'},
+    ]],
+    ['Post Hospitalisation Alternative Benefit Medicine', [
+      {v:'5,000 per year'},
+      {v:'3,000 per year'},
+      {v:'1,000 per year'},
+    ]],
+  ],
+};
 function blankPolicy(kind){
   if(kind==='wholelife') return { kind, type:'Whole Life · Death / TPD / Critical Illness', name:'AIA Guaranteed Protect Plus', base:'', boosted:'', multiplier:'',
     ages:{start:'',paidUp:'',multiplierEnds:'',coverEnds:''}, facts:[], premium:'', term:'', surrender:[] };
@@ -2994,9 +3032,10 @@ function blankPolicy(kind){
     features:[], premium:'' };
   if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', term:'30', startAge:'', premium:'' };
   if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
-  // hospital — Integrated Shield Plan. tier drives plan name + rider name automatically.
+  // hospital — Integrated Shield Plan. tier drives plan name + rider name automatically; the
+  // coverage table itself is fixed (HOSPITAL_TABLE) and just highlights the selected tier column.
   return { kind, type:'Integrated Shield Plan', tier:'A', name:HOSPITAL_TIERS.A.planName, riderName:HOSPITAL_TIERS.A.riderName,
-    medishieldLife:'', ipTotal:'', ipMedisave:'', riderPremium:'', benefits:[], stats:[] };
+    medishieldLife:'', ipTotal:'', ipMedisave:'', riderPremium:'' };
 }
 // annual → monthly, everywhere premiums are shown in the deck. Uses the app's smart S$ formatter
 // (fmt: no decimals for whole numbers, comma thousands — S$1, S$1,000, S$1,375.13).
@@ -3111,24 +3150,43 @@ function ppWholeLifeSection(c){
   </div>${ppPolicyFoot()}</section>`;
 }
 function ppBenefitSection(c){
-  const check='<svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  const bens=(c.benefits||[]).map(b=>`<div class="pp-hbenefit">${check}<div><b>${esc(b.title)}</b><p>${esc(b.desc)}</p></div></div>`).join('');
-  const stats=(c.stats||[]).map((s,i)=>`<div class="pp-hstat ${s.alt?'alt':''} pp-reveal" style="--i:${3+i}"><div class="pp-v">${esc(s.v)}</div><small>${esc(s.label)}</small></div>`).join('');
+  // Fixed AIA HealthShield Gold Max plan-mechanics tables — same for every client, only the
+  // selected tier's column is highlighted. No benefit typing needed, just pick the tier.
+  const HT=HOSPITAL_TABLE;
+  const tierKeys=['A','B','BLite'];
+  const tierIdx=Math.max(0,tierKeys.indexOf(c.tier));
+  const cellHtml=cell=>{
+    if(!cell) return '';
+    const val = cell.v==='✓' ? '<span style="color:var(--pp-pine);font-weight:700">&#10003;</span>' : esc(cell.v);
+    return cell.note ? `${val}<div style="font-size:.62rem;color:var(--pp-muted);font-weight:400;margin-top:2px">${esc(cell.note)}</div>` : val;
+  };
+  const rowHtml=([label,vals])=>{
+    if(!vals) return `<tr><td colspan="4" style="background:var(--pp-cream2);font-weight:600;color:var(--pp-ink)">${esc(label)}</td></tr>`;
+    return `<tr><td>${esc(label)}</td>${vals.map((cell,i)=>`<td class="${i===tierIdx?'sel':''}">${cellHtml(cell)}</td>`).join('')}</tr>`;
+  };
+  const wardRow=`<tr><th>Hospital Ward Entitlement</th>${HT.ward.map((w,i)=>`<th class="${i===tierIdx?'sel':''}" style="font-weight:400;font-size:.62rem;text-transform:none;letter-spacing:0">${esc(w)}</th>`).join('')}</tr>`;
+  const planRow=`<tr><th>Plan Type</th>${['A','B','B Lite'].map((p,i)=>`<th class="${i===tierIdx?'sel':''}">${p}</th>`).join('')}</tr>`;
+  const riderWardRow=`<tr><th>Hospital Ward Entitlement</th>${HT.ward.map((w,i)=>`<th class="${i===tierIdx?'sel':''}" style="font-weight:400;font-size:.62rem;text-transform:none;letter-spacing:0">${esc(w)}</th>`).join('')}</tr>`;
+  const riderPlanRow=`<tr><th>Plan Type</th>${['Pro A','Pro B','B Lite'].map((p,i)=>`<th class="${i===tierIdx?'sel':''}">${p}</th>`).join('')}</tr>`;
+  const overviewRows=HT.overview.map(rowHtml).join('');
+  const riderRows=HT.rider.map(rowHtml).join('');
   const t=ppHospitalTotals(c);
-  const premTable = t.grandTotal ? `<div class="pp-mech pp-reveal" style="--i:5"><table>
-    <thead><tr><th>Plan / Rider</th><th>MediSave</th><th>Cash</th><th>Total / year</th></tr></thead>
+  const premTable = t.grandTotal ? `<table class="pp-reveal" style="--i:5"><thead><tr><th>Plan / Rider</th><th>MediSave</th><th>Cash</th><th>Total / year</th></tr></thead>
     <tbody>
       <tr><td>MediShield Life</td><td>${fmt(t.medishieldLife)}</td><td>—</td><td>${fmt(t.medishieldLife)}</td></tr>
       <tr><td>${esc(c.name)}</td><td>${t.ipMedisave?fmt(t.ipMedisave):'—'}</td><td>${fmt(t.ipCash)}</td><td>${fmt(t.ipTotal)}</td></tr>
       <tr><td>${esc(c.riderName)}</td><td>—</td><td>${fmt(t.riderPremium)}</td><td>${fmt(t.riderPremium)}</td></tr>
     </tbody>
     <tfoot><tr style="font-weight:700"><td>Total</td><td>${fmt(t.totalMedisave)}</td><td>${fmt(t.totalCash)}</td><td>${fmt(t.grandTotal)}</td></tr></tfoot>
-  </table></div>
+  </table>
   <div class="pp-mech-total pp-reveal" style="--i:6">Your total premium: <b>${fmt(t.grandTotal)}</b> / year <span style="font-size:.9rem;color:var(--pp-muted)">(${fmt(ppMonthly(t.grandTotal))} / month) &middot; Payable <b>${fmt(t.totalMedisave)}</b> MediSave + <b>${fmt(t.totalCash)}</b> cash</span></div>` : '';
-  return `<section class="pp-slide pp-hosp"><div class="pp-pad" style="width:100%;display:flex;flex-direction:column;justify-content:center">
+  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-mech" style="width:100%;display:flex;flex-direction:column;justify-content:center">
     <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
-    <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0 0">${esc(c.name)}</h2>
-    <div class="pp-hgrid"><div class="pp-hbenefits pp-reveal" style="--i:2">${bens}</div><div class="pp-hside">${stats}</div></div>
+    <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.5rem,2.2vw,2.1rem);margin:.3rem 0 .5rem">${esc(c.name)} <span style="font-size:.85rem;font-weight:400;color:var(--pp-muted)">with ${esc(c.riderName)}</span></h2>
+    <div class="pp-mech-sub pp-reveal" style="--i:2">Overview of AIA HealthShield Gold Max Plans</div>
+    <table class="pp-reveal" style="--i:2"><thead>${wardRow}${planRow}</thead><tbody>${overviewRows}</tbody></table>
+    <div class="pp-mech-sub pp-reveal" style="--i:3">Benefits of AIA Max VitalHealth Pro <span style="font-weight:400">(S$ and includes GST)</span></div>
+    <table class="pp-reveal" style="--i:4"><thead>${riderWardRow}${riderPlanRow}</thead><tbody>${riderRows}</tbody></table>
     ${premTable}
   </div>${ppPolicyFoot()}</section>`;
 }
