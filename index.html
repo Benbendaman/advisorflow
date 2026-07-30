@@ -447,6 +447,18 @@
 #proposalLayer .pp-cichips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.4rem}
 #proposalLayer .pp-cichip{padding:.35rem .85rem;border:1px solid var(--pp-line);border-radius:20px;font-size:.78rem;color:#5c564c;background:#FBF7EF}
 
+/* ---- plan-mechanics comparison table (e.g. Solitaire Personal Accident) ---- */
+#proposalLayer .pp-mech{width:100%;overflow-y:auto;max-height:100%}
+#proposalLayer .pp-mech table{width:100%;border-collapse:collapse;margin-top:.9rem;font-size:.74rem}
+#proposalLayer .pp-mech th,#proposalLayer .pp-mech td{padding:.4rem .55rem;text-align:center;border-bottom:1px solid var(--pp-line);color:var(--pp-text)}
+#proposalLayer .pp-mech th:first-child,#proposalLayer .pp-mech td:first-child{text-align:left;font-weight:500;color:var(--pp-ink)}
+#proposalLayer .pp-mech thead th{background:var(--pp-ink);color:var(--pp-cream);font-weight:600;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase}
+#proposalLayer .pp-mech tbody tr:nth-child(even){background:var(--pp-cream2)}
+#proposalLayer .pp-mech td.sel{background:rgba(195,155,90,.22);font-weight:700;color:var(--pp-ink)}
+#proposalLayer .pp-mech thead th.sel{background:var(--pp-gold);color:var(--pp-ink)}
+#proposalLayer .pp-mech-total{margin-top:.9rem;text-align:right;font-family:var(--pp-serif);font-size:1.15rem;color:var(--pp-pine)}
+#proposalLayer .pp-mech-total b{color:var(--pp-terra)}
+
 /* ---- chrome (nav) ---- */
 #proposalLayer .pp-progress{position:fixed;top:0;left:0;height:3px;background:var(--pp-terra);width:0;z-index:50;transition:width .8s var(--pp-ease)}
 #proposalLayer .pp-chrome{position:fixed;z-index:60;bottom:1.5rem;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:1rem;padding:.5rem .8rem;background:rgba(251,247,239,.85);backdrop-filter:blur(10px);border-radius:40px;box-shadow:0 8px 30px rgba(14,42,39,.16)}
@@ -861,6 +873,7 @@
       <div id="propPolicyBlocks"></div>
       <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
         <button class="btn small" onclick="App.propAddPolicy('wholelife','AIA Guaranteed Protect Plus')">+ Guaranteed Protect Plus</button>
+        <button class="btn small" onclick="App.propAddPolicy('term','AIA Secure Flexi Term')">+ Secure Flexi Term</button>
         <button class="btn small" onclick="App.propAddPolicy('ci','AIA Ultimate Critical Cover')">+ Ultimate Critical Cover</button>
         <button class="btn small" onclick="App.propAddPolicy('accident','AIA Solitaire Personal Accident')">+ Solitaire Personal Accident</button>
         <button class="btn small" onclick="App.propAddPolicy('hospital','AIA HealthShield Gold Max A')">+ HealthShield Gold Max A</button>
@@ -2696,6 +2709,10 @@ const App = {
     if(!pr.policies) pr.policies=[];
     const pol=blankPolicy(kind);
     if(name) pol.name=name;
+    if(kind==='term'){
+      const p=this.person();
+      if(p && p.dob){ const a=ageFrom(p.dob); if(a!=null) pol.startAge=String(a); }
+    }
     pr.policies.push(pol);
     this.save();
     this.renderProposalPolicies();
@@ -2741,7 +2758,7 @@ const App = {
   },
   renderProposalPolicies(){
     const pr=this.currentProposal();
-    const kindLabel={wholelife:'Whole Life',hospital:'Hospital & Surgical',accident:'Personal Accident',ci:'Critical Illness'};
+    const kindLabel={wholelife:'Whole Life',hospital:'Hospital & Surgical',accident:'Personal Accident',ci:'Critical Illness',term:'Term Life'};
     $('#propPolicyBlocks').innerHTML=(pr.policies||[]).map((pol,i)=>{
       let body='';
       if(pol.kind==='wholelife'){
@@ -2792,18 +2809,48 @@ const App = {
           <div class="pp-editor-sub">Feature chips (comma separated)</div>
           <input type="text" placeholder="e.g. 150 Medical Conditions, Ultimate Reset Benefit, Death Benefit, Catastrophic CI Benefit, Ultimate Relapse Benefit" value="${esc((pol.features||[]).join(', '))}" oninput="App.propPolicyFeatures(${i},this.value)">
         `;
-      } else { // hospital / accident
-        const isAcc=pol.kind==='accident';
-        const benefits=(pol.benefits||[]).map((b,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="${isAcc?'e.g. Accidental Permanent Total Disability Benefit':'e.g. As Charged Coverage'}" value="${esc(b.title)}" oninput="App.propPolicySubField(${i},'benefits',${j},'title',this.value)"><input type="text" placeholder="${isAcc?'e.g. Renewal Bonus of up to 30% increase in Insured Amount':'e.g. Reimburses deductible and co-insurance, subject to a co-payment capped per Policy Year'}" value="${esc(b.desc)}" oninput="App.propPolicySubField(${i},'benefits',${j},'desc',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'benefits',${j})">&times;</button></div>`).join('');
-        const stats=(pol.stats||[]).map((s,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="${isAcc?'e.g. S$500,000':'e.g. S$450,000'}" value="${esc(s.v)}" oninput="App.propPolicySubField(${i},'stats',${j},'v',this.value)"><input type="text" placeholder="${isAcc?'e.g. Accidental Death Benefit':'e.g. Limit per Policy Year'}" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stats',${j},'label',this.value)"><label style="display:flex;align-items:center;gap:4px;font-size:12px;flex:0 0 auto"><input type="checkbox" style="width:auto" ${s.alt?'checked':''} onchange="App.propPolicySubField(${i},'stats',${j},'alt',this.checked)">terracotta</label><button class="del" onclick="App.propPolicySubDel(${i},'stats',${j})">&times;</button></div>`).join('');
+      } else if(pol.kind==='term'){
         body=`
           <div class="form-row">
-            <div><label>Type / label</label><input type="text" placeholder="${isAcc?'Personal Accident':'Hospital & Surgical'}" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
-            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="${isAcc?'e.g. AIA Solitaire Personal Accident (Plan 1)':'e.g. AIA HealthShield Gold Max A with Max VitalHealth A Value'}" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+            <div><label>Type / label</label><input type="text" placeholder="Term Life · Death / TPD" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA Secure Flexi Term" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
           </div>
-          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (e.g. "Premium <b>S$ 1,891.90</b> / year")</label><input type="text" placeholder="${isAcc?'AIA Solitaire Personal Accident Plan 1 (+Hosp Benefit) — S$264.81 / year':'MediSave S$300.00 + Cash S$434.76 / year'}" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
+          <div class="form-row">
+            <div><label>Sum assured (Death & TPD)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,000,000" value="${fmt2(pol.sumAssured)}" oninput="App.propPolicyField(${i},'sumAssured',this.value)"></div>
+            <div><label>Total premium (with all riders) / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 735.00" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Policy term</label><select onchange="App.propPolicyField(${i},'term',this.value)">${PROPOSAL_TERM_OPTIONS.map(t=>`<option value="${t}" ${pol.term===t?'selected':''}>${PROPOSAL_TERM_LABELS[t]}</option>`).join('')}</select></div>
+            <div><label>Start age (auto-filled from DOB — edit if needed)</label><input type="number" placeholder="e.g. 32" value="${esc(pol.startAge)}" oninput="App.propPolicyField(${i},'startAge',this.value)"></div>
+          </div>
+          <div class="cardhint">Cover ends at age ${(pol.term==='to65'?65:pol.term==='to75'?75:(num(pol.startAge)+num(pol.term)))||'—'}. No manual chart editing — it draws itself from these fields.</div>
+        `;
+      } else if(pol.kind==='accident'){
+        body=`
+          <div class="form-row">
+            <div><label>Type / label</label><input type="text" placeholder="Personal Accident" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA Solitaire Personal Accident" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Plan tier</label><select onchange="App.propPolicyField(${i},'planTier',this.value)">${[1,2,3,4].map(t=>`<option value="${t}" ${num(pol.planTier)===t?'selected':''}>Plan ${t}</option>`).join('')}</select></div>
+            <div><label>Occupational class</label><select onchange="App.propPolicyField(${i},'occClass',this.value)"><option value="classes12" ${pol.occClass==='classes12'?'selected':''}>Classes 1 & 2</option><option value="classes34" ${pol.occClass==='classes34'?'selected':''}>Classes 3 & 4</option></select></div>
+          </div>
+          <label style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:500">
+            <input type="checkbox" style="width:auto" ${pol.includeHospRider?'checked':''} onchange="App.propPolicyField(${i},'includeHospRider',this.checked)"> Include Optional Accidental Hospitalisation Benefits Group
+          </label>
+          <div class="cardhint">This page draws the full AIA Solitaire Personal Accident (II) benefits &amp; premium table automatically — no benefit typing needed, just pick the tier and class above.</div>
+        `;
+      } else { // hospital
+        const benefits=(pol.benefits||[]).map((b,j)=>`
+          <div class="prow-flat"><input type="text" placeholder="e.g. As Charged Coverage" value="${esc(b.title)}" oninput="App.propPolicySubField(${i},'benefits',${j},'title',this.value)"><input type="text" placeholder="e.g. Reimburses deductible and co-insurance, subject to a co-payment capped per Policy Year" value="${esc(b.desc)}" oninput="App.propPolicySubField(${i},'benefits',${j},'desc',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'benefits',${j})">&times;</button></div>`).join('');
+        const stats=(pol.stats||[]).map((s,j)=>`
+          <div class="prow-flat"><input type="text" placeholder="e.g. S$450,000" value="${esc(s.v)}" oninput="App.propPolicySubField(${i},'stats',${j},'v',this.value)"><input type="text" placeholder="e.g. Limit per Policy Year" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stats',${j},'label',this.value)"><label style="display:flex;align-items:center;gap:4px;font-size:12px;flex:0 0 auto"><input type="checkbox" style="width:auto" ${s.alt?'checked':''} onchange="App.propPolicySubField(${i},'stats',${j},'alt',this.checked)">terracotta</label><button class="del" onclick="App.propPolicySubDel(${i},'stats',${j})">&times;</button></div>`).join('');
+        body=`
+          <div class="form-row">
+            <div><label>Type / label</label><input type="text" placeholder="Hospital & Surgical" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA HealthShield Gold Max A with Max VitalHealth A Value" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+          </div>
+          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (e.g. "Premium <b>S$ 1,891.90</b> / year")</label><input type="text" placeholder="MediSave S$300.00 + Cash S$434.76 / year" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
           <div class="pp-editor-sub">Benefits checklist</div>${benefits}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'benefits')">+ Add benefit</button>
           <div class="pp-editor-sub">Stat cards (usually 2)</div>${stats}
@@ -2865,14 +2912,43 @@ const PROPOSAL_PLAN_CATS = ['Death','TPD','CI','Hospital','Hospital Rider','Acci
 // needs-analysis multipliers — constants Ben can tweak once here, not per client
 const PROPOSAL_MULT = { death:10, tpd:10, ciBase:100000, ciMult:2 };
 
+const PROPOSAL_TERM_OPTIONS = ['5','10','20','30','to65','to75'];
+const PROPOSAL_TERM_LABELS = {'5':'5 years','10':'10 years','20':'20 years','30':'30 years','to65':'To age 65','to75':'To age 75'};
+// AIA Solitaire Personal Accident (II) — fixed product terms, not per-client editable (only which
+// plan tier / occupational class applies to this client). Source: Ben's Odyssey plan-mechanics deck.
+const SOLITAIRE_PA_TABLE = {
+  basic: [
+    ['Accidental Death Benefit', [100000,250000,500000,750000]],
+    ['Accidental Major Dismemberment Benefit', [300000,750000,1500000,2250000]],
+    ['Accidental Permanent Total Disability Benefit', [300000,750000,1500000,2250000]],
+    ['Accidental Dismemberment and Burns Benefit', [100000,250000,500000,750000]],
+    ['Additional Payout for Accidental Death Benefit (Transport/Pedestrian/PMD/Building Fire)', [100000,250000,500000,750000]],
+    ['Accident Medical Reimbursement Benefit (per accident)', ['Up to 2,000','Up to 3,000','Up to 4,000','Up to 5,000']],
+    ['TCM / Chiropractic Reimbursement Benefit (per accident)', ['Up to 500','Up to 750','Up to 1,000','Up to 1,250']],
+    ['Renewal Bonus (up to 30% increase in Insured Amount on Basic Benefits 1 to 5)', ['Yes','Yes','Yes','Yes']],
+  ],
+  hosp: [
+    ['Daily Accidental Hospital Income Benefit (per day, max 365 days/accident)', [50,150,250,350]],
+    ['Daily Accidental ICU Benefit (per day, max 30 days/accident)', [50,150,250,350]],
+    ['Ambulance Services Benefit (per accident)', ['Up to 200','Up to 200','Up to 200','Up to 200']],
+    ['Broken Bones Benefit (per lifetime)', ['Up to 8,000','Up to 12,000','Up to 16,000','Up to 20,000']],
+    ['Emergency Medical Evacuation and Repatriation Benefit (per policy year)', ['Up to 10,000','Up to 25,000','Up to 50,000','Up to 75,000']],
+  ],
+  premium: {
+    classes12: { basic:[224.11,371.82,595.93,855.00], hosp:[40.70,70.61,104.53,138.29] },
+    classes34: { basic:[385.00,640.00,1025.00,1485.00], hosp:[69.92,121.34,182.84,241.86] },
+  }
+};
 function blankPolicy(kind){
   if(kind==='wholelife') return { kind, type:'Whole Life · Death / TPD / Critical Illness', name:'AIA Guaranteed Protect Plus', base:'', boosted:'', multiplier:'',
     ages:{start:'',paidUp:'',multiplierEnds:'',coverEnds:''}, facts:[], premium:'', term:'', surrender:[] };
   if(kind==='ci') return { kind, type:'Critical Illness', name:'AIA Ultimate Critical Cover', facts:[],
     stages:[{label:'Early',pct:50,val:'Up to 100% IA',note:'per claim'},{label:'Intermediate',pct:75,val:'Up to 100% IA',note:'per claim'},{label:'Major',pct:100,val:'100% IA',note:'lump sum'}],
     features:[], premiumLine:'' };
-  // hospital / accident share the same shape
-  return { kind, type: kind==='accident'?'Personal Accident':'Hospital & Surgical', name: kind==='accident'?'AIA Solitaire Personal Accident':'', benefits:[], stats:[], premiumLine:'' };
+  if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', term:'30', startAge:'', premium:'' };
+  if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
+  // hospital
+  return { kind, type:'Hospital & Surgical', name:'', benefits:[], stats:[], premiumLine:'' };
 }
 
 /* ---------- page renderers (return HTML strings) ---------- */
@@ -3025,10 +3101,85 @@ function ppGppChart(c){
     ${circles}
   </svg>`;
 }
+// ---- simple Term Life policy page (e.g. AIA Secure Flexi Term — Death & TPD only) ----
+function ppTermEndAge(startAge, term){
+  const s=num(startAge);
+  if(term==='to65') return 65;
+  if(term==='to75') return 75;
+  return s + num(term);
+}
+function ppTermYears(startAge, term){
+  const s=num(startAge);
+  if(term==='to65') return 65 - s;
+  if(term==='to75') return 75 - s;
+  return num(term);
+}
+function ppTermChart(pol){
+  const INK='#173A36',GOLD='#C39B5A',MUT='#8A8274',CREAM='#F4EEE2',PINE='#1F4B45';
+  const start=num(pol.startAge)||30, end=ppTermEndAge(pol.startAge||30, pol.term)||(start+30);
+  const x0=120,x1=610,base=260,top=130;
+  const span=(end-start)||1, X=a=>x0+(a-start)/span*(x1-x0);
+  const sx=X(start), ex=X(end);
+  return `<svg class="pp-chartsvg" viewBox="0 0 680 320" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${x0}" y1="${base}" x2="${x1+20}" y2="${base}" stroke="${INK}" stroke-width="2"/>
+    <rect x="${sx}" y="${top}" width="${ex-sx}" height="${base-top}" fill="${GOLD}" opacity="0.16" stroke="${PINE}" stroke-width="1.5"/>
+    <text x="${(sx+ex)/2}" y="${top-16}" text-anchor="middle" font-size="16" font-weight="700" fill="${PINE}" font-family="Fraunces,serif">${esc(pol.name||'Term Plan')}</text>
+    <g><circle cx="${sx}" cy="${base}" r="21" fill="${INK}"/>
+      <text x="${sx}" y="${base+6}" text-anchor="middle" font-size="16" font-weight="600" fill="${CREAM}" font-family="Inter,sans-serif">${start}</text>
+      <text x="${sx}" y="${base+48}" text-anchor="middle" font-size="12.5" fill="${MUT}" font-family="Inter,sans-serif">Start of plan</text>
+    </g>
+    <g><circle cx="${ex}" cy="${base}" r="21" fill="${INK}"/>
+      <text x="${ex}" y="${base+6}" text-anchor="middle" font-size="16" font-weight="600" fill="${CREAM}" font-family="Inter,sans-serif">${end}</text>
+      <text x="${ex}" y="${base+48}" text-anchor="middle" font-size="12.5" fill="${MUT}" font-family="Inter,sans-serif">Cover ends</text>
+    </g>
+  </svg>`;
+}
+function ppTermSection(pol){
+  const years=ppTermYears(pol.startAge,pol.term);
+  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-polylayout">
+    <div class="pp-pcol">
+      <div class="pp-kicker pp-reveal" style="--i:0">Proposed Coverage</div>
+      <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(pol.name)}</h2>
+      <div class="pp-lead pp-reveal" style="--i:2">1x Death and Total Permanent Disability coverage of <b>S$ ${esc(pol.sumAssured)}</b></div>
+      <div class="pp-facts pp-reveal" style="--i:3">
+        <div class="pp-fact"><div class="pp-fl">Premium Term</div><div class="pp-fv">${years} years</div></div>
+        <div class="pp-fact"><div class="pp-fl">Total Premium (with all riders) per year</div><div class="pp-fv">S$ ${esc(pol.premium)}</div></div>
+      </div>
+    </div>
+    <div class="pp-pchart pp-reveal" style="--i:2">${ppTermChart(pol)}</div>
+  </div>${ppPolicyFoot()}</section>`;
+}
+// ---- fixed AIA Solitaire Personal Accident (II) plan-mechanics table (no per-client editing of benefits) ----
+function ppSolitairePaSection(pol){
+  const T=SOLITAIRE_PA_TABLE;
+  const tier=Math.max(1,Math.min(4,num(pol.planTier)||2));
+  const occ=pol.occClass==='classes34'?'classes34':'classes12';
+  const cellVal=v=>typeof v==='number' ? 'S$ '+v.toLocaleString('en-SG') : esc(v);
+  const row=([label,vals])=>`<tr><td>${esc(label)}</td>${vals.map((v,idx)=>`<td class="${idx+1===tier?'sel':''}">${cellVal(v)}</td>`).join('')}</tr>`;
+  const rowsBasic=T.basic.map(row).join('');
+  const rowsHosp=pol.includeHospRider ? T.hosp.map(row).join('') : '';
+  const premBasic=T.premium[occ].basic, premHosp=T.premium[occ].hosp;
+  const premRowBasic=`<tr><td>Basic Benefits</td>${premBasic.map((v,idx)=>`<td class="${idx+1===tier?'sel':''}">S$ ${v.toFixed(2)}</td>`).join('')}</tr>`;
+  const premRowHosp=pol.includeHospRider ? `<tr><td>Optional: Accidental Hospitalisation</td>${premHosp.map((v,idx)=>`<td class="${idx+1===tier?'sel':''}">S$ ${v.toFixed(2)}</td>`).join('')}</tr>` : '';
+  const total=premBasic[tier-1] + (pol.includeHospRider ? premHosp[tier-1] : 0);
+  const headRow=`<tr><th>Basic Benefits (S$)</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
+  const headRowHosp=`<tr><th>Optional Hospitalisation Benefits (S$)</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
+  const headRowPrem=`<tr><th>Annual Premium (S$, ${occ==='classes34'?'Occ. Classes 3 &amp; 4':'Occ. Classes 1 &amp; 2'})</th>${[1,2,3,4].map(t=>`<th class="${t===tier?'sel':''}">Plan ${t}</th>`).join('')}</tr>`;
+  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-mech" style="width:100%;display:flex;flex-direction:column;justify-content:center">
+    <div class="pp-kicker pp-reveal" style="--i:0">${esc(pol.type)}</div>
+    <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.6rem,2.4vw,2.2rem);margin:.3rem 0 .6rem">${esc(pol.name)} <span style="font-size:.85rem;font-weight:400;color:var(--pp-muted)">— Plan ${tier}</span></h2>
+    <table class="pp-reveal" style="--i:2"><thead>${headRow}</thead><tbody>${rowsBasic}</tbody></table>
+    ${pol.includeHospRider?`<table class="pp-reveal" style="--i:3"><thead>${headRowHosp}</thead><tbody>${rowsHosp}</tbody></table>`:''}
+    <table class="pp-reveal" style="--i:4"><thead>${headRowPrem}</thead><tbody>${premRowBasic}${premRowHosp}</tbody></table>
+    <div class="pp-mech-total pp-reveal" style="--i:5">Your total premium: <b>S$ ${total.toFixed(2)}</b> / year</div>
+  </div>${ppPolicyFoot()}</section>`;
+}
 function ppPolicySection(pol){
   if(pol.kind==='wholelife') return ppWholeLifeSection(pol);
   if(pol.kind==='ci') return ppCiSection(pol);
-  return ppBenefitSection(pol); // hospital, accident
+  if(pol.kind==='term') return ppTermSection(pol);
+  if(pol.kind==='accident') return ppSolitairePaSection(pol);
+  return ppBenefitSection(pol); // hospital
 }
 function ppCoverageHtml(pr){
   const rows=(pr.coverage||[]).map((c,i)=>{
