@@ -850,7 +850,7 @@
       <div class="form-row">
         <div><label>Annual income</label><input type="text" inputmode="decimal" class="money" id="propIncome" oninput="App.propScalar('income',this.value)"></div>
         <div><label>Preferred ward</label><select id="propWard" onchange="App.propScalar('hospWard',this.value)"></select></div>
-        <div><label>Personal accident note</label><input type="text" id="propPaText" placeholder="Based on lifestyle" oninput="App.propScalar('paText',this.value)"></div>
+        <div><label>Personal accident note</label><input type="text" id="propPaText" placeholder="Based on recommendation" oninput="App.propScalar('paText',this.value)"></div>
       </div>
       <div class="calcnote" id="propNeedsPreview"></div>
     </div>
@@ -2585,8 +2585,8 @@ const App = {
     const pr=this.currentProposal();
     $('#propObjRows').innerHTML=(pr.objectives||[]).map((o,i)=>`
       <div class="prow-flat">
-        <input type="text" placeholder="e.g. Settle insurance plans" value="${esc(o.title)}" oninput="App.propRow('objectives',${i},'title',this.value)">
-        <input type="text" placeholder="e.g. Settle insurance plans of $XXX, XXX, XXX" value="${esc(o.desc)}" oninput="App.propRow('objectives',${i},'desc',this.value)">
+        <input type="text" placeholder="e.g. Accident & Hospitalisation" value="${esc(o.title)}" oninput="App.propRow('objectives',${i},'title',this.value)">
+        <input type="text" placeholder="e.g. To provide protection in the event of accident and hospitalisation through AIA Solitaire Personal Accident and HealthShield Gold Max A" value="${esc(o.desc)}" oninput="App.propRow('objectives',${i},'desc',this.value)">
         <button class="del" onclick="App.propDelRow('objectives',${i})">&times;</button>
       </div>`).join('') || '<div class="cardhint">No objectives yet.</div>';
   },
@@ -2598,7 +2598,7 @@ const App = {
       const boxes=PROPOSAL_PLAN_CATS.map(c=>`<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;margin-right:10px"><input type="checkbox" style="width:auto" ${cats.includes(c)?'checked':''} onchange="App.propPlanCat(${i},'${c}',this.checked)">${c}</label>`).join('');
       return `<div class="policy-block">
         <div class="prow-flat">
-          <input type="text" list="dlPropPlans" placeholder="e.g. Guaranteed Protect Plus" value="${esc(pl.name)}" oninput="App.propRow('plans',${i},'name',this.value)" style="flex:2 1 260px">
+          <input type="text" list="dlPropPlans" placeholder="e.g. AIA Guaranteed Protect Plus" value="${esc(pl.name)}" oninput="App.propRow('plans',${i},'name',this.value)" style="flex:2 1 260px">
           <button class="del" onclick="App.propDelRow('plans',${i})">&times;</button>
         </div>
         <div>${boxes}</div>
@@ -2617,9 +2617,9 @@ const App = {
     const pr=this.currentProposal();
     $('#propCoverageRows').innerHTML=(pr.coverage||[]).map((c,i)=>`
       <div class="prow-flat">
-        <input type="text" placeholder="e.g. Death & TPD" value="${esc(c.benefit)}" oninput="App.propRow('coverage',${i},'benefit',this.value)">
-        <input type="text" placeholder="e.g. S$ 500,000" value="${esc(c.amount)}" oninput="App.propRow('coverage',${i},'amount',this.value)">
-        <input type="text" list="dlPropPlans" placeholder="e.g. Guaranteed Protect Plus" value="${esc(c.plan)}" oninput="App.propRow('coverage',${i},'plan',this.value)">
+        <input type="text" placeholder="e.g. Premature Death & Total Permanent Disability" value="${esc(c.benefit)}" oninput="App.propRow('coverage',${i},'benefit',this.value)">
+        <input type="text" placeholder="e.g. S$ 250,000" value="${esc(c.amount)}" oninput="App.propRow('coverage',${i},'amount',this.value)">
+        <input type="text" list="dlPropPlans" placeholder="e.g. AIA Guaranteed Protect Plus + Ultimate Critical Cover" value="${esc(c.plan)}" oninput="App.propRow('coverage',${i},'plan',this.value)">
         <button class="del" onclick="App.propDelRow('coverage',${i})">&times;</button>
       </div>`).join('') || '<div class="cardhint">No coverage rows yet.</div>';
   },
@@ -2628,9 +2628,9 @@ const App = {
     const pr=this.currentProposal();
     $('#propPremiumRows').innerHTML=(pr.premium||[]).map((r,i)=>`
       <div class="prow-flat">
-        <input type="text" list="dlPropPlans" placeholder="Plan" value="${esc(r.plan)}" oninput="App.propRow('premium',${i},'plan',this.value)" style="flex:2 1 220px">
-        <input type="text" inputmode="decimal" class="money" placeholder="MediSave / yr" value="${fmt2(r.medisave)}" oninput="App.propRow('premium',${i},'medisave',this.value)">
-        <input type="text" inputmode="decimal" class="money" placeholder="Cash / yr" value="${fmt2(r.cash)}" oninput="App.propRow('premium',${i},'cash',this.value)">
+        <input type="text" list="dlPropPlans" placeholder="e.g. AIA Ultimate Critical Cover" value="${esc(r.plan)}" oninput="App.propRow('premium',${i},'plan',this.value)" style="flex:2 1 220px">
+        <input type="text" inputmode="decimal" class="money" placeholder="e.g. 300.00" value="${fmt2(r.medisave)}" oninput="App.propRow('premium',${i},'medisave',this.value)">
+        <input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(r.cash)}" oninput="App.propRow('premium',${i},'cash',this.value)">
         <button class="del" onclick="App.propDelRow('premium',${i})">&times;</button>
       </div>`).join('') || '<div class="cardhint">No premium rows yet.</div>';
     this.renderProposalPremiumTotals();
@@ -2734,17 +2734,17 @@ const App = {
       let body='';
       if(pol.kind==='wholelife'){
         const facts=(pol.facts||[]).map((f,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. Sum Assured" value="${esc(f.label)}" oninput="App.propPolicySubField(${i},'facts',${j},'label',this.value)"><input type="text" placeholder="e.g. S$ 100,000" value="${esc(f.value)}" oninput="App.propPolicySubField(${i},'facts',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'facts',${j})">&times;</button></div>`).join('');
+          <div class="prow-flat"><input type="text" placeholder="e.g. Coverage Period" value="${esc(f.label)}" oninput="App.propPolicySubField(${i},'facts',${j},'label',this.value)"><input type="text" placeholder="e.g. Till Age 65" value="${esc(f.value)}" oninput="App.propPolicySubField(${i},'facts',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'facts',${j})">&times;</button></div>`).join('');
         const surr=(pol.surrender||[]).map((s,j)=>`
           <div class="prow-flat"><input type="text" placeholder="e.g. 65" value="${esc(s.age)}" oninput="App.propPolicySubField(${i},'surrender',${j},'age',this.value)"><input type="text" placeholder="e.g. 120,000" value="${esc(s.value)}" oninput="App.propPolicySubField(${i},'surrender',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'surrender',${j})">&times;</button></div>`).join('');
         body=`
           <div class="form-row">
             <div><label>Type / label</label><input type="text" placeholder="Whole Life · Death / TPD / Critical Illness" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
-            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. Guaranteed Protect Plus" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA Guaranteed Protect Plus" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
           </div>
           <div class="form-row">
             <div><label>Base sum assured</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 100,000" value="${fmt2(pol.base)}" oninput="App.propPolicyField(${i},'base',this.value)"></div>
-            <div><label>Boosted sum assured</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 500,000" value="${fmt2(pol.boosted)}" oninput="App.propPolicyField(${i},'boosted',this.value)"></div>
+            <div><label>Boosted sum assured</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 250,000" value="${fmt2(pol.boosted)}" oninput="App.propPolicyField(${i},'boosted',this.value)"></div>
             <div><label>Multiplier label (e.g. "5x")</label><input type="text" placeholder="e.g. 5x" value="${esc(pol.multiplier)}" oninput="App.propPolicyField(${i},'multiplier',this.value)"></div>
           </div>
           <div class="form-row">
@@ -2764,33 +2764,34 @@ const App = {
         `;
       } else if(pol.kind==='ci'){
         const facts=(pol.facts||[]).map((f,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. Sum Assured" value="${esc(f.label)}" oninput="App.propPolicySubField(${i},'facts',${j},'label',this.value)"><input type="text" placeholder="e.g. S$ 200,000" value="${esc(f.value)}" oninput="App.propPolicySubField(${i},'facts',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'facts',${j})">&times;</button></div>`).join('');
+          <div class="prow-flat"><input type="text" placeholder="e.g. Major Critical Illness Benefit" value="${esc(f.label)}" oninput="App.propPolicySubField(${i},'facts',${j},'label',this.value)"><input type="text" placeholder="e.g. Unlimited" value="${esc(f.value)}" oninput="App.propPolicySubField(${i},'facts',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'facts',${j})">&times;</button></div>`).join('');
         const stages=(pol.stages||[]).map((s,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. Early" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stages',${j},'label',this.value)"><input type="number" placeholder="e.g. 50" value="${esc(s.pct)}" style="max-width:90px" oninput="App.propPolicySubField(${i},'stages',${j},'pct',this.value)"><input type="text" placeholder="e.g. Up to 100% IA" value="${esc(s.val)}" oninput="App.propPolicySubField(${i},'stages',${j},'val',this.value)"><input type="text" placeholder="e.g. per claim" value="${esc(s.note)}" oninput="App.propPolicySubField(${i},'stages',${j},'note',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'stages',${j})">&times;</button></div>`).join('');
+          <div class="prow-flat"><input type="text" placeholder="e.g. Early" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stages',${j},'label',this.value)"><input type="number" placeholder="e.g. 50" value="${esc(s.pct)}" style="max-width:90px" oninput="App.propPolicySubField(${i},'stages',${j},'pct',this.value)"><input type="text" placeholder="e.g. 5 x S$150,000" value="${esc(s.val)}" oninput="App.propPolicySubField(${i},'stages',${j},'val',this.value)"><input type="text" placeholder="e.g. per claim" value="${esc(s.note)}" oninput="App.propPolicySubField(${i},'stages',${j},'note',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'stages',${j})">&times;</button></div>`).join('');
         body=`
           <div class="form-row">
             <div><label>Type / label</label><input type="text" placeholder="Critical Illness" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
-            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. Ultimate Critical Cover" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="e.g. AIA Ultimate Critical Cover" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
           </div>
-          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (shown under the facts, e.g. "Premium <b>S$ 1,375.13</b> / year")</label><input type="text" placeholder="Premium S$ 1,375.13 / year" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
+          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (shown under the facts, e.g. "Premium <b>S$ 1,375.13</b> / year")</label><input type="text" placeholder="AIA Ultimate Critical Cover till 65yo — S$1,375.13 / year" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
           <div class="pp-editor-sub">Facts</div>${facts}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'facts')">+ Add fact</button>
           <div class="pp-editor-sub">Stages (Early / Intermediate / Major bar chart)</div>${stages}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'stages')">+ Add stage</button>
           <div class="pp-editor-sub">Feature chips (comma separated)</div>
-          <input type="text" placeholder="e.g. Guaranteed renewal, No exclusion, Full payout" value="${esc((pol.features||[]).join(', '))}" oninput="App.propPolicyFeatures(${i},this.value)">
+          <input type="text" placeholder="e.g. 150 Medical Conditions, Ultimate Reset Benefit, Death Benefit, Catastrophic CI Benefit, Ultimate Relapse Benefit" value="${esc((pol.features||[]).join(', '))}" oninput="App.propPolicyFeatures(${i},this.value)">
         `;
       } else { // hospital / accident
+        const isAcc=pol.kind==='accident';
         const benefits=(pol.benefits||[]).map((b,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. Full private hospital coverage" value="${esc(b.title)}" oninput="App.propPolicySubField(${i},'benefits',${j},'title',this.value)"><input type="text" placeholder="e.g. As-charged cover up to your preferred ward" value="${esc(b.desc)}" oninput="App.propPolicySubField(${i},'benefits',${j},'desc',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'benefits',${j})">&times;</button></div>`).join('');
+          <div class="prow-flat"><input type="text" placeholder="${isAcc?'e.g. Accidental Permanent Total Disability Benefit':'e.g. As Charged Coverage'}" value="${esc(b.title)}" oninput="App.propPolicySubField(${i},'benefits',${j},'title',this.value)"><input type="text" placeholder="${isAcc?'e.g. Renewal Bonus of up to 30% increase in Insured Amount':'e.g. Reimburses deductible and co-insurance, subject to a co-payment capped per Policy Year'}" value="${esc(b.desc)}" oninput="App.propPolicySubField(${i},'benefits',${j},'desc',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'benefits',${j})">&times;</button></div>`).join('');
         const stats=(pol.stats||[]).map((s,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="Value (e.g. S$ 100,000)" value="${esc(s.v)}" oninput="App.propPolicySubField(${i},'stats',${j},'v',this.value)"><input type="text" placeholder="e.g. Annual limit" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stats',${j},'label',this.value)"><label style="display:flex;align-items:center;gap:4px;font-size:12px;flex:0 0 auto"><input type="checkbox" style="width:auto" ${s.alt?'checked':''} onchange="App.propPolicySubField(${i},'stats',${j},'alt',this.checked)">terracotta</label><button class="del" onclick="App.propPolicySubDel(${i},'stats',${j})">&times;</button></div>`).join('');
+          <div class="prow-flat"><input type="text" placeholder="${isAcc?'e.g. S$500,000':'e.g. S$450,000'}" value="${esc(s.v)}" oninput="App.propPolicySubField(${i},'stats',${j},'v',this.value)"><input type="text" placeholder="${isAcc?'e.g. Accidental Death Benefit':'e.g. Limit per Policy Year'}" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stats',${j},'label',this.value)"><label style="display:flex;align-items:center;gap:4px;font-size:12px;flex:0 0 auto"><input type="checkbox" style="width:auto" ${s.alt?'checked':''} onchange="App.propPolicySubField(${i},'stats',${j},'alt',this.checked)">terracotta</label><button class="del" onclick="App.propPolicySubDel(${i},'stats',${j})">&times;</button></div>`).join('');
         body=`
           <div class="form-row">
-            <div><label>Type / label</label><input type="text" placeholder="${pol.kind==='accident'?'Personal Accident':'Hospital & Surgical'}" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
-            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="${pol.kind==='accident'?'e.g. Accident Care':'e.g. HealthShield Gold Max A with Pro A rider (or HSG B w Pro B / HSG B Lite with Lite rider)'}" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+            <div><label>Type / label</label><input type="text" placeholder="${isAcc?'Personal Accident':'Hospital & Surgical'}" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="${isAcc?'e.g. AIA Solitaire Personal Accident (Plan 1)':'e.g. AIA HealthShield Gold Max A with Max VitalHealth A Value'}" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
           </div>
-          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (e.g. "Premium <b>S$ 1,891.90</b> / year")</label><input type="text" placeholder="Premium S$ 1,891.90 / year" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
+          <div class="form-row"><div style="grid-column:1/-1"><label>Premium line (e.g. "Premium <b>S$ 1,891.90</b> / year")</label><input type="text" placeholder="${isAcc?'AIA Solitaire Personal Accident Plan 1 (+Hosp Benefit) — S$264.81 / year':'MediSave S$300.00 + Cash S$434.76 / year'}" value="${esc(pol.premiumLine)}" oninput="App.propPolicyField(${i},'premiumLine',this.value)"></div></div>
           <div class="pp-editor-sub">Benefits checklist</div>${benefits}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'benefits')">+ Add benefit</button>
           <div class="pp-editor-sub">Stat cards (usually 2)</div>${stats}
@@ -2827,13 +2828,13 @@ function blankProposal(){
     objectivesKicker: "What we're setting out to do",
     objectivesTitle: "Your objectives",
     objectives: [
-      {title:'Settle insurance plans', desc:'Settle insurance plans of $XXX, XXX, XXX'},
-      {title:'Settle investment plans', desc:'Settle investment plans with $XXX'}
+      {title:'Insurance Plans', desc:'To settle your insurance premiums of S$XXX,XXX,XXX and secure comprehensive protection for you and your family'},
+      {title:'Investment Plans', desc:'To settle your investment plans with S$XXX,XXX and build long-term wealth accumulation'}
     ],
     plans: [],
     income: '',
     hospWard: 'Private',
-    paText: 'Based on lifestyle',
+    paText: 'Based on recommendation',
     coverage: [],
     premium: [],
     premiumNote: 'MediShield Life is fully payable via MediSave. The additional private premium is MediSave-payable up to the Additional Withdrawal Limit; riders are paid by cash.',
@@ -2853,13 +2854,13 @@ const PROPOSAL_PLAN_CATS = ['Death','TPD','CI','Hospital','Hospital Rider','Acci
 const PROPOSAL_MULT = { death:10, tpd:10, ciBase:100000, ciMult:2 };
 
 function blankPolicy(kind){
-  if(kind==='wholelife') return { kind, type:'Whole Life · Death / TPD / Critical Illness', name:'Guaranteed Protect Plus', base:'', boosted:'', multiplier:'',
+  if(kind==='wholelife') return { kind, type:'Whole Life · Death / TPD / Critical Illness', name:'AIA Guaranteed Protect Plus', base:'', boosted:'', multiplier:'',
     ages:{start:'',paidUp:'',multiplierEnds:'',coverEnds:''}, facts:[], premium:'', term:'', surrender:[] };
-  if(kind==='ci') return { kind, type:'Critical Illness', name:'Ultimate Critical Cover', facts:[],
+  if(kind==='ci') return { kind, type:'Critical Illness', name:'AIA Ultimate Critical Cover', facts:[],
     stages:[{label:'Early',pct:50,val:'Up to 100% IA',note:'per claim'},{label:'Intermediate',pct:75,val:'Up to 100% IA',note:'per claim'},{label:'Major',pct:100,val:'100% IA',note:'lump sum'}],
     features:[], premiumLine:'' };
   // hospital / accident share the same shape
-  return { kind, type: kind==='accident'?'Personal Accident':'Hospital & Surgical', name: kind==='accident'?'Accident Care':'', benefits:[], stats:[], premiumLine:'' };
+  return { kind, type: kind==='accident'?'Personal Accident':'Hospital & Surgical', name: kind==='accident'?'AIA Solitaire Personal Accident':'', benefits:[], stats:[], premiumLine:'' };
 }
 
 /* ---------- page renderers (return HTML strings) ---------- */
