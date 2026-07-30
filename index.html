@@ -2874,7 +2874,20 @@ const App = {
         `;
       } else { // hospital
         const tier=HOSPITAL_TIERS[pol.tier]?pol.tier:'A';
+        const person=this.person();
+        const ageNext=person?awlAgeNextBirthday(person.dob):null;
+        const band=awlBandFor(ageNext);
+        const t=ppHospitalTotals(pol);
+        const overCap = band && num(pol.ipMedisave) > band.awl;
+        const awlRows=AWL_TABLE.map(b=>{
+          const active=band && b.label===band.label;
+          return `<div class="prow-flat" style="${active?'background:var(--accent-soft);border-radius:6px;padding:2px 6px;margin:-2px -6px':''}">
+            <span style="flex:1;font-size:12px;${active?'font-weight:700;color:var(--accent)':''}">${esc(b.label)}${active?' &larr; this client':''}</span>
+            <span style="font-size:12px;font-weight:600">${fmt(b.awl)} / year</span>
+          </div>`;
+        }).join('');
         body=`
+          <div class="pp-editor-sub">1 &middot; Plan tier</div>
           <div class="form-row">
             <div><label>Plan tier</label><select onchange="App.propHospitalTier(${i},this.value)">
               <option value="A" ${tier==='A'?'selected':''}>HSG Max A (Private Hospital, Standard Room &amp; below) — with Pro A</option>
@@ -2883,16 +2896,30 @@ const App = {
             </select></div>
           </div>
           <div class="cardhint">Plan name (<b>${esc(pol.name)}</b>) and rider (<b>${esc(pol.riderName)}</b>) are auto-tagged from the tier — you can't mix HSG A with a B/B Lite rider, so this locks them together.</div>
+
+          <div class="pp-editor-sub">2 &middot; MediShield Life (basic government cover — always 100% MediSave)</div>
           <div class="form-row">
-            <div><label>MediShield Life / year (100% MediSave)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 503.00" value="${fmt2(pol.medishieldLife)}" oninput="App.propPolicyField(${i},'medishieldLife',this.value)"></div>
-            <div><label>${esc(pol.name)} / year (Integrated Shield Plan)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 484.00" value="${fmt2(pol.ipTotal)}" oninput="App.propPolicyField(${i},'ipTotal',this.value)"></div>
+            <div><label>MediShield Life / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 503.00" value="${fmt2(pol.medishieldLife)}" oninput="App.propPolicyField(${i},'medishieldLife',this.value)"></div>
           </div>
+
+          <div class="pp-editor-sub">3 &middot; Integrated Shield Plan — ${esc(pol.name)}</div>
           <div class="form-row">
+            <div><label>Total premium / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 484.00" value="${fmt2(pol.ipTotal)}" oninput="App.propPolicyField(${i},'ipTotal',this.value)"></div>
             <div><label>↳ of which payable by MediSave</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 484.00" value="${fmt2(pol.ipMedisave)}" oninput="App.propPolicyField(${i},'ipMedisave',this.value)"></div>
-            <div><label>${esc(pol.riderName)} / year (100% cash rider)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 788.00" value="${fmt2(pol.riderPremium)}" oninput="App.propPolicyField(${i},'riderPremium',this.value)"></div>
           </div>
-          <div class="cardhint">MediShield Life is always 100% MediSave. The Integrated Shield Plan premium is split MediSave / cash (key in the MediSave-payable portion from your quotation). The rider is always 100% cash. Monthly and totals on the deck are calculated automatically.</div>
-          <div class="cardhint">This page draws the full Overview of AIA HealthShield Gold Max Plans &amp; Benefits of AIA Max VitalHealth Pro tables automatically — no benefit typing needed, just pick the tier above.</div>
+          ${overCap?`<div class="cardhint" style="color:var(--bad);background:var(--bad-soft);border-radius:6px;padding:6px 10px;margin:-2px 0 10px">This is above the client's MediSave Additional Withdrawal Limit (AWL) of ${fmt(band.awl)}/year — double-check against your quotation before presenting.</div>`:''}
+          <div class="cardhint">MediSave Additional Withdrawal Limit (AWL) — the most this client's MediSave can pay toward the Integrated Shield Plan premium, by age${ageNext?` (this client is age next birthday <b>${ageNext}</b>)`:''}:</div>
+          <div style="border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin:2px 0 10px">${awlRows}</div>
+
+          <div class="pp-editor-sub">4 &middot; ${esc(pol.riderName)} rider (always 100% cash)</div>
+          <div class="form-row">
+            <div><label>Rider premium / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 788.00" value="${fmt2(pol.riderPremium)}" oninput="App.propPolicyField(${i},'riderPremium',this.value)"></div>
+          </div>
+
+          <div class="cardhint" style="border:1px dashed var(--line);border-radius:8px;padding:8px 10px;font-size:13px">
+            <b>Preview:</b> MediSave ${fmt(t.totalMedisave)} + Cash ${fmt(t.totalCash)} = <b>${fmt(t.grandTotal)}</b> / year <span style="color:var(--ink-faint)">(${fmt(ppMonthly(t.grandTotal))} / month)</span>
+          </div>
+          <div class="cardhint">This page draws the full Overview of AIA HealthShield Gold Max Plans &amp; Benefits of AIA Max VitalHealth Pro tables automatically on the deck — no benefit typing needed, just pick the tier above.</div>
         `;
       }
       return `<div class="policy-block">
@@ -2977,6 +3004,20 @@ const SOLITAIRE_PA_TABLE = {
     classes34: { basic:[385.00,640.00,1025.00,1485.00], hosp:[69.92,121.34,182.84,241.86] },
   }
 };
+// MediSave Additional Withdrawal Limit (AWL) — how much of the *private insurance* (Integrated
+// Shield Plan) component of the premium can be paid from MediSave, by age next birthday. MediShield
+// Life itself is separate and always 100% MediSave, no AWL cap. Source: CPF Board, cpf.gov.sg
+// ("What are Additional Withdrawal Limits (AWLs) for Integrated Shield Plan (IP) premiums?").
+const AWL_TABLE = [
+  { label:'Age next birthday 1 – 40',  min:1,  max:40,      awl:300 },
+  { label:'Age next birthday 41 – 70', min:41, max:70,      awl:600 },
+  { label:'Age next birthday 71 & above', min:71, max:Infinity, awl:900 },
+];
+function awlAgeNextBirthday(dob){ const a=ageFrom(dob); return a==null?null:a+1; }
+function awlBandFor(ageNextBday){
+  if(ageNextBday==null) return null;
+  return AWL_TABLE.find(b=>ageNextBday>=b.min && ageNextBday<=b.max) || AWL_TABLE[AWL_TABLE.length-1];
+}
 // HealthShield Gold Max tiers — plan name and rider are locked together because you cannot mix
 // HSG A with VitalHealth Pro B/B Lite etc. Selecting a tier auto-tags the correct rider.
 const HOSPITAL_TIERS = {
@@ -3149,7 +3190,7 @@ function ppWholeLifeSection(c){
     <div class="pp-pchart pp-reveal" style="--i:2">${ppGppChart(c)}</div>
   </div>${ppPolicyFoot()}</section>`;
 }
-function ppBenefitSection(c){
+function ppBenefitSection(c, person){
   // Fixed AIA HealthShield Gold Max plan-mechanics tables — same for every client, only the
   // selected tier's column is highlighted. No benefit typing needed, just pick the tier.
   const HT=HOSPITAL_TABLE;
@@ -3180,6 +3221,9 @@ function ppBenefitSection(c){
     <tfoot><tr style="font-weight:700"><td>Total</td><td>${fmt(t.totalMedisave)}</td><td>${fmt(t.totalCash)}</td><td>${fmt(t.grandTotal)}</td></tr></tfoot>
   </table>
   <div class="pp-mech-total pp-reveal" style="--i:6">Your total premium: <b>${fmt(t.grandTotal)}</b> / year <span style="font-size:.9rem;color:var(--pp-muted)">(${fmt(ppMonthly(t.grandTotal))} / month) &middot; Payable <b>${fmt(t.totalMedisave)}</b> MediSave + <b>${fmt(t.totalCash)}</b> cash</span></div>` : '';
+  const ageNext=person?awlAgeNextBirthday(person.dob):null;
+  const band=awlBandFor(ageNext);
+  const awlLine=band ? `<div class="pp-reveal" style="--i:7;font-size:.7rem;color:var(--pp-muted);font-weight:400;margin-top:.5rem">MediSave Additional Withdrawal Limit (AWL)${ageNext?` for age next birthday ${ageNext}`:''}: up to <b style="color:var(--pp-ink)">${fmt(band.awl)}</b> / year of the Integrated Shield Plan premium may be paid from MediSave.</div>` : '';
   return `<section class="pp-slide pp-policy"><div class="pp-pad pp-mech" style="width:100%;display:flex;flex-direction:column;justify-content:center">
     <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
     <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.5rem,2.2vw,2.1rem);margin:.3rem 0 .5rem">${esc(c.name)} <span style="font-size:.85rem;font-weight:400;color:var(--pp-muted)">with ${esc(c.riderName)}</span></h2>
@@ -3188,6 +3232,7 @@ function ppBenefitSection(c){
     <div class="pp-mech-sub pp-reveal" style="--i:3">Benefits of AIA Max VitalHealth Pro <span style="font-weight:400">(S$ and includes GST)</span></div>
     <table class="pp-reveal" style="--i:4"><thead>${riderWardRow}${riderPlanRow}</thead><tbody>${riderRows}</tbody></table>
     ${premTable}
+    ${awlLine}
   </div>${ppPolicyFoot()}</section>`;
 }
 function ppCiSection(c){
@@ -3315,12 +3360,12 @@ function ppSolitairePaSection(pol){
     <div class="pp-mech-total pp-reveal" style="--i:5">Your total premium: <b>${fmt(total)}</b> / year <span style="font-size:.9rem;color:var(--pp-muted)">(${fmt(ppMonthly(total))} / month)</span></div>
   </div>${ppPolicyFoot()}</section>`;
 }
-function ppPolicySection(pol){
+function ppPolicySection(pol, person){
   if(pol.kind==='wholelife') return ppWholeLifeSection(pol);
   if(pol.kind==='ci') return ppCiSection(pol);
   if(pol.kind==='term') return ppTermSection(pol);
   if(pol.kind==='accident') return ppSolitairePaSection(pol);
-  return ppBenefitSection(pol); // hospital
+  return ppBenefitSection(pol, person); // hospital
 }
 function ppCoverageHtml(pr){
   const rows=(pr.coverage||[]).map((c,i)=>{
@@ -3391,7 +3436,7 @@ App.Proposal = {
     if(!p.proposal) p.proposal=blankProposal();
     const adv={ advisorName:App.data.settings.advisorName, advisorTitle:App.data.settings.advisorTitle, advisorMeta:App.data.settings.advisorMeta||'MDRT® · IBFQ® · CAWA®', advisorPhone:App.data.settings.advisorPhone, advisorEmail:App.data.settings.advisorEmail };
     const pr=p.proposal;
-    const policyHtml=(pr.policies||[]).map(ppPolicySection).join('');
+    const policyHtml=(pr.policies||[]).map(pol=>ppPolicySection(pol,p)).join('');
     const deckHtml = ppCoverHtml(p,adv) + ppObjectivesHtml(pr) + ppNeedsHtml(pr) + ppPlansHtml(pr) + policyHtml + ppCoverageHtml(pr) + ppPremiumHtml(pr) + ppTalkHtml(pr,adv);
     const layer=$('#proposalLayer');
     layer.innerHTML = `
