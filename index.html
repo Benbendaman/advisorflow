@@ -312,6 +312,7 @@
       <button data-page="pipeline">Pipeline</button>
       <button data-page="present">Meeting</button>
       <button data-page="clients">Clients</button>
+      <button data-page="presentations">Presentations</button>
       <button data-page="settings">Settings</button>
     </nav>
     <span id="syncStatus"></span>
@@ -606,6 +607,14 @@
     </div>
   </section>
 
+  <!-- ============ PRESENTATIONS ============ -->
+  <section class="page" id="page-presentations">
+    <h1>Presentations</h1>
+    <div class="sub">Client-ready plan walkthroughs you can present live in a meeting, or reference before one. More plans and proposal templates will land here over time.</div>
+    <div class="chips" id="presPlanChips"></div>
+    <div id="presViewer"></div>
+  </section>
+
   <!-- ============ SETTINGS ============ -->
   <section class="page" id="page-settings">
     <h1>Settings</h1>
@@ -728,6 +737,14 @@ const STAGES = [
 ];
 const SOURCES = ['Referral','Warm / friend','Instagram','Existing client','Cold','Other'];
 const CASE_STAGES = ['contacted','appointment','factfind','proposal'];
+
+/* ---------- presentations: self-contained client decks + private advisor notes, stored as
+   <template> elements below so their own CSS/JS can't collide with AdvisorFlow's. More plans
+   land here as they're built; the per-client tagging/editing layer is a separate, later build. */
+const PRESENTATIONS = [
+  { id:'pa3', label:'AIA Pro Achiever 3.0', clientTpl:'tpl-pa3-client', notesTpl:'tpl-pa3-notes' },
+  { id:'wv',  label:'AIA Wealth Venture',   clientTpl:'tpl-wv-client',  notesTpl:'tpl-wv-notes' },
+];
 // effective pipeline stage: clients ride the pipeline only through an open case
 function effStage(p){ return p.stage==='onboarded' ? (p.activeCase ? p.activeCase.stage : null) : p.stage; }
 
@@ -915,7 +932,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client' },
 
   init(){
     // nav
@@ -954,6 +971,7 @@ const App = {
       else if(this.state.presenting) this.endMeeting();
     });
     this.updateThemeBtn();
+    this.renderPresentations(); // static content, no data dependency — build once, don't rebuild on every renderAll (would reset the iframe)
 
     // auth: onAuthStateChange fires once immediately with the current session (event INITIAL_SESSION),
     // then again on every sign-in/sign-out. This is the single entry point into the app.
@@ -1998,6 +2016,47 @@ const App = {
     window.print();
   },
 
+  /* ---------- presentations ---------- */
+  renderPresentations(){
+    $('#presPlanChips').innerHTML = PRESENTATIONS.map(p=>
+      `<button class="chip${this.state.presPlan===p.id?' active':''}" onclick="App.selectPresentation('${p.id}')">${esc(p.label)}</button>`
+    ).join('');
+    this.renderPresViewer();
+  },
+  selectPresentation(id){
+    this.state.presPlan=id; this.state.presView='client';
+    this.renderPresentations();
+  },
+  setPresView(v){ this.state.presView=v; this.renderPresViewer(); },
+  loadPresTemplate(tplId){
+    const tpl=document.getElementById(tplId);
+    return tpl ? '<!DOCTYPE html>'+tpl.innerHTML : '<p style="font-family:sans-serif;padding:20px">Missing template.</p>';
+  },
+  renderPresViewer(){
+    const box=$('#presViewer');
+    if(!this.state.presPlan){ box.innerHTML='<div class="empty">Pick a plan above to open its presentation.</div>'; return; }
+    const plan=PRESENTATIONS.find(p=>p.id===this.state.presPlan); if(!plan) return;
+    const isClient=this.state.presView==='client';
+    box.innerHTML=`
+      <div style="display:flex; gap:8px; margin:14px 0; align-items:center; flex-wrap:wrap">
+        <button class="btn small ${isClient?'primary':''}" onclick="App.setPresView('client')">Client Presentation</button>
+        <button class="btn small ${!isClient?'primary':''}" onclick="App.setPresView('notes')">🔒 Advisor Notes</button>
+        <div class="spacer"></div>
+        <button class="btn small" onclick="App.openPresentationFullscreen()">Open full-screen ↗</button>
+      </div>
+      ${!isClient?'<div class="backup-nudge" style="background:var(--bad-soft); color:var(--bad)">Internal reference only — do not screen-share this tab with the client.</div>':''}
+      <iframe id="presFrame" style="width:100%; height:78vh; border:1px solid var(--line); border-radius:var(--radius); background:#fff; display:block"></iframe>
+    `;
+    $('#presFrame').srcdoc = this.loadPresTemplate(isClient?plan.clientTpl:plan.notesTpl);
+  },
+  openPresentationFullscreen(){
+    const plan=PRESENTATIONS.find(p=>p.id===this.state.presPlan); if(!plan) return;
+    const isClient=this.state.presView==='client';
+    const html=this.loadPresTemplate(isClient?plan.clientTpl:plan.notesTpl);
+    const blob=new Blob([html],{type:'text/html'});
+    window.open(URL.createObjectURL(blob), '_blank');
+  },
+
   /* ---------- settings ---------- */
   renderSettings(){
     const s=this.data.settings;
@@ -2177,5 +2236,4132 @@ const App = {
 
 App.init();
 </script>
+
+<!-- ============ PRESENTATION TEMPLATES (raw docs, do not hand-edit; regenerate from source files) ============ -->
+<template id="tpl-pa3-client"><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIA Pro Achiever 3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1c2b3a;
+    --navy-deep:#141f2b;
+    --bronze:#a3763f;
+    --bronze-light:#c99a5f;
+    --teal:#4d7a68;
+    --teal-light:#79a690;
+    --cream:#faf7f2;
+    --paper:#ffffff;
+    --ink:#232323;
+    --muted:#6b6f76;
+    --line:#e4ddd2;
+    --radius:14px;
+    --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    color:var(--ink);
+    background:var(--cream);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:1040px;
+    margin:0 auto;
+    padding:0 28px;
+  }
+
+  /* HERO */
+  header.hero{
+    background:linear-gradient(155deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color:#f4f1ea;
+    padding:76px 0 64px;
+    position:relative;
+  }
+  header.hero::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:4px;
+    background:linear-gradient(90deg, var(--bronze-light), var(--bronze));
+  }
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--bronze-light);
+    margin-bottom:18px;
+  }
+  h1{
+    font-family:var(--serif);
+    font-weight:700;
+    font-size:clamp(30px, 5vw, 48px);
+    line-height:1.15;
+    margin:0 0 16px;
+  }
+  .subtitle{
+    font-size:clamp(16px, 2vw, 19px);
+    color:#d7d2c6;
+    max-width:660px;
+    font-weight:400;
+  }
+
+  /* SECTIONS */
+  main{
+    padding:56px 0 20px;
+  }
+  section{
+    margin-bottom:56px;
+  }
+  .section-head{
+    margin-bottom:22px;
+  }
+  .section-kicker{
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    font-size:12px;
+    font-weight:600;
+    color:var(--bronze);
+    margin-bottom:8px;
+  }
+  h2{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:clamp(22px, 3vw, 28px);
+    margin:0 0 6px;
+    color:var(--navy);
+  }
+  .section-lede{
+    color:var(--muted);
+    font-size:15.5px;
+    max-width:700px;
+  }
+
+  /* CARD GRID */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:18px;
+    margin-top:24px;
+  }
+  .grid.two{grid-template-columns:repeat(2, 1fr);}
+  @media (max-width:760px){
+    .grid, .grid.two{grid-template-columns:1fr;}
+  }
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 24px;
+  }
+  .card .card-number{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:34px; height:34px;
+    border-radius:50%;
+    background:var(--navy);
+    color:#f4f1ea;
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:15px;
+    margin-bottom:14px;
+  }
+  .card h3{
+    font-size:16.5px;
+    font-weight:600;
+    margin:0 0 8px;
+    color:var(--navy);
+  }
+  .card p{
+    font-size:14.5px;
+    color:var(--muted);
+    margin:0;
+  }
+  .card .stat{
+    font-family:var(--serif);
+    font-size:26px;
+    color:var(--bronze);
+    font-weight:600;
+    display:block;
+    margin-bottom:6px;
+  }
+
+  /* NUMBERED STEPS */
+  .steps{
+    counter-reset:step;
+    margin-top:24px;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+  }
+  .step{
+    display:grid;
+    grid-template-columns:56px 1fr;
+    gap:18px;
+    padding:20px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-marker{
+    counter-increment:step;
+    width:40px; height:40px;
+    border-radius:50%;
+    border:1.5px solid var(--bronze);
+    color:var(--bronze);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--serif);
+    font-weight:600;
+  }
+  .step-marker::before{content:counter(step);}
+  .step h3{
+    margin:2px 0 6px;
+    font-size:16.5px;
+    color:var(--navy);
+  }
+  .step p{
+    margin:0;
+    font-size:14.5px;
+    color:var(--muted);
+  }
+
+  /* PANEL / CALLOUT */
+  .panel{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-left:4px solid var(--bronze);
+    border-radius:10px;
+    padding:22px 24px;
+    margin-top:20px;
+  }
+  .panel h4{
+    margin:0 0 8px;
+    font-size:15px;
+    color:var(--navy);
+    font-weight:600;
+  }
+  .panel p{
+    margin:0;
+    font-size:14.5px;
+    color:var(--muted);
+  }
+  .panel ul{
+    margin:8px 0 0;
+    padding-left:18px;
+  }
+  .panel li{
+    font-size:14.5px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+
+  /* TIMELINE for bonus years */
+  .timeline{
+    display:flex;
+    gap:14px;
+    margin-top:26px;
+    flex-wrap:wrap;
+  }
+  .tl-item{
+    flex:1 1 140px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px;
+    text-align:center;
+  }
+  .tl-item .yr{
+    font-family:var(--serif);
+    font-size:13px;
+    color:var(--bronze);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    margin-bottom:6px;
+    display:block;
+  }
+  .tl-item .desc{
+    font-size:13.5px;
+    color:var(--ink);
+    font-weight:500;
+  }
+
+  /* LOCK-IN BAR STRIP */
+  .lockin-wrap{
+    margin-top:26px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px 26px;
+  }
+  .lockin-wrap h4{
+    margin:0 0 4px;
+    font-size:15px;
+    color:var(--navy);
+  }
+  .lockin-wrap .lockin-note{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:0 0 18px;
+  }
+  .lockin-bars{
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    height:120px;
+  }
+  .lockin-bar{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    height:100%;
+  }
+  .lockin-bar .bar{
+    width:100%;
+    background:linear-gradient(180deg, var(--bronze-light), var(--bronze));
+    border-radius:4px 4px 0 0;
+  }
+  .lockin-bar .barlabel{
+    font-size:10.5px;
+    color:var(--ink);
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  .lockin-bar .yrlabel{
+    font-size:10px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+
+  /* dark section */
+  .dark-section{
+    background:var(--navy);
+    color:#eee9dd;
+    border-radius:18px;
+    padding:40px 36px;
+    margin:56px 0;
+  }
+  .dark-section h2{color:#f4f1ea;}
+  .dark-section .section-lede{color:#c9c3b5;}
+  .dark-section .card{
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.12);
+  }
+  .dark-section .card h3{color:#f4f1ea;}
+  .dark-section .card p{color:#c9c3b5;}
+  .dark-section .card .card-number{background:var(--bronze);}
+
+  /* ===== CALCULATOR ===== */
+  .calc-shell{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:8px;
+    margin-top:26px;
+  }
+  .calc-inner{
+    background:linear-gradient(180deg, #fff, #fdfbf8);
+    border-radius:16px;
+    padding:28px;
+  }
+  @media (max-width:640px){ .calc-inner{padding:18px;} }
+
+  .calc-grid{
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:30px;
+  }
+  @media (max-width:860px){
+    .calc-grid{grid-template-columns:1fr;}
+  }
+
+  .field-label{
+    font-size:12.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--navy);
+    margin:0 0 10px;
+  }
+
+  .pill-group{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+  }
+  .pill{
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .pill:hover{border-color:var(--bronze);}
+  .pill.active{
+    background:var(--navy);
+    border-color:var(--navy);
+    color:#fff;
+  }
+
+  .amount-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:6px;
+  }
+  .amount-row .currency{
+    font-family:var(--serif);
+    font-size:15px;
+    color:var(--muted);
+  }
+  input[type="number"].amount-input{
+    font-family:var(--serif);
+    font-size:22px;
+    font-weight:600;
+    color:var(--navy);
+    border:none;
+    border-bottom:2px solid var(--line);
+    background:transparent;
+    width:150px;
+    padding:2px 2px 6px;
+    outline:none;
+  }
+  input[type="number"].amount-input:focus{border-bottom-color:var(--bronze);}
+  .amount-freq-label{
+    font-size:13px;
+    color:var(--muted);
+  }
+
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:6px;
+    border-radius:3px;
+    background:var(--line);
+    outline:none;
+    margin:14px 0 22px;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--bronze);
+    border:3px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    cursor:pointer;
+    margin-top:-7px;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--bronze);
+    border:3px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height:6px;
+    border-radius:3px;
+    background:var(--line);
+  }
+
+  .tier-badge{
+    display:inline-block;
+    padding:5px 12px;
+    border-radius:999px;
+    background:#f1e8da;
+    color:var(--bronze);
+    font-size:12.5px;
+    font-weight:700;
+    margin-top:2px;
+  }
+
+  .annual-readout{
+    background:#f6f3ec;
+    border-radius:10px;
+    padding:14px 16px;
+    margin:18px 0 24px;
+  }
+  .annual-readout .big{
+    font-family:var(--serif);
+    font-size:24px;
+    font-weight:600;
+    color:var(--navy);
+  }
+  .annual-readout .small{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+
+  .toggle-row{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:16px;
+    background:#f6f3ec;
+    border-radius:10px;
+    margin-bottom:10px;
+  }
+  .toggle-switch{
+    position:relative;
+    width:42px; height:24px;
+    flex:none;
+    margin-top:2px;
+  }
+  .toggle-switch input{
+    opacity:0; width:0; height:0;
+  }
+  .toggle-track{
+    position:absolute; inset:0;
+    background:#cfc7b8;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .toggle-track::before{
+    content:"";
+    position:absolute;
+    width:18px; height:18px;
+    left:3px; top:3px;
+    background:#fff;
+    border-radius:50%;
+    transition:transform .15s ease;
+    box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle-switch input:checked + .toggle-track{background:var(--teal);}
+  .toggle-switch input:checked + .toggle-track::before{transform:translateX(18px);}
+  .toggle-copy h5{
+    margin:0 0 3px;
+    font-size:13.5px;
+    color:var(--navy);
+    font-weight:600;
+  }
+  .toggle-copy p{
+    margin:0;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  .assumption-block{
+    background:#f6f3ec;
+    border-radius:10px;
+    padding:14px 16px;
+    margin:0 0 18px;
+  }
+  .assumption-block .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:2px;
+  }
+  .assumption-block .row strong{
+    font-family:var(--serif);
+    font-size:17px;
+    color:var(--bronze);
+  }
+  .assumption-block.teal .row strong{color:var(--teal);}
+  .assumption-block input[type="range"]{margin:6px 0 4px;}
+  .assumption-block .mini-note{
+    font-size:11px;
+    color:var(--muted);
+    line-height:1.5;
+    margin:4px 0 0;
+  }
+
+  table.tier-table{
+    width:100%;
+    border-collapse:collapse;
+    margin:0 0 20px;
+    font-size:12.5px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:8px;
+    overflow:hidden;
+  }
+  table.tier-table th, table.tier-table td{
+    padding:7px 10px;
+    text-align:left;
+    border-bottom:1px solid var(--line);
+  }
+  table.tier-table th{
+    background:#f6f3ec;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--navy);
+  }
+  table.tier-table tr:last-child td{border-bottom:none;}
+
+  /* Results side */
+  .stat-mini-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:12px;
+    margin-bottom:22px;
+  }
+  @media (max-width:520px){ .stat-mini-grid{grid-template-columns:1fr;} }
+  .stat-mini{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .stat-mini .label{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--muted);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .stat-mini .value{
+    font-family:var(--serif);
+    font-size:21px;
+    font-weight:600;
+    color:var(--navy);
+  }
+  .stat-mini .value.bronze{color:var(--bronze);}
+  .stat-mini .value.teal{color:var(--teal);}
+  .stat-mini .sub{
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:3px;
+  }
+
+  .chart-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:18px 18px 8px;
+  }
+  .chart-card h5{
+    margin:0 0 2px;
+    font-size:14px;
+    color:var(--navy);
+  }
+  .chart-card .chart-sub{
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 6px;
+  }
+  .chart-legend{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    margin:6px 0 4px;
+  }
+  .legend-chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--ink);
+  }
+  .legend-chip .swatch{
+    width:14px; height:3px;
+    border-radius:2px;
+    display:inline-block;
+  }
+  svg.chart{width:100%; height:auto; display:block; cursor:crosshair;}
+
+  .chart-plot-wrap{
+    position:relative;
+  }
+  .chart-tooltip{
+    position:absolute;
+    pointer-events:none;
+    background:var(--navy);
+    color:#f4f1ea;
+    padding:10px 13px;
+    border-radius:8px;
+    font-size:12px;
+    line-height:1.55;
+    white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,0.22);
+    opacity:0;
+    transition:opacity .1s ease;
+    z-index:5;
+  }
+  .chart-tooltip.visible{opacity:1;}
+  .chart-tooltip .tt-year{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:13px;
+    color:#fff;
+    margin-bottom:4px;
+    display:block;
+  }
+  .chart-tooltip .tt-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .chart-tooltip .tt-dot{
+    width:8px; height:8px;
+    border-radius:50%;
+    display:inline-block;
+  }
+  .chart-tooltip .tt-div{
+    margin-top:6px;
+    padding-top:6px;
+    border-top:1px solid rgba(255,255,255,0.18);
+    color:var(--teal-light);
+  }
+  .chart-hint{
+    font-size:11.5px;
+    color:var(--muted);
+    margin:8px 0 0;
+    text-align:center;
+  }
+
+  .calc-disclaimer{
+    margin-top:18px;
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.55;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+
+  /* closing */
+  .closing{
+    text-align:center;
+    padding:56px 0 72px;
+  }
+  .closing h2{
+    font-size:clamp(22px,3vw,30px);
+  }
+  .closing p{
+    max-width:560px;
+    margin:12px auto 0;
+    color:var(--muted);
+    font-size:15.5px;
+  }
+  .prompt-box{
+    margin:28px auto 0;
+    max-width:640px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 28px;
+  }
+  .prompt-box p{
+    margin:0 0 10px;
+    font-size:15px;
+    color:var(--ink);
+    text-align:left;
+  }
+  .prompt-box p:last-child{margin-bottom:0;}
+  .prompt-box strong{color:var(--navy);}
+
+  @media (max-width:600px){
+    header.hero{padding:56px 0 44px;}
+    .dark-section{padding:30px 22px; border-radius:14px;}
+    .card{padding:20px 18px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">AIA Pro Achiever 3.0 &middot; 10-Year Initial Investment Period</div>
+    <h1>A plan that keeps paying you back the longer you stay with it</h1>
+    <div class="subtitle">A regular-premium plan built for long-term wealth accumulation. Your full premium goes to work from day one, and the bonus structure gets more rewarding the longer you keep going, not just in the early years. Further down, you can enter your own numbers and see how it could unfold.</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="overview">
+    <div class="section-head">
+      <div class="section-kicker">The Idea Behind It</div>
+      <h2>Built to reward staying power, not just starting</h2>
+      <p class="section-lede">Pro Achiever 3.0 is a regular-premium plan, there's no fixed date when payments stop. Instead, it's structured around a 10-year Initial Investment Period, the window when the welcome bonuses land and the charges are heaviest, followed by an open-ended stretch where the longer you keep paying, the more the plan rewards you for it.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="stat">100%</span>
+        <h3>Fully invested from day one</h3>
+        <p>Every dollar of regular premium goes toward buying units in the investment funds you choose, right from your very first payment.</p>
+      </div>
+      <div class="card">
+        <span class="stat">10-Yr IIP</span>
+        <h3>A defined runway, not a stop date</h3>
+        <p>Your first 10 years (the Initial Investment Period) is when the bonus structure and charges are most active. Premiums keep going after that for as long as you hold the policy.</p>
+      </div>
+      <div class="card">
+        <span class="stat">Elite Access</span>
+        <h3>Institutional-grade managers, not just AIA's own team</h3>
+        <p>Beyond AIA Investment Management's own fund range, this plan gives you access to funds sub-advised by global institutional managers, names more commonly associated with pension funds and endowments than retail policies.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="managers">
+    <div class="section-head">
+      <div class="section-kicker">Who's Actually Managing Your Money</div>
+      <h2>A fund shelf built with institutional names, not just AIA's</h2>
+      <p class="section-lede">Through the AIA Elite Funds range available on this plan, your premiums can sit alongside portfolios run by some of the same managers that run money for large institutions globally, on top of AIA's own dedicated investment team.</p>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h3>BlackRock</h3>
+        <p>The world's largest asset manager, known for disciplined, research-driven portfolio construction across asset classes.</p>
+      </div>
+      <div class="card">
+        <h3>Wellington Management</h3>
+        <p>One of the largest independent investment managers globally, managing capital for institutions for over 90 years.</p>
+      </div>
+      <div class="card">
+        <h3>Capital Group</h3>
+        <p>A manager with close to a century of history, known for long-horizon, fundamentals-driven investing.</p>
+      </div>
+      <div class="card">
+        <h3>AIA Investment Management</h3>
+        <p>AIA's own in-house investment arm, with over 100 years of group investment experience, managing the core fund range on this plan.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="commitment">
+    <div class="section-head">
+      <div class="section-kicker">Before We Run Any Numbers</div>
+      <h2>What the first 10 years actually look like</h2>
+      <p class="section-lede">This plan doesn't ask you to stop paying after a set number of years, premiums continue for as long as you hold it. What is time-bound is the Initial Investment Period, the 10-year runway during which the welcome bonuses land, the charges are heaviest, and exiting early costs the most.</p>
+    </div>
+    <div class="lockin-wrap">
+      <h4>Cost of exiting early, by policy year (10-Year IIP)</h4>
+      <p class="lockin-note">If you fully surrender the policy during the IIP, this is the portion of your policy value that would be deducted as a surrender charge. It falls each year and disappears completely from year 11 onward.</p>
+      <div class="lockin-bars">
+        <div class="lockin-bar"><span class="barlabel">100%</span><div class="bar" style="height:100%"></div><span class="yrlabel">Yr 1</span></div>
+        <div class="lockin-bar"><span class="barlabel">100%</span><div class="bar" style="height:100%"></div><span class="yrlabel">Yr 2</span></div>
+        <div class="lockin-bar"><span class="barlabel">80%</span><div class="bar" style="height:80%"></div><span class="yrlabel">Yr 3</span></div>
+        <div class="lockin-bar"><span class="barlabel">70%</span><div class="bar" style="height:70%"></div><span class="yrlabel">Yr 4</span></div>
+        <div class="lockin-bar"><span class="barlabel">60%</span><div class="bar" style="height:60%"></div><span class="yrlabel">Yr 5</span></div>
+        <div class="lockin-bar"><span class="barlabel">50%</span><div class="bar" style="height:50%"></div><span class="yrlabel">Yr 6</span></div>
+        <div class="lockin-bar"><span class="barlabel">45%</span><div class="bar" style="height:45%"></div><span class="yrlabel">Yr 7</span></div>
+        <div class="lockin-bar"><span class="barlabel">35%</span><div class="bar" style="height:35%"></div><span class="yrlabel">Yr 8</span></div>
+        <div class="lockin-bar"><span class="barlabel">20%</span><div class="bar" style="height:20%"></div><span class="yrlabel">Yr 9</span></div>
+        <div class="lockin-bar"><span class="barlabel">5%</span><div class="bar" style="height:5%"></div><span class="yrlabel">Yr 10</span></div>
+        <div class="lockin-bar"><span class="barlabel">0%</span><div class="bar" style="height:1%"></div><span class="yrlabel">Yr 11+</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h4>Worth being direct about this</h4>
+      <p>The first two years return nothing if you surrender, the charge is a full 100%. That's steeper than some comparable plans, and it's exactly why this is worth recommending only to clients who are confident about keeping up premiums through at least the first two to three years.</p>
+    </div>
+    <div class="panel">
+      <h4>What changes once you're past year 10</h4>
+      <p>Look at the bars again: by year 11, every charge tied to touching your money has dropped to zero, full surrender, partial withdrawal, even reducing your premium. From that point on, the policy starts to behave a little like a bank account. You can draw from it without a fee whenever you want, or simply keep paying and let the Special Bonus keep compounding. Both are genuinely on the table, it's your call at that point, not the plan's.</p>
+    </div>
+  </section>
+
+  <section id="how-it-works">
+    <div class="section-head">
+      <div class="section-kicker">How It Unfolds Over Time</div>
+      <h2>Two bonus mechanisms, running on two different clocks</h2>
+      <p class="section-lede">The reward structure here works in two distinct phases: an early welcome bonus while you're building the habit, and a later, escalating bonus that rewards you simply for still being in the plan a decade on.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-marker"></div>
+        <div>
+          <h3>Years 1 to 3: welcome bonus lands with every premium</h3>
+          <p>Each premium you pay in your first three years earns a bonus on top, at a rate that depends on your annualised premium level. Depending on your tier, the bonus units added across those three years can add up to somewhere between 5% and 53% of your annual premium amount.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-marker"></div>
+        <div>
+          <h3>Years 10 to 20: a special bonus begins</h3>
+          <p>Once you've reached the 10th annual premium (or the equivalent under your payment frequency), the plan starts crediting an extra 5% of that year's premium, every year, for as long as you keep paying.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-marker"></div>
+        <div>
+          <h3>Year 21 onward: the special bonus rate steps up again</h3>
+          <p>From the 21st annual premium onward, that special bonus rate rises to 8% of premium, every year, indefinitely. There's no cap on how long this continues, the plan simply keeps rewarding continued commitment.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="tl-item"><span class="yr">Yr 1&ndash;3</span><div class="desc">Welcome Bonus on every premium paid</div></div>
+      <div class="tl-item"><span class="yr">Yr 10</span><div class="desc">IIP ends, charges drop, Special Bonus begins</div></div>
+      <div class="tl-item"><span class="yr">Yr 10&ndash;20</span><div class="desc">Special Bonus at 5% of premium, yearly</div></div>
+      <div class="tl-item"><span class="yr">Yr 21+</span><div class="desc">Special Bonus rises to 8%, ongoing</div></div>
+    </div>
+  </section>
+
+  <section id="calculator">
+    <div class="section-head">
+      <div class="section-kicker">Now Let's Make It Real</div>
+      <h2>Run your own numbers</h2>
+      <p class="section-lede">Choose how often you'd pay and how much, then hover over the chart to see your projected policy value at any year. Everything updates as you move the controls.</p>
+    </div>
+
+    <div class="calc-shell">
+      <div class="calc-inner">
+        <div class="calc-grid">
+
+          <div class="calc-controls">
+            <p class="field-label">How often would you pay?</p>
+            <div class="pill-group" id="freqPills">
+              <button type="button" class="pill" data-freq="monthly">Monthly</button>
+              <button type="button" class="pill" data-freq="quarterly">Quarterly</button>
+              <button type="button" class="pill" data-freq="semiannual">Semi-Annual</button>
+              <button type="button" class="pill" data-freq="annual">Annual</button>
+            </div>
+
+            <p class="field-label">Premium per payment</p>
+            <div class="amount-row">
+              <span class="currency">S$</span>
+              <input type="number" class="amount-input" id="amountInput" step="10">
+              <span class="amount-freq-label" id="amountFreqLabel">/ month</span>
+            </div>
+            <input type="range" id="amountSlider">
+
+            <div class="annual-readout">
+              <div class="big" id="annualReadout">S$6,000</div>
+              <div class="small">Annualised regular premium &middot; <span class="tier-badge" id="tierBadge">Tier C</span></div>
+            </div>
+
+            <p class="field-label">Welcome Bonus Tiers (annualised premium)</p>
+            <table class="tier-table">
+              <tr><th>Tier</th><th>Annualised Premium Range</th></tr>
+              <tr><td>A</td><td>$12,000 and above</td></tr>
+              <tr><td>B</td><td>$7,200 &ndash; $11,999</td></tr>
+              <tr><td>C</td><td>$4,800 &ndash; $7,199</td></tr>
+              <tr><td>D</td><td>$2,400 &ndash; $4,799</td></tr>
+            </table>
+
+            <p class="field-label">Projected capital gain (p.a.)</p>
+            <div class="assumption-block">
+              <div class="row"><span>Your assumption</span><strong id="capGainValue">6.0%</strong></div>
+              <input type="range" id="capGainSlider" min="0" max="15" step="0.5" value="6">
+              <p class="mini-note">This drives the fund's projected growth. Set it to whatever you and your client want to explore, it's not tied to any fixed illustration rate.</p>
+            </div>
+
+            <p class="field-label">After your 10-year IIP ends</p>
+            <div class="pill-group" id="afterIipPills" style="margin-bottom:8px;">
+              <button type="button" class="pill" data-value="continue">Keep Investing</button>
+              <button type="button" class="pill" data-value="stop">Withdraw &amp; Stop Premiums</button>
+            </div>
+            <p class="mini-note" style="margin:0 0 22px;">From year 11, every charge on accessing your money drops to zero. Choose whether your client would keep paying premiums and let the Special Bonus keep building, or stop premiums and treat it like a fee-free withdrawal.</p>
+          </div>
+
+          <div class="calc-results">
+            <div class="stat-mini-grid">
+              <div class="stat-mini">
+                <div class="label">Total Premiums Paid by End of Yr 10</div>
+                <div class="value" id="statTotalPremiums">S$0</div>
+                <div class="sub">Your annualised premium &times; 10 years, marking the end of the IIP</div>
+              </div>
+              <div class="stat-mini">
+                <div class="label">Welcome + Special Bonuses</div>
+                <div class="value bronze" id="statBonuses">S$0</div>
+                <div class="sub">Fixed by your premium tier and years paid, not fund performance</div>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <h5>Projected policy value over time</h5>
+              <p class="chart-sub">Move your cursor (or finger) over the chart to see the projected policy value at any year.</p>
+              <div class="chart-legend">
+                <span class="legend-chip"><span class="swatch" style="background:var(--bronze);"></span>Projected policy value</span>
+              </div>
+              <div class="chart-plot-wrap" id="chartPlotWrap">
+                <svg class="chart" id="chartSvg" viewBox="0 0 640 280" preserveAspectRatio="none"></svg>
+                <div class="chart-tooltip" id="chartTooltip"></div>
+              </div>
+              <p class="chart-hint">Hover or tap anywhere on the line to explore a specific policy year.</p>
+            </div>
+
+            <div class="calc-disclaimer">
+              This is a simplified illustration for discussion purposes only, not a formal Benefit Illustration. It assumes every premium is paid every year through year 10 with no Premium Holiday or Premium Pass used, applies the Supplementary Charge annually rather than monthly for the first 10 policy years only, and excludes the monthly insurance (Benefit Charge), Premium Reduction Charge, and any surrender or partial withdrawal charge. The capital gain figure above is an assumption you set for discussion purposes, not the standard 4% p.a. / 8% p.a. rates mandated for a formal Benefit Illustration, prepare that separately using AIA's own tools before your client signs anything. Your actual policy value will differ from this illustration.
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="protection">
+    <div class="section-head">
+      <div class="section-kicker">Built-In Protection</div>
+      <h2>It's an investment plan, but it also stands behind your family</h2>
+      <p class="section-lede">Because this is an insurance policy as well as an investment vehicle, it carries a layer of protection that a pure investment account doesn't.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>If the unexpected happens</h3>
+        <p>Should the life insured pass away while the policy is active, the plan pays out whichever is higher: the total premiums you've paid in, including any top-ups, or the actual value the policy has grown to. Either way, your family isn't left with less than what went in.</p>
+      </div>
+      <div class="card">
+        <h3>A second name on the policy</h3>
+        <p>You can nominate a secondary insured, such as a spouse or child under 16, so that if something happens to the original life insured, the policy simply continues under the new name rather than ending. Continuity, not a fresh start.</p>
+      </div>
+      <div class="card">
+        <h3>At maturity</h3>
+        <p>When the policy reaches its maturity date, you receive the full policy value, net of any applicable charges.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="dark-section">
+    <div class="section-head">
+      <div class="section-kicker">Staying Flexible</div>
+      <h2>Life doesn't always follow a straight line, and the plan accounts for that</h2>
+      <p class="section-lede">A handful of built-in features let you adjust course without needing to restart or cash out entirely.</p>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h3>Add extra when you can</h3>
+        <p>Beyond your regular premiums, you can top up the policy on an ad-hoc basis whenever you have surplus cash, putting more to work in the same fund strategy.</p>
+      </div>
+      <div class="card">
+        <h3>A genuine change-of-mind window</h3>
+        <p>After your policy documents arrive, you have fourteen days to review everything carefully and cancel for a refund if it isn't the right fit after all.</p>
+      </div>
+    </div>
+  </div>
+
+  <section id="considerations">
+    <div class="section-head">
+      <div class="section-kicker">What To Weigh Before You Commit</div>
+      <h2>This works best as an ongoing commitment, not a fixed-term one</h2>
+      <p class="section-lede">Like any investment-linked policy, Pro Achiever 3.0's value moves with the performance of the underlying funds, and unlike a limited-pay plan, there's no built-in point where premiums are expected to stop.</p>
+    </div>
+    <div class="panel">
+      <h4>A few honest points worth sitting with</h4>
+      <ul>
+        <li>Your policy value isn't guaranteed. It rises and falls with the funds you've chosen, and past fund performance is never a promise of what comes next.</li>
+        <li>Premiums are open-ended by design. Budget for this as an ongoing commitment rather than a plan with a fixed finish line, the Premium Pass and premium reduction options exist for genuine life changes, not as a way to plan around stopping early.</li>
+        <li>The first two years carry a full 100% surrender charge, exiting that early returns nothing. This plan fits best when the client is confident about the near term before committing.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="section-head" style="text-align:center;">
+      <div class="section-kicker">Where We Go From Here</div>
+      <h2>Let's talk about whether this fits how you think about the long run</h2>
+      <p>Every part of this, the premium level, the fund selection, and how it fits alongside what else you're already doing, should be shaped around your own situation before anything is decided.</p>
+    </div>
+    <div class="prompt-box">
+      <p><strong>A few questions worth thinking through together:</strong></p>
+      <p>Are you comfortable treating this as an ongoing commitment rather than one with a fixed end date?</p>
+      <p>Does the first two years' full surrender charge change how you'd think about your starting premium amount?</p>
+      <p>Now that we've run your numbers, does staying in through year 10 and beyond feel realistic for you?</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  var freqConfig = {
+    monthly:     { label:"Monthly",     short:"/ month",       count:12, min:200,  max:3000,  step:10, fmtDefault:500 },
+    quarterly:   { label:"Quarterly",   short:"/ quarter",     count:4,  min:600,  max:9000,  step:10, fmtDefault:1500 },
+    semiannual:  { label:"Semi-Annual", short:"/ half-year",   count:2,  min:1200, max:18000, step:20, fmtDefault:3000 },
+    annual:      { label:"Annual",      short:"/ year",        count:1,  min:2400, max:36000, step:50, fmtDefault:6000 }
+  };
+
+  // Welcome Bonus rates, IIP10 only, by annualised-premium tier, policy years 1-3.
+  // Tier A is the top tier (highest annualised premium), Tier D is the entry tier.
+  var welcomeRates = {
+    tierA: [0.15, 0.18, 0.20],
+    tierB: [0.10, 0.13, 0.15],
+    tierC: [0.05, 0.08, 0.10],
+    tierD: [0.05, 0,    0   ]
+  };
+
+  var tierLabel = { tierA:"Tier A", tierB:"Tier B", tierC:"Tier C", tierD:"Tier D" };
+
+  var HORIZON = 40;
+
+  var state = {
+    freq: "monthly",
+    amount: 500,
+    capitalGain: 0.06,
+    continueAfterIip: true
+  };
+
+  function getTier(annual){
+    if (annual >= 12000) return "tierA";
+    if (annual >= 7200) return "tierB";
+    if (annual >= 4800) return "tierC";
+    return "tierD";
+  }
+
+  function fmtMoney(n){
+    n = Math.round(n);
+    var neg = n < 0;
+    n = Math.abs(n);
+    var s = "S$" + n.toLocaleString("en-US");
+    return neg ? "-" + s : s;
+  }
+
+  // Pro Achiever 3.0 is a continuous regular-premium plan: premiums are always paid
+  // through year 10 (the IIP). From year 11 onward, the client chooses whether to
+  // keep paying (contributions continue, Special Bonus keeps building) or stop
+  // premiums entirely, which this calculator treats like a fee-free withdrawal
+  // point, no new contributions, no new Special Bonus, but the existing policy
+  // value still compounds at the assumed capital gain rate. The Welcome Bonus is
+  // front-loaded (years 1-3, tier-based); the Special Bonus is back-loaded and
+  // open-ended (5% of that year's premium from year 10, 8% from year 21 on) and
+  // only accrues in years premiums are actually paid.
+  function simulate(annual, capitalGain, continueAfterIip, years){
+    var tier = getTier(annual);
+    var wr = welcomeRates[tier];
+    var value = 0;
+    var cumW = 0, cumS = 0, cumPrem = 0;
+    var rows = [];
+    for (var year = 1; year <= years; year++){
+      var contribution = (year <= 10) ? annual : (continueAfterIip ? annual : 0);
+      value += contribution;
+      cumPrem += contribution;
+
+      var w = 0;
+      if (year <= 3 && wr[year - 1] > 0){
+        w = wr[year - 1] * annual;
+        value += w;
+        cumW += w;
+      }
+
+      var special = 0;
+      if (contribution > 0){
+        if (year >= 10 && year <= 20){
+          special = 0.05 * annual;
+        } else if (year >= 21){
+          special = 0.08 * annual;
+        }
+      }
+      if (special > 0){
+        value += special;
+        cumS += special;
+      }
+
+      // Supplementary Charge applies through policy year 10, then stops.
+      if (year <= 10){
+        value -= 0.0390 * value;
+      }
+
+      value += value * capitalGain;
+      if (value < 0) value = 0;
+
+      rows.push({ year: year, value: value, cumPrem: cumPrem });
+    }
+    return { rows: rows, cumW: cumW, cumS: cumS, tier: tier };
+  }
+
+  // ---- DOM refs ----
+  var freqPillsWrap = document.getElementById("freqPills");
+  var amountInput = document.getElementById("amountInput");
+  var amountSlider = document.getElementById("amountSlider");
+  var amountFreqLabel = document.getElementById("amountFreqLabel");
+  var annualReadout = document.getElementById("annualReadout");
+  var tierBadge = document.getElementById("tierBadge");
+  var capGainSlider = document.getElementById("capGainSlider");
+  var capGainValue = document.getElementById("capGainValue");
+  var afterIipPillsWrap = document.getElementById("afterIipPills");
+  var statTotalPremiums = document.getElementById("statTotalPremiums");
+  var statBonuses = document.getElementById("statBonuses");
+  var chartSvg = document.getElementById("chartSvg");
+  var chartPlotWrap = document.getElementById("chartPlotWrap");
+  var chartTooltip = document.getElementById("chartTooltip");
+
+  var chartState = null;
+
+  function setActivePill(wrap, attr, val){
+    var pills = wrap.querySelectorAll(".pill");
+    for (var i = 0; i < pills.length; i++){
+      var p = pills[i];
+      if (p.getAttribute(attr) === String(val)) p.classList.add("active");
+      else p.classList.remove("active");
+    }
+  }
+
+  freqPillsWrap.addEventListener("click", function(e){
+    var btn = e.target.closest(".pill");
+    if (!btn) return;
+    var newFreq = btn.getAttribute("data-freq");
+    if (newFreq === state.freq) return;
+
+    var oldCfg = freqConfig[state.freq];
+    var annualNow = state.amount * oldCfg.count;
+    var newCfg = freqConfig[newFreq];
+    var newAmount = Math.round((annualNow / newCfg.count) / newCfg.step) * newCfg.step;
+    newAmount = Math.max(newCfg.min, Math.min(newCfg.max, newAmount));
+
+    state.freq = newFreq;
+    state.amount = newAmount;
+    applyFreqUI();
+    render();
+  });
+
+  function applyFreqUI(){
+    var cfg = freqConfig[state.freq];
+    setActivePill(freqPillsWrap, "data-freq", state.freq);
+    amountFreqLabel.textContent = cfg.short;
+    amountSlider.min = cfg.min;
+    amountSlider.max = cfg.max;
+    amountSlider.step = cfg.step;
+    amountSlider.value = state.amount;
+    amountInput.min = cfg.min;
+    amountInput.step = cfg.step;
+    amountInput.value = state.amount;
+  }
+
+  amountSlider.addEventListener("input", function(){
+    state.amount = parseFloat(amountSlider.value);
+    amountInput.value = state.amount;
+    render();
+  });
+
+  amountInput.addEventListener("input", function(){
+    var cfg = freqConfig[state.freq];
+    var v = parseFloat(amountInput.value);
+    if (isNaN(v)) return;
+    state.amount = v;
+    if (v >= cfg.min && v <= cfg.max) amountSlider.value = v;
+    else if (v > cfg.max) amountSlider.value = cfg.max;
+    else amountSlider.value = cfg.min;
+    render();
+  });
+
+  capGainSlider.addEventListener("input", function(){
+    state.capitalGain = parseFloat(capGainSlider.value) / 100;
+    capGainValue.textContent = parseFloat(capGainSlider.value).toFixed(1) + "%";
+    render();
+  });
+
+  afterIipPillsWrap.addEventListener("click", function(e){
+    var btn = e.target.closest(".pill");
+    if (!btn) return;
+    state.continueAfterIip = btn.getAttribute("data-value") === "continue";
+    setActivePill(afterIipPillsWrap, "data-value", state.continueAfterIip ? "continue" : "stop");
+    render();
+  });
+
+  function buildChart(rows, continueAfterIip){
+    var W = 640, H = 280;
+    var padL = 54, padR = 16, padT = 16, padB = 30;
+    var innerW = W - padL - padR;
+    var innerH = H - padT - padB;
+
+    var maxVal = 0;
+    rows.forEach(function(r){ if (r.value > maxVal) maxVal = r.value; });
+    maxVal = maxVal * 1.12;
+    if (maxVal <= 0) maxVal = 1000;
+
+    var n = rows.length;
+    function xFor(i){ return padL + (innerW * i) / (n - 1); }
+    function yFor(v){ return padT + innerH - (innerH * v) / maxVal; }
+
+    var d = "";
+    rows.forEach(function(r, i){
+      var x = xFor(i), y = yFor(r.value);
+      d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
+    });
+
+    var gridLines = "";
+    var gridLabels = "";
+    for (var g = 0; g <= 4; g++){
+      var gy = padT + (innerH * g) / 4;
+      var gv = maxVal * (1 - g / 4);
+      gridLines += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="#e4ddd2" stroke-width="1" />';
+      gridLabels += '<text x="' + (padL - 8) + '" y="' + (gy + 4).toFixed(1) + '" font-size="9.5" fill="#6b6f76" text-anchor="end" font-family="Inter, sans-serif">' + fmtCompact(gv) + '</text>';
+    }
+
+    var xLabels = "";
+    var step = n <= 16 ? 2 : (n <= 22 ? 3 : 5);
+    for (var i = 0; i < n; i++){
+      if (i % step === 0 || i === n - 1){
+        var x = xFor(i);
+        xLabels += '<text x="' + x.toFixed(1) + '" y="' + (H - 8) + '" font-size="9.5" fill="#6b6f76" text-anchor="middle" font-family="Inter, sans-serif">Yr ' + rows[i].year + '</text>';
+      }
+    }
+
+    // markers: year 3 (welcome bonus ends) and year 10 (IIP ends, charges stop, special bonus begins)
+    var markers = "";
+    if (rows.length >= 3){
+      var mx3 = xFor(2);
+      markers += '<line x1="' + mx3.toFixed(1) + '" y1="' + padT + '" x2="' + mx3.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#8a94a0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6" />' +
+        '<text x="' + mx3.toFixed(1) + '" y="' + (H - 18) + '" font-size="8.5" fill="#6b6f76" text-anchor="middle" font-family="Inter, sans-serif">welcome bonus ends</text>';
+    }
+    if (rows.length >= 10){
+      var mx10 = xFor(9);
+      var iipLabel = continueAfterIip ? "IIP ends" : "IIP ends, premiums stop";
+      markers += '<line x1="' + mx10.toFixed(1) + '" y1="' + padT + '" x2="' + mx10.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#c99a5f" stroke-width="1" stroke-dasharray="3,3" />' +
+        '<text x="' + mx10.toFixed(1) + '" y="' + (padT - 4) + '" font-size="9" fill="#a3763f" text-anchor="middle" font-family="Inter, sans-serif">' + iipLabel + '</text>';
+    }
+
+    var svgContent =
+      gridLines +
+      markers +
+      '<path d="' + d + '" fill="none" stroke="#a3763f" stroke-width="2.75" />' +
+      gridLabels +
+      xLabels +
+      '<g id="hoverLayer"></g>' +
+      '<rect id="hoverCapture" x="' + padL + '" y="0" width="' + innerW + '" height="' + H + '" fill="transparent" />';
+
+    chartSvg.innerHTML = svgContent;
+
+    chartState = {
+      rows: rows,
+      padL: padL, padT: padT, innerW: innerW, innerH: innerH,
+      maxVal: maxVal, n: n, W: W, H: H
+    };
+  }
+
+  function fmtCompact(n){
+    if (n >= 1000000) return "$" + (n / 1000000).toFixed(1) + "M";
+    if (n >= 1000) return "$" + Math.round(n / 1000) + "k";
+    return "$" + Math.round(n);
+  }
+
+  function xForState(cs, i){ return cs.padL + (cs.innerW * i) / (cs.n - 1); }
+  function yForState(cs, v){ return cs.padT + cs.innerH - (cs.innerH * v) / cs.maxVal; }
+
+  function showTooltip(clientX, clientY){
+    if (!chartState) return;
+    var svgRect = chartSvg.getBoundingClientRect();
+    if (svgRect.width === 0) return;
+    var scaleX = chartState.W / svgRect.width;
+    var localX = (clientX - svgRect.left) * scaleX;
+
+    var frac = (localX - chartState.padL) / chartState.innerW;
+    var idx = Math.round(frac * (chartState.n - 1));
+    idx = Math.max(0, Math.min(chartState.n - 1, idx));
+
+    var r = chartState.rows[idx];
+    var x = xForState(chartState, idx);
+    var y = yForState(chartState, r.value);
+
+    var hoverLayer = chartSvg.querySelector("#hoverLayer");
+    if (hoverLayer){
+      hoverLayer.innerHTML =
+        '<line x1="' + x.toFixed(1) + '" y1="' + chartState.padT + '" x2="' + x.toFixed(1) + '" y2="' + (chartState.padT + chartState.innerH) + '" stroke="#1c2b3a" stroke-width="1" stroke-dasharray="2,3" opacity="0.5" />' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#a3763f" stroke="#fff" stroke-width="1.5" />';
+    }
+
+    var html = '<span class="tt-year">Policy Year ' + r.year + '</span>' +
+      '<div class="tt-row"><span class="tt-dot" style="background:var(--bronze);"></span>Policy value: ' + fmtMoney(r.value) + '</div>';
+
+    chartTooltip.innerHTML = html;
+    chartTooltip.classList.add("visible");
+
+    var wrapRect = chartPlotWrap.getBoundingClientRect();
+    var left = clientX - wrapRect.left + 14;
+    var top = clientY - wrapRect.top - 14;
+    var ttWidth = chartTooltip.offsetWidth || 190;
+    if (left + ttWidth > wrapRect.width) left = clientX - wrapRect.left - ttWidth - 14;
+    if (left < 0) left = 4;
+    if (top < 0) top = 4;
+    chartTooltip.style.left = left + "px";
+    chartTooltip.style.top = top + "px";
+  }
+
+  function hideTooltip(){
+    chartTooltip.classList.remove("visible");
+    var hoverLayer = chartSvg.querySelector("#hoverLayer");
+    if (hoverLayer) hoverLayer.innerHTML = "";
+  }
+
+  chartPlotWrap.addEventListener("mousemove", function(e){
+    showTooltip(e.clientX, e.clientY);
+  });
+  chartPlotWrap.addEventListener("mouseleave", hideTooltip);
+  chartPlotWrap.addEventListener("touchstart", function(e){
+    if (e.touches && e.touches[0]) showTooltip(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive:true });
+  chartPlotWrap.addEventListener("touchmove", function(e){
+    if (e.touches && e.touches[0]) showTooltip(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive:true });
+  chartPlotWrap.addEventListener("touchend", hideTooltip);
+
+  function render(){
+    var cfg = freqConfig[state.freq];
+    var annual = state.amount * cfg.count;
+    var tier = getTier(annual);
+
+    annualReadout.textContent = fmtMoney(annual);
+    tierBadge.textContent = tierLabel[tier];
+    statTotalPremiums.textContent = fmtMoney(annual * 10);
+
+    var sim = simulate(annual, state.capitalGain, state.continueAfterIip, HORIZON);
+
+    statBonuses.textContent = fmtMoney(sim.cumW + sim.cumS);
+
+    buildChart(sim.rows, state.continueAfterIip);
+    hideTooltip();
+  }
+
+  // init
+  applyFreqUI();
+  setActivePill(freqPillsWrap, "data-freq", state.freq);
+  capGainValue.textContent = (state.capitalGain * 100).toFixed(1) + "%";
+  setActivePill(afterIipPillsWrap, "data-value", "continue");
+  render();
+
+})();
+</script>
+
+</body>
+</html>
+</template>
+<template id="tpl-pa3-notes"><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INTERNAL — AIA Pro Achiever 3.0 Advisor Notes</title>
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --muted:#555;
+    --line:#d9d9d9;
+    --bg:#f5f5f3;
+    --panel:#ffffff;
+    --warn-bg:#3a1414;
+    --warn-text:#ffe1e1;
+    --accent:#7a3b12;
+    --tag-talk:#2b5d34;
+    --tag-data:#1d4e89;
+    --tag-obj:#8a2b2b;
+    --tag-trans:#6b4c9a;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: 'Courier New', Courier, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+    font-size:15px;
+  }
+  .banner{
+    background:var(--warn-bg);
+    color:var(--warn-text);
+    text-align:center;
+    padding:14px 12px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    font-size:14px;
+    border-bottom:3px solid #d94f4f;
+  }
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:26px 20px 60px;
+  }
+  h1{
+    font-size:24px;
+    margin:6px 0 2px;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:13.5px;
+    margin-bottom:22px;
+  }
+  .quickfacts{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-bottom:28px;
+  }
+  .quickfacts h2{
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    margin:0 0 10px;
+    color:var(--accent);
+  }
+  .qf-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px 18px;
+  }
+  @media (max-width:640px){.qf-grid{grid-template-columns:1fr 1fr;}}
+  .qf-item{font-size:13px;}
+  .qf-item b{display:block; font-size:13px; color:var(--ink);}
+  .qf-item span{color:var(--muted);}
+
+  nav.toc{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 18px;
+    margin-bottom:30px;
+    font-size:13.5px;
+  }
+  nav.toc h2{font-size:13px; text-transform:uppercase; letter-spacing:0.05em; margin:0 0 8px; color:var(--accent);}
+  nav.toc ol{margin:0; padding-left:18px; columns:2;}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--muted);}
+
+  section.topic{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:20px 22px 8px;
+    margin-bottom:22px;
+  }
+  section.topic h2{
+    font-size:18px;
+    margin:0 0 4px;
+    padding-bottom:10px;
+    border-bottom:2px solid var(--accent);
+  }
+  .topic-num{color:var(--accent); font-weight:700; margin-right:6px;}
+
+  .block{margin:16px 0;}
+  .tag{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    padding:2px 8px;
+    border-radius:4px;
+    color:#fff;
+    margin-bottom:8px;
+  }
+  .tag.talk{background:var(--tag-talk);}
+  .tag.data{background:var(--tag-data);}
+  .tag.obj{background:var(--tag-obj);}
+  .tag.trans{background:var(--tag-trans);}
+
+  .block ul{margin:6px 0 0; padding-left:20px;}
+  .block li{margin-bottom:6px; font-size:14px;}
+  .block p{margin:6px 0 0; font-size:14px;}
+
+  .objection{
+    border-left:3px solid var(--tag-obj);
+    padding:8px 12px;
+    margin:8px 0;
+    background:#fbf1f1;
+    border-radius:0 6px 6px 0;
+  }
+  .objection .q{font-weight:700; font-size:13.5px; margin-bottom:3px;}
+  .objection .a{font-size:13.5px; color:#333;}
+
+  .transition{
+    border-left:3px solid var(--tag-trans);
+    padding:8px 12px;
+    margin:8px 0;
+    background:#f3f0f9;
+    border-radius:0 6px 6px 0;
+    font-size:13.5px;
+    font-style:italic;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:10px 0 16px;
+    font-size:12.5px;
+  }
+  table caption{
+    text-align:left;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:4px;
+    caption-side:top;
+  }
+  th, td{
+    border:1px solid var(--line);
+    padding:5px 7px;
+    text-align:center;
+  }
+  th{
+    background:#eee9e2;
+    font-weight:700;
+  }
+  td.rowlabel, th.rowlabel{text-align:left;}
+
+  .cite{
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--muted);
+    background:#f0efe9;
+    padding:1px 5px;
+    border-radius:3px;
+  }
+
+  details{
+    margin:10px 0;
+    border:1px dashed var(--line);
+    border-radius:6px;
+    padding:8px 12px;
+  }
+  details summary{
+    cursor:pointer;
+    font-weight:700;
+    font-size:13.5px;
+  }
+  details[open] summary{margin-bottom:8px;}
+
+  footer.note{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    margin-top:30px;
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">INTERNAL — ADVISOR NOTES, NOT FOR CLIENT DISTRIBUTION</div>
+
+<div class="wrap">
+
+  <h1>AIA Pro Achiever 3.0 — Advisor Reference Notes</h1>
+  <div class="sub">Companion to the client presentation file. Scope: 10-Year Initial Investment Period (IIP10) only, per your usual pitch, the 15 and 20-year IIP options exist in the product but are deliberately excluded here. Source: AIA Pro Achiever 3.0 Product Summary, Version 2.0 (092024). Cross-check against the current Product Summary before every meeting, rates and charges are not guaranteed and AIA can revise them with written notice.</div>
+
+  <div class="quickfacts">
+    <h2>Quick Facts Cheat Sheet (IIP10)</h2>
+    <div class="qf-grid">
+      <div class="qf-item"><b>Product type</b><span>Regular premium ILP, cash only, continuous (no fixed pay-to date)</span></div>
+      <div class="qf-item"><b>Initial Investment Period</b><span>10 years, this version only</span></div>
+      <div class="qf-item"><b>Allocation</b><span>100% of regular premium to units from day one</span></div>
+      <div class="qf-item"><b>Min annual premium</b><span>$2,400 (Semi-Annual $1,200 / Quarterly $600 / Monthly $200)</span></div>
+      <div class="qf-item"><b>Welcome Bonus</b><span>Years 1&ndash;3, totals 5% / 23% / 38% / 53% by tier</span></div>
+      <div class="qf-item"><b>Special Bonus</b><span>5% of premium, yrs 10&ndash;20; 8% of premium, yr 21 onward, indefinitely</span></div>
+      <div class="qf-item"><b>Premium Pass</b><span>1 pass (IIP10), up to 12 months paused premium, no Premium Holiday or Supplementary Charge during</span></div>
+      <div class="qf-item"><b>Free-look</b><span>14 days from receipt of policy docs</span></div>
+      <div class="qf-item"><b>Top-up charge</b><span>5% of top-up premium</span></div>
+      <div class="qf-item"><b>Supplementary Charge</b><span>3.90% p.a. of Regular Premium Policy Value, monthly, ceases after the 11th annual premium (~yr 10)</span></div>
+      <div class="qf-item"><b>Full Surrender Charge</b><span>100% in yrs 1&ndash;2, tapering to 0% by yr 11</span></div>
+      <div class="qf-item"><b>Reinstatement window</b><span>Within 5 years of lapse, no back-payment required</span></div>
+      <div class="qf-item"><b>Fund access</b><span>AIA's own investment team, plus institutional sub-managers on the AIA Elite Funds platform, incl. BlackRock, Wellington Management, Capital Group</span></div>
+      <div class="qf-item"><b>Post-Yr10 framing (client deck)</b><span>"Almost like a bank account", withdraw with no surrender charge, or keep investing, client's choice each year. See Section 4 for the compliance caveat on this framing.</span></div>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <h2>Jump to section</h2>
+    <ol>
+      <li><a href="#s1">Plan Overview &amp; Positioning</a></li>
+      <li><a href="#s2">Bonus Structure</a></li>
+      <li><a href="#s3">Protection Benefits</a></li>
+      <li><a href="#s4">Flexibility Features (incl. Premium Pass)</a></li>
+      <li><a href="#s5">Fees &amp; Charges (full detail, IIP10)</a></li>
+      <li><a href="#s6">Risk Disclosures &amp; Compliance Language</a></li>
+      <li><a href="#s7">Eligibility &amp; Key Minimums</a></li>
+      <li><a href="#s8">Master Objection Quick-List</a></li>
+      <li><a href="#s9">Suggested Meeting Flow</a></li>
+      <li><a href="#s10">Interactive Calculator, What's Under the Hood</a></li>
+    </ol>
+  </nav>
+
+  <section class="topic" id="s1">
+    <h2><span class="topic-num">1.</span>Plan Overview &amp; Positioning</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Core distinction from Wealth Venture, and worth stating explicitly if a client has seen both: this is a continuous regular-premium plan, not a limited-pay one. There is no year where premiums are expected to stop. The "10 years" in IIP10 refers to the Initial Investment Period, the front-loaded phase where welcome bonuses land and charges are heaviest, not a funding deadline.</li>
+        <li>Position it as the plan for clients who want to keep building indefinitely and are drawn to a reward structure that gets richer with tenure (Special Bonus stepping up at year 21) rather than one that pays out and stops.</li>
+        <li>Entry point is deliberately low, $200/month, which makes this a natural fit for younger clients or as a second/top-up policy alongside a larger primary plan. Note: the client deck no longer displays this as a standalone "low bar to start" overview card, it's folded into the general framing now, but it's still a fair point to raise verbally.</li>
+        <li>Positioning is deliberately wealth-appreciation, not income. Don't volunteer dividend or cash-payout mechanics unprompted, the client deck has been stripped of that content entirely. If a client asks directly about income funds or cash dividends, see Section 6 for the honest answer, it's still technically possible on this plan, we just don't lead with it.</li>
+        <li>Good fit for: clients who want an ongoing, indefinite savings discipline and are comfortable treating premiums as a permanent line item, not a fixed-term obligation.</li>
+        <li>Poor fit for: clients who want a plan with a clear "stop paying, then wait" structure (that's closer to Wealth Venture), or who might need to access capital within the first two years, the surrender charge there is unusually unforgiving.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>Regular premium ILP, no fixed premium term, 100% of regular premium allocated to units at bid price from the first payment <span class="cite">Sec 2, p.1</span></li>
+        <li>Initial Investment Period options: 10, 15, or 20 years, selected at application and not changeable afterward, we are scoping to IIP10 only <span class="cite">Sec 2, p.1</span></li>
+        <li>If Premium Pass or Premium Holiday is used, the IIP extends beyond 10 years until the relevant regular premium count has actually been paid <span class="cite">Sec 2, p.1</span></li>
+        <li>Cash only, no CPF/SRS <span class="cite">Sec 2, p.1</span></li>
+        <li>Underlying funds are run by AIA's own investment management arm and by institutional sub-managers on the AIA Elite Funds platform, publicly confirmed names include BlackRock, Wellington Management, and Capital Group <span class="cite">aia.com.sg, "Our Partners"</span>. This is genuine and citable, but it describes fund management generally across AIA's Elite Funds shelf, don't imply a specific fund in this client's proposed allocation uses a specific manager unless you've actually checked the fund fact sheet.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"When do I stop paying?"</div>
+        <div class="a">Be upfront: there isn't a built-in stop date. This plan is designed to be funded for as long as the client holds it. If they want a plan with a defined funding period instead, that's a different product conversation, don't let this ambiguity surface after they've already committed.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Isn't 10 years a long commitment?"</div>
+        <div class="a">Reframe: 10 years is how long the Initial Investment Period runs, the phase with the steepest charges and the front-loaded welcome bonus, not the total commitment. The plan is actually built to continue well past that, and the reward structure (Special Bonus stepping up at year 21) assumes it will. Pair this with the year-11 framing in Section 4, once the IIP ends, staying in is genuinely optional year to year.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Who's actually managing my money?"</div>
+        <div class="a">Two layers: AIA's own investment management team oversees the platform, and depending on the fund the client selects, the underlying assets may be run by institutional managers on AIA's Elite Funds shelf, names like BlackRock, Wellington Management, and Capital Group are real AIA fund partners. Useful for credibility, but check the actual fund fact sheet before naming a specific manager for a specific fund choice, don't imply a guarantee that applies to a fund it doesn't apply to.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Before we get into the numbers, I want to be clear about the shape of this plan, it's not a fund-it-and-forget-it structure like some others, it's designed to keep going."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s2">
+    <h2><span class="topic-num">2.</span>Bonus Structure</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Two bonuses, on two different clocks: Welcome Bonus is early and finite (years 1-3), Special Bonus is late and open-ended (year 10 onward, indefinitely). Don't let a client conflate them, they reward different things.</li>
+        <li>Welcome Bonus scales steeply with premium tier, top tier (&ge;$12,000 annualised, now labelled <strong>Tier A</strong> after the relettering below) gets more than 10x the bonus rate of the entry tier (&lt;$4,800, now <strong>Tier D</strong>) in year 1 alone (15% vs 5%). Worth discussing premium level early if the client has flexibility on amount.</li>
+        <li><strong>Tier lettering was flipped in the current client deck</strong>: Tier A is now the top/highest-premium tier, Tier D is now the entry tier ($2,400&ndash;$4,799). This is the opposite of how it read in earlier versions of this deck, if you're working from memory or an old screenshot, double-check you're not quoting the reversed lettering.</li>
+        <li>Special Bonus is a percentage of that year's premium, not of policy value, unlike some other AIA plans. It's contractually simple to explain: "5 cents on every dollar of premium from year 10, 8 cents from year 21," and it requires premiums to keep being paid to keep earning it.</li>
+        <li>There is no Investment Bonus or Performance Bonus mechanic on this plan (that's a Wealth Venture feature), don't accidentally cross-sell the wrong plan's bonus structure in conversation.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite — Welcome Bonus Rate, IIP10 (Sec 3.3, p.2)</span>
+      <table>
+        <caption>Welcome Bonus rate by policy year and annualised regular premium tier, IIP10</caption>
+        <tr>
+          <th class="rowlabel">Policy Year</th>
+          <th>$2,400&ndash;$4,799 (Tier D)</th>
+          <th>$4,800&ndash;$7,199 (Tier C)</th>
+          <th>$7,200&ndash;$11,999 (Tier B)</th>
+          <th>$12,000 &amp; above (Tier A)</th>
+        </tr>
+        <tr><td class="rowlabel">1</td><td>5%</td><td>5%</td><td>10%</td><td>15%</td></tr>
+        <tr><td class="rowlabel">2</td><td>&mdash;</td><td>8%</td><td>13%</td><td>18%</td></tr>
+        <tr><td class="rowlabel">3</td><td>&mdash;</td><td>10%</td><td>15%</td><td>20%</td></tr>
+        <tr><th class="rowlabel">Total</th><th>5%</th><th>23%</th><th>38%</th><th>53%</th></tr>
+      </table>
+      <p>Rate applies per premium payment received in that policy year, same frequency-to-policy-year mapping logic as other AIA ILPs (Annual 1x/yr, Semi-Annual 2x/yr, Quarterly 4x/yr, Monthly 12x/yr).</p>
+      <ul>
+        <li>Special Bonus: 5% of that year's regular premium, from the 10th annual premium (or equivalent) through the 20th; 8% from the 21st annual premium onward, indefinitely, as regular premium units <span class="cite">Sec 3.4 / 4.4, p.3/5</span></li>
+        <li>Special Bonus is independent of IIP option, IIP10/15/20 all use the same 10th-premium and 21st-premium thresholds.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"What happens to the Special Bonus if I stop paying for a while?"</div>
+        <div class="a">The Special Bonus is tied to actually paying that year's premium, if a premium isn't paid (whether through Premium Holiday or lapse), that year doesn't earn the bonus, and the thresholds for when the bonus starts are based on premiums actually paid, not calendar years. A missed premium pushes the 10th/21st threshold further out. This is exactly what the Premium Pass is designed to protect against, using it keeps the premium count moving even during a pause.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"53% welcome bonus sounds too good, what's the catch?"</div>
+        <div class="a">No catch on the mechanic itself, it's a contractual bonus paid as extra units for the top premium tier, but it only applies to the first three years of premiums, and the client needs to be paying at or above $12,000 annualised to hit that top tier. It's also worth pairing with the surrender charge conversation, that bonus is only realised in full if the client stays in well past the early years.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"The reward structure here runs on two different timelines, let me walk you through both, because they matter for how you think about the premium level you commit to."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s3">
+    <h2><span class="topic-num">3.</span>Protection Benefits</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Death Benefit formula is functionally the same "higher of" structure as Wealth Venture, but the premium side of the formula also includes any Premium Reduction Top-Up amount, worth mentioning only if the client has actually used premium reduction.</li>
+        <li>Secondary Insured age cap is 70 here, versus 75 on Wealth Venture, a small but real difference if a client is comparing the two plans side by side for legacy planning.</li>
+        <li>Accidental Death Benefit window is the same as other AIA ILPs, 2 policy years from issue, 90 days from accident to death, don't oversell this as broad accident coverage. Note: the client deck dropped this as a standalone card to keep the Protection section tighter (now 3 cards, not 4), it's still a real, contractual benefit, so mention it verbally if a client asks about accident coverage specifically.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>Death Benefit = higher of (total regular premium + top-ups + premium reduction top-up amount &minus; withdrawals) or policy value, less charges <span class="cite">Sec 3.1, p.1&ndash;2</span></li>
+        <li>Accidental Death Benefit = additional 100% of total regular premium paid, if death from injury within 90 days of an accident occurring within first 2 policy years <span class="cite">Sec 3.2, p.2</span></li>
+        <li>Secondary Insured: Policyholder/Assignee, spouse, or child under age 16; cannot exceed age 70 at appointment; cannot appoint if a beneficiary nomination or trust already exists on the policy <span class="cite">Sec 3.6, p.3&ndash;4</span></li>
+        <li>Maturity Benefit = policy value less applicable charges, policy terminates automatically at maturity <span class="cite">Sec 3.5, p.3</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"How does this compare to Wealth Venture on protection?"</div>
+        <div class="a">Nearly identical death benefit mechanics, same floor-based formula. The real differences are structural, not on the protection side: this plan has no fixed funding period, a lower entry point, and a much steeper first-two-years surrender charge. If protection is the client's main driver, that's a signal to look at a dedicated term or whole life product instead, this is fundamentally an accumulation plan with protection attached.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Alongside the growth story, there's also a protection layer here, let me run through what it actually covers."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s4">
+    <h2><span class="topic-num">4.</span>Flexibility Features (incl. Premium Pass)</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li><strong>Client deck note:</strong> the flexibility section was trimmed to 2 cards, top-ups and the free-look window. The Premium Pass card ("A break you've already earned") and the premium-reduction card ("Dial your premium down if needed") were both removed to keep the deck lean. Both are still real, contractual features, don't stop using them, just don't expect the client to see them on screen unprompted. Bring them up verbally if a client raises pausing or lowering premiums, or if you judge the client would value knowing about them upfront.</li>
+        <li>Premium Pass is still the standout flexibility feature versus Wealth Venture if you do raise it: an earned, no-penalty pause, not a fallback like Premium Holiday. "The plan rewards you for 5 years of consistency with a built-in safety valve."</li>
+        <li>IIP10 clients get exactly 1 Premium Pass (IIP15 gets 2, IIP20 gets 3), usable across up to 12 cumulative months, and it can be split into multiple activations rather than used all at once.</li>
+        <li>Critically: during a Premium Pass, neither Premium Holiday Charge nor Supplementary Charge apply, this is meaningfully better than an unplanned Premium Holiday, which does incur charges. Make sure a client understands the difference, using an earned Premium Pass costs nothing extra; an unplanned pause does.</li>
+        <li>Premium reduction (after year 4) is a genuine "life changed" lever, distinct from Premium Pass, it permanently lowers the ongoing premium rather than pausing it temporarily, and carries its own charge that tapers over time.</li>
+        <li>Top-up minimum is the same $1,000 as Wealth Venture, but the premium charge on top-ups is higher here, 5% versus 3%.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag talk">Talking Points &mdash; the "bank account" framing after year 10</span>
+      <ul>
+        <li>New framing in the client deck's Commitment section: from year 11, the plan is pitched as "almost like a bank account, you can choose to withdraw without any fees, or you can choose to continue investing as well." This is a client-friendly analogy for a real fact: the Full Surrender Charge schedule hits 0% from policy year 11 onward, and there's no requirement to keep paying premiums past the IIP.</li>
+        <li><strong>Compliance caution, internal only, do not read this caveat to the client verbatim, but keep it in mind when you use the analogy:</strong> "no fees" is accurate for the surrender charge specifically, it is not the same as bank-account liquidity. Policy value still moves with the underlying funds (a bank account balance doesn't), withdrawals are processed via fund dealing at bid price with a 2:00pm SGT cut-off and forward pricing, not instant like an ATM withdrawal, and there's no capital or deposit guarantee the way bank deposits carry SDIC coverage up to the scheme limit. Use the analogy to convey the absence of a penalty, not to imply the two products behave identically.</li>
+        <li>Pair this with the "continue investing" choice: staying in past year 10 keeps compounding, keeps the annual Special Bonus flowing (5% of premium yrs 10&ndash;20, 8% from yr 21), and is the path the plan is actually designed to reward long-term. Frame withdrawal as available, not necessarily advisable, most clients who are still contributing comfortably at year 10 are better off continuing.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>Premium Pass: earned after every 5th annual / 10th semi-annual / 20th quarterly / 60th monthly premium paid; IIP10 maximum is 1 Premium Pass; usable across up to 12 cumulative policy months, may be split into multiple activations; Premium Holiday Charge and Supplementary Charge do not apply during the Premium Pass Period <span class="cite">Sec 3.7, p.3&ndash;4</span></li>
+        <li>When Premium Pass activates, payment frequency automatically switches to monthly going forward, worth mentioning if a client pays annually and might be surprised by this <span class="cite">Sec 7.1, p.13</span></li>
+        <li>Premium reduction: not allowed until the 4th annual / 8th semi-annual / 16th quarterly / 48th monthly premium has been paid; increases are never allowed; subject to Premium Reduction Charge if used during the IIP <span class="cite">Sec 6.1, p.11</span></li>
+        <li>Top-up: minimum $1,000, 5% premium charge, remainder buys units at bid price <span class="cite">Sec 6.2, p.11&ndash;12</span></li>
+        <li>Partial withdrawal: allowed after the 3rd annual premium (or equivalent) has been paid; minimum $1,000, remaining policy value must stay &ge; $10,000 <span class="cite">Sec 6.4, p.12</span></li>
+        <li>Fund switching: minimum $50 per switch (waived when switching out of AIA S$ Money Market Fund entirely) <span class="cite">Sec 6.5, p.12</span></li>
+        <li>Free-look: 14 days from receipt of policy documents; +7 days added if delivered by post or by hand <span class="cite">Sec 7.3, p.16&ndash;17</span></li>
+        <li>Reinstatement after lapse: within 5 years, and unlike some other AIA ILPs, <strong>no back-payment of missed premiums is required or accepted</strong> <span class="cite">Sec 7.4, p.17</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"What if I need a break from paying?"</div>
+        <div class="a">After 5 years of consistent premiums, you'll have earned a Premium Pass, up to 12 months of paused payments with no Premium Holiday Charge or Supplementary Charge. That's the built-in answer. If the break is needed before year 5, or exceeds what the Pass covers, it falls back to standard Premium Holiday rules, which do carry a charge.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Can I just lower my premium instead of stopping?"</div>
+        <div class="a">Yes, after the 4th year of premiums, though it comes with a Premium Reduction Charge that's steepest early (70% in year 4) and tapers to 5% by year 10, then 0% from year 11. Worth running the numbers together if this is a live possibility rather than a hypothetical.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"If my policy lapses, do I need to pay everything I missed to reinstate it?"</div>
+        <div class="a">No, and this is actually more forgiving than some other AIA plans. Within 5 years of lapsing, you can reinstate without back-paying the premiums that were due during the lapsed period. Worth mentioning proactively, it removes a common objection to ever letting the policy lapse in a pinch.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"So after year 10 I can just take my money out like a bank account?"</div>
+        <div class="a">The no-fee part is accurate, the Full Surrender Charge is 0% from year 11. But it's not literally bank-account liquidity: value still depends on the funds you're invested in, so a withdrawal locks in whatever the unit price is on the dealing day, and processing follows the normal fund dealing cycle rather than being instant. The "bank account" language is describing the absence of a penalty, not identical behaviour to a savings account.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"This plan actually builds in more breathing room than people expect, especially once you've been in it a few years, let me show you what that looks like."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s5">
+    <h2><span class="topic-num">5.</span>Fees &amp; Charges (Full Detail, IIP10)</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Lead with the Full Surrender Charge schedule when discussing costs, it's the single most important number for setting expectations: 100% in years 1 and 2 is unusually steep, make sure this lands clearly before any premium commitment is made.</li>
+        <li>Supplementary Charge (3.90% p.a.) is slightly higher than Wealth Venture's 3.60%, and runs through the 11th annual premium (effectively ~10 years), pausing automatically during Premium Pass or Premium Holiday (replaced by Premium Holiday Charge in the latter case).</li>
+        <li>Premium Reduction Charge only matters if a client actually reduces premium, don't lead with it, but have the table ready.</li>
+        <li>Benefit Charge scales with age and Sum-at-Risk, identical rate table to Wealth Venture (same underlying mortality basis), see Appendix A extract below.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Charge-by-Charge Reference (IIP10)</span>
+      <ul>
+        <li><strong>Premium Charge:</strong> 5% of each Top-Up Premium only. Regular premiums carry no premium charge. <span class="cite">Sec 5.1, p.5</span></li>
+        <li><strong>Supplementary Charge:</strong> 3.90% p.a. (3.90%/12 monthly) of Regular Premium Policy Value, ceases upon payment of the 11th annual premium (or equivalent); not imposed during Premium Pass Period or while Premium Holiday Charge is payable. <span class="cite">Sec 5.2, p.5</span></li>
+        <li><strong>Benefit Charge:</strong> Annual Benefit Charge Rate &divide; 12 &times; Sum-at-Risk, deducted monthly. Sum-at-Risk = total premiums + top-ups + premium reduction top-up amount &minus; withdrawals &minus; policy value. Zero or negative Sum-at-Risk means no charge that month. Rate varies by attained age and gender (Appendix A, identical table to Wealth Venture). <span class="cite">Sec 5.3, p.5</span></li>
+        <li><strong>Premium Holiday Charge (IIP10):</strong> tapers from 100% down to 0%, ceasing once the 11th annual-equivalent premium has been paid. <span class="cite">Sec 5.4, p.6</span></li>
+        <li><strong>Premium Reduction Charge (IIP10):</strong> not applicable/not allowed in years 1&ndash;3, then tapers 70% (yr4) down to 5% (yr10), 0% from yr11. <span class="cite">Sec 5.5, p.6&ndash;8</span></li>
+        <li><strong>Full Surrender Charge (IIP10):</strong> % of Regular Premium Policy Value, see schedule below. <span class="cite">Sec 5.6, p.8&ndash;10</span></li>
+        <li><strong>Partial Withdrawal Charge (IIP10):</strong> Factor &times; Regular Premium Policy Value Withdrawn, not allowed in years 1&ndash;2, see schedule below. <span class="cite">Sec 5.7, p.10&ndash;11</span></li>
+      </ul>
+
+      <table>
+        <caption>Full Surrender Charge Rate by policy year, IIP10</caption>
+        <tr><th class="rowlabel">Yr</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11+</td></tr>
+        <tr><th class="rowlabel">Rate</th><td>100%</td><td>100%</td><td>80%</td><td>70%</td><td>60%</td><td>50%</td><td>45%</td><td>35%</td><td>20%</td><td>5%</td><td>0%</td></tr>
+      </table>
+
+      <table>
+        <caption>Partial Withdrawal Charge Factor by policy year, IIP10 (not allowed yrs 1&ndash;2)</caption>
+        <tr><th class="rowlabel">Yr</th><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11+</td></tr>
+        <tr><th class="rowlabel">Factor</th><td>4.000</td><td>2.333</td><td>1.500</td><td>1.000</td><td>0.818</td><td>0.539</td><td>0.250</td><td>0.053</td><td>0</td></tr>
+      </table>
+
+      <details>
+        <summary>Premium Holiday Charge schedule, IIP10 (tap to expand)</summary>
+        <table>
+          <caption>Premium Holiday Charge Annual Rate, by number of regular premiums paid (Annual mode shown; see Sec 5.4 for Semi-Annual/Quarterly/Monthly equivalents)</caption>
+          <tr><th class="rowlabel">Premiums paid</th><td>1st</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th</td><td>9th</td><td>10th</td><td>11th+</td></tr>
+          <tr><th class="rowlabel">Annual rate</th><td>100%</td><td>30%</td><td>20%</td><td>20%</td><td>10%</td><td>10%</td><td>5%</td><td>5%</td><td>2.5%</td><td>2.5%</td><td>0%</td></tr>
+        </table>
+      </details>
+
+      <details>
+        <summary>Benefit Charge sample rates from Appendix A, per $1,000 Sum-at-Risk (tap to expand)</summary>
+        <table>
+          <caption>Selected attained ages, annual rate per $1,000 Sum-at-Risk (identical basis to Wealth Venture)</caption>
+          <tr><th class="rowlabel">Age</th><td>20</td><td>30</td><td>40</td><td>50</td><td>60</td><td>70</td><td>80</td></tr>
+          <tr><th class="rowlabel">Male</th><td>0.71</td><td>0.76</td><td>1.33</td><td>3.59</td><td>10.89</td><td>28.90</td><td>68.09</td></tr>
+          <tr><th class="rowlabel">Female</th><td>0.65</td><td>0.65</td><td>0.98</td><td>2.39</td><td>8.44</td><td>21.81</td><td>53.89</td></tr>
+        </table>
+        <p>Full table (ages 0&ndash;99, male and female) is in Appendix A of the Product Summary, pull it up live if a client wants their exact age.</p>
+      </details>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"100% surrender charge for two years feels extreme."</div>
+        <div class="a">It is steep, and worth naming plainly rather than glossing over, this plan is not built for anyone who might need the money back in the first two years. Position the trade-off honestly: in exchange for that early inflexibility, the client gets a lower entry point, an indefinite runway, and a bonus structure that keeps improving with tenure. If early access is a real risk, this isn't the right plan regardless of how attractive the bonuses look.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Why is the Supplementary Charge higher than on Wealth Venture?"</div>
+        <div class="a">3.90% versus 3.60% p.a., a modest difference. Both charges fund ongoing policy administration for roughly the first decade. Not worth dwelling on unless the client is doing a direct side-by-side comparison of the two plans.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Let's be upfront about the cost side too, especially the early surrender charge, because that number should genuinely shape whether now is the right time to start."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s6">
+    <h2><span class="topic-num">6.</span>Risk Disclosures &amp; Compliance Language</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Same core disclosure obligation as any AIA ILP: policy value is not guaranteed, moves with the underlying funds, and a loss of principal is possible. Verbalize this, don't just gesture at it.</li>
+        <li>Because this plan is pitched as long-term wealth appreciation, be extra clear that "long-term" doesn't mean "guaranteed", the risk disclosure applies just as much here as on an income-focused plan.</li>
+        <li><strong>Current positioning note:</strong> this plan is now pitched purely as long-term wealth appreciation, the client deck no longer mentions dividends, income funds, or cash payout mechanics anywhere. Don't raise the topic unprompted. That said, the underlying capability hasn't changed, if a client independently selects a dividend-paying fund, the same capital-erosion risk applies as on any AIA ILP: distributions can come from capital, not just gains, and that can reduce future returns. Cash payout of dividends is not available until after the IIP ends regardless, before that everything reinvests automatically. Keep this disclosure ready in case a client asks, it's a genuine compliance point, just not something to lead with anymore.</li>
+        <li>This Product Summary does not form part of the insurance contract itself, always point clients to the actual policy contract and Product Highlights Sheet for binding terms.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>Policy value is not guaranteed; fund performance is not guaranteed; past performance is not indicative of future performance <span class="cite">Sec 9, p.21</span></li>
+        <li>Dividend distributions may be paid from capital, which can reduce original investment and future returns <span class="cite">Sec 9, p.21</span></li>
+        <li>Cash dividend payout option only available after the end of the relevant IIP; before that, all dividends are automatically reinvested regardless of fund choice <span class="cite">Sec 8.4, p.18</span></li>
+        <li>Product Summary does not form part of the contract of insurance; only the actual policy contract binds the parties <span class="cite">Sec 10, p.21</span></li>
+        <li>Limitation of Benefit: liability capped at 100% of policy value in cases of suicide within 1 year of issue/reinstatement, material misrepresentation within 2 years, or fraud at any time <span class="cite">Sec 7.6, p.17</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"This is for long-term growth, so it's lower risk, right?"</div>
+        <div class="a">Push back gently on that framing. A long time horizon can help smooth out volatility, but it doesn't make the underlying investment risk disappear, policy value can still fall, and a possible loss of premiums can't be ruled out. Long-term is a strategy for managing risk, not a guarantee against it.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Before we look at any numbers, I want the risk side to be just as clear as the upside, that's the only way this is actually an informed decision."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s7">
+    <h2><span class="topic-num">7.</span>Eligibility &amp; Key Minimums</h2>
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <table>
+        <tr><th class="rowlabel">Payment Mode</th><th>Minimum Annualised Premium</th></tr>
+        <tr><td class="rowlabel">Annual</td><td>$2,400</td></tr>
+        <tr><td class="rowlabel">Semi-Annual</td><td>$1,200 (x2 = $2,400)</td></tr>
+        <tr><td class="rowlabel">Quarterly</td><td>$600 (x4 = $2,400)</td></tr>
+        <tr><td class="rowlabel">Monthly</td><td>$200 (x12 = $2,400)</td></tr>
+      </table>
+      <ul>
+        <li>No premium reduction allowed until the 4th annual premium (or equivalent) has been paid; premium increases are never allowed <span class="cite">Sec 6.1, p.11</span></li>
+        <li>Top-up minimum: $1,000, 5% premium charge <span class="cite">Sec 6.2, p.11&ndash;12</span></li>
+        <li>Partial withdrawal minimum: $1,000; allowed only after 3rd annual premium paid; must leave &ge; $10,000 remaining policy value <span class="cite">Sec 6.4, p.12</span></li>
+        <li>Fund switch minimum: $50 <span class="cite">Sec 6.5, p.12</span></li>
+        <li>Dealing cut-off: 2:00pm SGT, forward pricing on bid-bid basis <span class="cite">Sec 8.2, p.17</span></li>
+        <li>AIA reserves the right to revise minimums at its discretion <span class="cite">Sec 6.1, p.11</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="topic" id="s8">
+    <h2><span class="topic-num">8.</span>Master Objection Quick-List</h2>
+    <div class="block">
+      <p>Consolidated for fast lookup mid-conversation, full context is in the relevant section above.</p>
+      <div class="objection"><div class="q">"When does this stop?"</div><div class="a">It doesn't have a built-in stop date, premiums continue indefinitely. The 10-year IIP is a charge/bonus phase, not a funding deadline.</div></div>
+      <div class="objection"><div class="q">"What if I need cash in the first couple of years?"</div><div class="a">Don't recommend this plan for that scenario, surrender charge is 100% in years 1-2, and partial withdrawals aren't even allowed until after year 3.</div></div>
+      <div class="objection"><div class="q">"Can I take a break from paying?"</div><div class="a">Yes, via the earned Premium Pass after 5 years (no extra charge), or via standard Premium Holiday earlier (charge applies).</div></div>
+      <div class="objection"><div class="q">"Is my capital guaranteed?"</div><div class="a">No. Value tracks the chosen funds; loss of principal is possible, regardless of the long-term framing.</div></div>
+      <div class="objection"><div class="q">"What's the actual death benefit?"</div><div class="a">Higher of total premiums paid (plus top-ups) or policy value, a floor, not a large multiple.</div></div>
+      <div class="objection"><div class="q">"Can I get dividends paid to me in cash?"</div><div class="a">Not something we lead with on this plan, it's pitched as growth, not income. Technically, only after the 10-year IIP ends, and only if a dividend-paying fund is chosen. Before that, everything is automatically reinvested regardless of preference.</div></div>
+      <div class="objection"><div class="q">"What if my policy lapses?"</div><div class="a">Reinstatement within 5 years, and unlike some AIA plans, no back-payment of missed premiums required.</div></div>
+      <div class="objection"><div class="q">"Who manages the underlying funds?"</div><div class="a">AIA's own investment team, plus institutional sub-managers on the Elite Funds shelf for certain funds, e.g. BlackRock, Wellington Management, Capital Group. Confirm the specific manager against the actual fund fact sheet before naming one to a client.</div></div>
+      <div class="objection"><div class="q">"What can I do once I hit year 10?"</div><div class="a">Two choices, no penalty either way: withdraw (surrender charge is 0% from yr 11, though it's still fund-dealing speed, not instant like a bank), or keep investing and keep earning the Special Bonus. Most clients who are comfortable continuing are better off doing so.</div></div>
+    </div>
+  </section>
+
+  <section class="topic" id="s9">
+    <h2><span class="topic-num">9.</span>Suggested Meeting Flow</h2>
+    <div class="block">
+      <span class="tag trans">Full Sequence of Transitions</span>
+      <ol>
+        <li>Open with the plan's core idea (Section 1) — a continuous plan built to reward staying power, not a fixed funding period.</li>
+        <li>If it's relevant to the client, mention the fund management story (institutional managers on top of AIA's own team) early, it's a credibility point, not a headline, don't over-index on it.</li>
+        <li>Show the 10-year IIP and surrender charge chart (client presentation "Commitment" section) — be direct about the 100% charge in years 1-2 before anything else. Use the panel on "what changes once you're past year 10" to set up the bank-account framing, and be ready with the compliance nuance from Section 4 if a client pushes on what "no fees" actually means.</li>
+        <li>Walk through the two bonus mechanisms in order (Section 2) — Welcome Bonus first, then Special Bonus. Use the current (flipped) tier lettering, Tier A is now the top tier.</li>
+        <li>Run the interactive calculator with the client's own numbers, including the "keep investing" vs "withdraw & stop premiums" toggle for year 11 onward.</li>
+        <li>Pivot to protection (Section 3) — the same death benefit floor logic as other AIA ILPs.</li>
+        <li>Cover flexibility (Section 4) — the client deck keeps this lean (top-ups, free-look), bring in Premium Pass or premium reduction verbally only if it's relevant to this client.</li>
+        <li>Be transparent on costs (Section 5) — lead with the surrender charge schedule, it's the number that matters most for expectation-setting here.</li>
+        <li>Close with risk disclosure (Section 6) — non-negotiable, always cover before any commitment is discussed. Growth framing doesn't reduce investment risk, say so plainly.</li>
+        <li>End on the discussion prompt from the client presentation, let the client's own answers guide next steps, not a hard close.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="topic" id="s10">
+    <h2><span class="topic-num">10.</span>Interactive Calculator &mdash; What's Under the Hood</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li><strong>This calculator was rebuilt in the current revision, it no longer has a dividend yield input or a "pay dividends out" toggle at all.</strong> That mechanic has been fully removed to match the plan's growth-only positioning, not just hidden. If you're recalling an earlier version of this tool from memory, discard it, the model underneath changed.</li>
+        <li>Contributions run every simulated year through year 10 always. From year 11, the calculator's behaviour depends on a new toggle: <strong>"Keep Investing"</strong> (default) continues the annualised premium every year through the full horizon, <strong>"Withdraw &amp; Stop Premiums"</strong> sets contributions to zero from year 11 onward while the existing policy value keeps compounding at the capital gain rate. This is what drives the "bank account" framing, both are legitimate, zero-fee paths from year 11.</li>
+        <li>The "Total Premiums Paid by End of Yr 10" stat still marks the IIP checkpoint specifically, it does not reflect total lifetime premiums if the client picks "Keep Investing." Say this out loud when you show the stat, same caution as before.</li>
+        <li>The Welcome Bonus tier table shown next to the calculator uses the current (flipped) lettering, Tier A is the top premium tier, Tier D is the entry tier. Confirm you're quoting this table, not an old screenshot or your memory of the previous version.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Assumptions Baked Into the Calculator (cite if asked)</span>
+      <ul>
+        <li><strong>Contributions, years 1&ndash;10:</strong> always the annualised premium entered, every simulated year, matching the IIP.</li>
+        <li><strong>Contributions, years 11&ndash;40:</strong> depends on the "Keep Investing" / "Withdraw &amp; Stop Premiums" pill. Keep Investing = annualised premium continues every year. Withdraw &amp; Stop Premiums = $0 contribution from year 11 on, but the accumulated policy value is not removed from the chart, it's left in and continues to compound, modelling a client who stops paying but leaves the money invested rather than fully cashing out.</li>
+        <li><strong>Capital gain (p.a.), client-editable, default 6%:</strong> the underlying funds' assumed capital appreciation, compounds every year of the horizon regardless of the contribution toggle. Not the MAS-mandated 4%/8% Illustrated Investment Rate of Return, prepare the formal Benefit Illustration separately with AIA's own tools.</li>
+        <li><strong>Welcome Bonus dollar figures:</strong> calculated directly from the contractual IIP10 rate table in Section 3.3 (current, flipped lettering), tier-matched to the annualised premium entered, fixed regardless of fund performance, only accrues years 1&ndash;3.</li>
+        <li><strong>Special Bonus dollar figures:</strong> 5% of that year's premium for years 10&ndash;20, 8% from year 21 onward, computed directly from Section 3.4. Only accrues in years where a contribution is actually being paid, so choosing "Withdraw &amp; Stop Premiums" also stops new Special Bonus accrual from year 11 on, that's a real product rule, not a calculator simplification. Combined with Welcome Bonus into the single "Welcome + Special Bonuses" stat shown.</li>
+        <li><strong>Supplementary Charge (3.90% p.a.):</strong> applied once per simulated year for policy years 1 through 10 only, then stops, matching the actual policy terms (ceases after the 11th annual premium).</li>
+        <li><strong>Deliberately excluded from the calculator:</strong> the monthly Benefit Charge (cost of insurance, age- and gender-based), Premium Reduction Charge, Premium Pass mechanics, the Full Surrender Charge, and any dividend/income-fund mechanics. All are real (dividends included, see Section 6) but are left out to match this plan's growth-only positioning and to keep the tool focused on a quick, live "what if" conversation. Say so if asked, "the full picture, including any income-fund option you might choose later, is what goes into your formal Benefit Illustration, which I'll prepare separately."</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"Why does the total premiums stat say 'by end of Year 10' if I keep paying after that?"</div>
+        <div class="a">That's the IIP checkpoint, a natural moment to pause and look at where things stand, not the end of your commitment. The chart itself keeps going with contributions built in for the full simulated horizon, if you've left the toggle on "Keep Investing."</div>
+      </div>
+      <div class="objection">
+        <div class="q">"What does the 'Withdraw &amp; Stop Premiums' option actually show me?"</div>
+        <div class="a">It shows what happens if you stop paying premiums after year 10 but leave your existing policy value invested rather than pulling it out entirely, it keeps compounding at the capital gain rate you've set, but stops earning new Welcome/Special Bonus dollars since those require an active premium that year. It's not modelling a full cash withdrawal to zero, that's a separate conversation about actually surrendering or partially withdrawing.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Where did the dividend option go? I remember it from before."</div>
+        <div class="a">Removed deliberately, this plan is positioned as growth, not income, and we don't want the calculator implying otherwise. The underlying product can still support a dividend-paying fund choice with cash payout after year 10, but that's now a separate conversation, not a default toggle in this tool.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">End of advisor notes. Scope is IIP10 only, if a client needs the 15 or 20-year IIP option, re-pull the relevant tables from the Product Summary before that conversation. Verify all rates against the current Product Summary before each client meeting, terms are subject to change.</footer>
+
+</div>
+
+</body>
+</html>
+</template>
+<template id="tpl-wv-client"><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIA Wealth Venture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1c2b3a;
+    --navy-deep:#141f2b;
+    --bronze:#a3763f;
+    --bronze-light:#c99a5f;
+    --teal:#4d7a68;
+    --teal-light:#79a690;
+    --cream:#faf7f2;
+    --paper:#ffffff;
+    --ink:#232323;
+    --muted:#6b6f76;
+    --line:#e4ddd2;
+    --radius:14px;
+    --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    color:var(--ink);
+    background:var(--cream);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:1040px;
+    margin:0 auto;
+    padding:0 28px;
+  }
+
+  /* HERO */
+  header.hero{
+    background:linear-gradient(155deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color:#f4f1ea;
+    padding:76px 0 64px;
+    position:relative;
+  }
+  header.hero::after{
+    content:"";
+    position:absolute;
+    left:0; right:0; bottom:0;
+    height:4px;
+    background:linear-gradient(90deg, var(--bronze-light), var(--bronze));
+  }
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--bronze-light);
+    margin-bottom:18px;
+  }
+  h1{
+    font-family:var(--serif);
+    font-weight:700;
+    font-size:clamp(30px, 5vw, 48px);
+    line-height:1.15;
+    margin:0 0 16px;
+  }
+  .subtitle{
+    font-size:clamp(16px, 2vw, 19px);
+    color:#d7d2c6;
+    max-width:660px;
+    font-weight:400;
+  }
+
+  /* SECTIONS */
+  main{
+    padding:56px 0 20px;
+  }
+  section{
+    margin-bottom:56px;
+  }
+  .section-head{
+    margin-bottom:22px;
+  }
+  .section-kicker{
+    text-transform:uppercase;
+    letter-spacing:0.12em;
+    font-size:12px;
+    font-weight:600;
+    color:var(--bronze);
+    margin-bottom:8px;
+  }
+  h2{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:clamp(22px, 3vw, 28px);
+    margin:0 0 6px;
+    color:var(--navy);
+  }
+  .section-lede{
+    color:var(--muted);
+    font-size:15.5px;
+    max-width:700px;
+  }
+
+  /* CARD GRID */
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:18px;
+    margin-top:24px;
+  }
+  .grid.two{grid-template-columns:repeat(2, 1fr);}
+  @media (max-width:760px){
+    .grid, .grid.two{grid-template-columns:1fr;}
+  }
+
+  .card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 24px;
+  }
+  .card .card-number{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:34px; height:34px;
+    border-radius:50%;
+    background:var(--navy);
+    color:#f4f1ea;
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:15px;
+    margin-bottom:14px;
+  }
+  .card h3{
+    font-size:16.5px;
+    font-weight:600;
+    margin:0 0 8px;
+    color:var(--navy);
+  }
+  .card p{
+    font-size:14.5px;
+    color:var(--muted);
+    margin:0;
+  }
+  .card .stat{
+    font-family:var(--serif);
+    font-size:26px;
+    color:var(--bronze);
+    font-weight:600;
+    display:block;
+    margin-bottom:6px;
+  }
+
+  /* NUMBERED STEPS */
+  .steps{
+    counter-reset:step;
+    margin-top:24px;
+    display:flex;
+    flex-direction:column;
+    gap:0;
+  }
+  .step{
+    display:grid;
+    grid-template-columns:56px 1fr;
+    gap:18px;
+    padding:20px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .step:last-child{border-bottom:none;}
+  .step-marker{
+    counter-increment:step;
+    width:40px; height:40px;
+    border-radius:50%;
+    border:1.5px solid var(--bronze);
+    color:var(--bronze);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--serif);
+    font-weight:600;
+  }
+  .step-marker::before{content:counter(step);}
+  .step h3{
+    margin:2px 0 6px;
+    font-size:16.5px;
+    color:var(--navy);
+  }
+  .step p{
+    margin:0;
+    font-size:14.5px;
+    color:var(--muted);
+  }
+
+  /* PANEL / CALLOUT */
+  .panel{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-left:4px solid var(--bronze);
+    border-radius:10px;
+    padding:22px 24px;
+    margin-top:20px;
+  }
+  .panel h4{
+    margin:0 0 8px;
+    font-size:15px;
+    color:var(--navy);
+    font-weight:600;
+  }
+  .panel p{
+    margin:0;
+    font-size:14.5px;
+    color:var(--muted);
+  }
+  .panel ul{
+    margin:8px 0 0;
+    padding-left:18px;
+  }
+  .panel li{
+    font-size:14.5px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+
+  /* TIMELINE for bonus years */
+  .timeline{
+    display:flex;
+    gap:14px;
+    margin-top:26px;
+    flex-wrap:wrap;
+  }
+  .tl-item{
+    flex:1 1 140px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px;
+    text-align:center;
+  }
+  .tl-item .yr{
+    font-family:var(--serif);
+    font-size:13px;
+    color:var(--bronze);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    margin-bottom:6px;
+    display:block;
+  }
+  .tl-item .desc{
+    font-size:13.5px;
+    color:var(--ink);
+    font-weight:500;
+  }
+
+  /* LOCK-IN BAR STRIP */
+  .lockin-wrap{
+    margin-top:26px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:24px 26px;
+  }
+  .lockin-wrap h4{
+    margin:0 0 4px;
+    font-size:15px;
+    color:var(--navy);
+  }
+  .lockin-wrap .lockin-note{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:0 0 18px;
+  }
+  .lockin-bars{
+    display:flex;
+    align-items:flex-end;
+    gap:6px;
+    height:120px;
+  }
+  .lockin-bar{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    height:100%;
+  }
+  .lockin-bar .bar{
+    width:100%;
+    background:linear-gradient(180deg, var(--bronze-light), var(--bronze));
+    border-radius:4px 4px 0 0;
+  }
+  .lockin-bar .barlabel{
+    font-size:10.5px;
+    color:var(--ink);
+    font-weight:600;
+    margin-bottom:4px;
+  }
+  .lockin-bar .yrlabel{
+    font-size:10px;
+    color:var(--muted);
+    margin-top:6px;
+  }
+
+  /* dark section */
+  .dark-section{
+    background:var(--navy);
+    color:#eee9dd;
+    border-radius:18px;
+    padding:40px 36px;
+    margin:56px 0;
+  }
+  .dark-section h2{color:#f4f1ea;}
+  .dark-section .section-lede{color:#c9c3b5;}
+  .dark-section .card{
+    background:rgba(255,255,255,0.05);
+    border:1px solid rgba(255,255,255,0.12);
+  }
+  .dark-section .card h3{color:#f4f1ea;}
+  .dark-section .card p{color:#c9c3b5;}
+  .dark-section .card .card-number{background:var(--bronze);}
+
+  /* ===== CALCULATOR ===== */
+  .calc-shell{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:8px;
+    margin-top:26px;
+  }
+  .calc-inner{
+    background:linear-gradient(180deg, #fff, #fdfbf8);
+    border-radius:16px;
+    padding:28px;
+  }
+  @media (max-width:640px){ .calc-inner{padding:18px;} }
+
+  .calc-grid{
+    display:grid;
+    grid-template-columns:340px 1fr;
+    gap:30px;
+  }
+  @media (max-width:860px){
+    .calc-grid{grid-template-columns:1fr;}
+  }
+
+  .field-label{
+    font-size:12.5px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--navy);
+    margin:0 0 10px;
+  }
+
+  .pill-group{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:22px;
+  }
+  .pill{
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--ink);
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .pill:hover{border-color:var(--bronze);}
+  .pill.active{
+    background:var(--navy);
+    border-color:var(--navy);
+    color:#fff;
+  }
+
+  .amount-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:6px;
+  }
+  .amount-row .currency{
+    font-family:var(--serif);
+    font-size:15px;
+    color:var(--muted);
+  }
+  input[type="number"].amount-input{
+    font-family:var(--serif);
+    font-size:22px;
+    font-weight:600;
+    color:var(--navy);
+    border:none;
+    border-bottom:2px solid var(--line);
+    background:transparent;
+    width:150px;
+    padding:2px 2px 6px;
+    outline:none;
+  }
+  input[type="number"].amount-input:focus{border-bottom-color:var(--bronze);}
+  .amount-freq-label{
+    font-size:13px;
+    color:var(--muted);
+  }
+
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:6px;
+    border-radius:3px;
+    background:var(--line);
+    outline:none;
+    margin:14px 0 22px;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    appearance:none;
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--bronze);
+    border:3px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    cursor:pointer;
+    margin-top:-7px;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:20px; height:20px;
+    border-radius:50%;
+    background:var(--bronze);
+    border:3px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,0.3);
+    cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track{
+    height:6px;
+    border-radius:3px;
+    background:var(--line);
+  }
+
+  .tier-badge{
+    display:inline-block;
+    padding:5px 12px;
+    border-radius:999px;
+    background:#f1e8da;
+    color:var(--bronze);
+    font-size:12.5px;
+    font-weight:700;
+    margin-top:2px;
+  }
+
+  .annual-readout{
+    background:#f6f3ec;
+    border-radius:10px;
+    padding:14px 16px;
+    margin:18px 0 24px;
+  }
+  .annual-readout .big{
+    font-family:var(--serif);
+    font-size:24px;
+    font-weight:600;
+    color:var(--navy);
+  }
+  .annual-readout .small{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+
+  .toggle-row{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    padding:16px;
+    background:#f6f3ec;
+    border-radius:10px;
+    margin-bottom:10px;
+  }
+  .toggle-switch{
+    position:relative;
+    width:42px; height:24px;
+    flex:none;
+    margin-top:2px;
+  }
+  .toggle-switch input{
+    opacity:0; width:0; height:0;
+  }
+  .toggle-track{
+    position:absolute; inset:0;
+    background:#cfc7b8;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .toggle-track::before{
+    content:"";
+    position:absolute;
+    width:18px; height:18px;
+    left:3px; top:3px;
+    background:#fff;
+    border-radius:50%;
+    transition:transform .15s ease;
+    box-shadow:0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle-switch input:checked + .toggle-track{background:var(--teal);}
+  .toggle-switch input:checked + .toggle-track::before{transform:translateX(18px);}
+  .toggle-copy h5{
+    margin:0 0 3px;
+    font-size:13.5px;
+    color:var(--navy);
+    font-weight:600;
+  }
+  .toggle-copy p{
+    margin:0;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+
+  .sub-slider{
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px dashed var(--line);
+    display:none;
+  }
+  .sub-slider.visible{display:block;}
+  .sub-slider .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:4px;
+  }
+  .sub-slider .row strong{color:var(--teal); font-family:var(--serif); font-size:15px;}
+
+  .toggle-footnote{
+    margin:12px 0 0;
+    padding-top:10px;
+    border-top:1px dashed var(--line);
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+
+  .assumption-block{
+    background:#f6f3ec;
+    border-radius:10px;
+    padding:14px 16px;
+    margin:0 0 18px;
+  }
+  .assumption-block .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:2px;
+  }
+  .assumption-block .row strong{
+    font-family:var(--serif);
+    font-size:17px;
+    color:var(--bronze);
+  }
+  .assumption-block.teal .row strong{color:var(--teal);}
+  .assumption-block input[type="range"]{margin:6px 0 4px;}
+  .assumption-block .mini-note{
+    font-size:11px;
+    color:var(--muted);
+    line-height:1.5;
+    margin:4px 0 0;
+  }
+
+  /* Results side */
+  .stat-mini-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:12px;
+    margin-bottom:22px;
+  }
+  @media (max-width:520px){ .stat-mini-grid{grid-template-columns:1fr;} }
+  .stat-mini{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+  }
+  .stat-mini .label{
+    font-size:11.5px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:var(--muted);
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .stat-mini .value{
+    font-family:var(--serif);
+    font-size:21px;
+    font-weight:600;
+    color:var(--navy);
+  }
+  .stat-mini .value.bronze{color:var(--bronze);}
+  .stat-mini .value.teal{color:var(--teal);}
+  .stat-mini .sub{
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:3px;
+  }
+
+  .chart-card{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:18px 18px 8px;
+  }
+  .chart-card h5{
+    margin:0 0 2px;
+    font-size:14px;
+    color:var(--navy);
+  }
+  .chart-card .chart-sub{
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 6px;
+  }
+  .chart-legend{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    margin:6px 0 4px;
+  }
+  .legend-chip{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--ink);
+  }
+  .legend-chip .swatch{
+    width:14px; height:3px;
+    border-radius:2px;
+    display:inline-block;
+  }
+  svg.chart{width:100%; height:auto; display:block; cursor:crosshair;}
+
+  .chart-plot-wrap{
+    position:relative;
+  }
+  .chart-tooltip{
+    position:absolute;
+    pointer-events:none;
+    background:var(--navy);
+    color:#f4f1ea;
+    padding:10px 13px;
+    border-radius:8px;
+    font-size:12px;
+    line-height:1.55;
+    white-space:nowrap;
+    box-shadow:0 4px 14px rgba(0,0,0,0.22);
+    opacity:0;
+    transition:opacity .1s ease;
+    z-index:5;
+  }
+  .chart-tooltip.visible{opacity:1;}
+  .chart-tooltip .tt-year{
+    font-family:var(--serif);
+    font-weight:600;
+    font-size:13px;
+    color:#fff;
+    margin-bottom:4px;
+    display:block;
+  }
+  .chart-tooltip .tt-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .chart-tooltip .tt-dot{
+    width:8px; height:8px;
+    border-radius:50%;
+    display:inline-block;
+  }
+  .chart-tooltip .tt-div{
+    margin-top:6px;
+    padding-top:6px;
+    border-top:1px solid rgba(255,255,255,0.18);
+    color:var(--teal-light);
+  }
+  .chart-hint{
+    font-size:11.5px;
+    color:var(--muted);
+    margin:8px 0 0;
+    text-align:center;
+  }
+
+  .calc-disclaimer{
+    margin-top:18px;
+    font-size:11.5px;
+    color:var(--muted);
+    line-height:1.55;
+    border-top:1px solid var(--line);
+    padding-top:14px;
+  }
+
+  /* closing */
+  .closing{
+    text-align:center;
+    padding:56px 0 72px;
+  }
+  .closing h2{
+    font-size:clamp(22px,3vw,30px);
+  }
+  .closing p{
+    max-width:560px;
+    margin:12px auto 0;
+    color:var(--muted);
+    font-size:15.5px;
+  }
+  .prompt-box{
+    margin:28px auto 0;
+    max-width:640px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:26px 28px;
+  }
+  .prompt-box p{
+    margin:0 0 10px;
+    font-size:15px;
+    color:var(--ink);
+    text-align:left;
+  }
+  .prompt-box p:last-child{margin-bottom:0;}
+  .prompt-box strong{color:var(--navy);}
+
+  @media (max-width:600px){
+    header.hero{padding:56px 0 44px;}
+    .dark-section{padding:30px 22px; border-radius:14px;}
+    .card{padding:20px 18px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">AIA Wealth Venture</div>
+    <h1>A plan built to reward patience and long-term commitment</h1>
+    <div class="subtitle">An eight-year funding plan that puts your full premium to work from day one, then keeps building on your behalf well beyond the day your payments stop. Further down, you can enter your own numbers and see how it could unfold.</div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section id="overview">
+    <div class="section-head">
+      <div class="section-kicker">The Idea Behind It</div>
+      <h2>Front-load the effort, let the plan carry the rest</h2>
+      <p class="section-lede">Wealth Venture is designed around a simple trade-off: you commit to a fixed funding period, and in exchange the plan is structured to reward you for staying the course, both while you're paying and long after you've stopped.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <span class="stat">8 yrs</span>
+        <h3>A defined funding period</h3>
+        <p>You commit to paying premiums for eight years. Once that's done, no further premiums are required for the policy to continue working.</p>
+      </div>
+      <div class="card">
+        <span class="stat">100%</span>
+        <h3>Fully invested from day one</h3>
+        <p>Every dollar of regular premium goes toward buying units in the investment funds you choose, right from your very first payment.</p>
+      </div>
+      <div class="card">
+        <span class="stat">Your choice</span>
+        <h3>A fund lineup you control</h3>
+        <p>You select the mix of underlying funds behind the policy, so the strategy reflects your own risk appetite and goals, not a fixed formula.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="commitment">
+    <div class="section-head">
+      <div class="section-kicker">Before We Run Any Numbers</div>
+      <h2>What you're committing to, in plain terms</h2>
+      <p class="section-lede">Before we get into projections, it's worth being clear-eyed about the shape of the commitment: eight years of funding, and a cost to exiting early that fades the longer you stay in.</p>
+    </div>
+    <div class="lockin-wrap">
+      <h4>Cost of exiting early, by policy year</h4>
+      <p class="lockin-note">If you fully surrender the policy, this is the portion of your policy value that would be deducted as a surrender charge. It falls every year and disappears completely from year 11 onward.</p>
+      <div class="lockin-bars">
+        <div class="lockin-bar"><span class="barlabel">70%</span><div class="bar" style="height:100%"></div><span class="yrlabel">Yr 1</span></div>
+        <div class="lockin-bar"><span class="barlabel">65%</span><div class="bar" style="height:93%"></div><span class="yrlabel">Yr 2</span></div>
+        <div class="lockin-bar"><span class="barlabel">60%</span><div class="bar" style="height:86%"></div><span class="yrlabel">Yr 3</span></div>
+        <div class="lockin-bar"><span class="barlabel">55%</span><div class="bar" style="height:79%"></div><span class="yrlabel">Yr 4</span></div>
+        <div class="lockin-bar"><span class="barlabel">50%</span><div class="bar" style="height:71%"></div><span class="yrlabel">Yr 5</span></div>
+        <div class="lockin-bar"><span class="barlabel">40%</span><div class="bar" style="height:57%"></div><span class="yrlabel">Yr 6</span></div>
+        <div class="lockin-bar"><span class="barlabel">30%</span><div class="bar" style="height:43%"></div><span class="yrlabel">Yr 7</span></div>
+        <div class="lockin-bar"><span class="barlabel">20%</span><div class="bar" style="height:29%"></div><span class="yrlabel">Yr 8</span></div>
+        <div class="lockin-bar"><span class="barlabel">10%</span><div class="bar" style="height:14%"></div><span class="yrlabel">Yr 9</span></div>
+        <div class="lockin-bar"><span class="barlabel">5%</span><div class="bar" style="height:7%"></div><span class="yrlabel">Yr 10</span></div>
+        <div class="lockin-bar"><span class="barlabel">0%</span><div class="bar" style="height:1%"></div><span class="yrlabel">Yr 11+</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how-it-works">
+    <div class="section-head">
+      <div class="section-kicker">How It Unfolds Over Time</div>
+      <h2>The plan is built to pay you back at several points</h2>
+      <p class="section-lede">Rather than a single payout at the end, Wealth Venture is layered with rewards that arrive at different stages, some while you're still paying, and more once your funding period is behind you.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-marker"></div>
+        <div>
+          <h3>Years 1 to 5: bonus units land with every premium</h3>
+          <p>Each time you pay a premium during your first five years, the plan adds bonus units on top, at a rate that increases the longer you've been paying. Depending on the premium level you commit to, the bonus units added across those five years can add up to somewhere between 16% and 35% of your annual premium amount.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-marker"></div>
+        <div>
+          <h3>Years 9 to 12: an investment bonus kicks in</h3>
+          <p>At the start of each of these four policy years, provided all premiums were paid on schedule, the plan credits an extra 2.5% of your annual premium as bonus units, roughly 10% in total across the four years.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-marker"></div>
+        <div>
+          <h3>Year 9 onward: an annual performance bonus, ongoing</h3>
+          <p>Starting the same year, and continuing indefinitely for as long as the policy is active, you also receive a yearly bonus equal to 0.30% of your policy's value at the time. This one doesn't stop after year twelve.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="tl-item"><span class="yr">Yr 1&ndash;5</span><div class="desc">Welcome Bonus on every premium paid</div></div>
+      <div class="tl-item"><span class="yr">Yr 8</span><div class="desc">Final premium due, funding period ends</div></div>
+      <div class="tl-item"><span class="yr">Yr 9&ndash;12</span><div class="desc">Investment Bonus added each year</div></div>
+      <div class="tl-item"><span class="yr">Yr 9+</span><div class="desc">Performance Bonus, ongoing every year</div></div>
+    </div>
+  </section>
+
+  <section id="calculator">
+    <div class="section-head">
+      <div class="section-kicker">Now Let's Make It Real</div>
+      <h2>Run your own numbers</h2>
+      <p class="section-lede">Choose how often you'd pay and how much, then hover over the chart to see your projected policy value at any year. Everything updates as you move the controls.</p>
+    </div>
+
+    <div class="calc-shell">
+      <div class="calc-inner">
+        <div class="calc-grid">
+
+          <div class="calc-controls">
+            <p class="field-label">How often would you pay?</p>
+            <div class="pill-group" id="freqPills">
+              <button type="button" class="pill" data-freq="monthly">Monthly</button>
+              <button type="button" class="pill" data-freq="quarterly">Quarterly</button>
+              <button type="button" class="pill" data-freq="semiannual">Semi-Annual</button>
+              <button type="button" class="pill" data-freq="annual">Annual</button>
+            </div>
+
+            <p class="field-label">Premium per payment</p>
+            <div class="amount-row">
+              <span class="currency">S$</span>
+              <input type="number" class="amount-input" id="amountInput" step="10">
+              <span class="amount-freq-label" id="amountFreqLabel">/ month</span>
+            </div>
+            <input type="range" id="amountSlider">
+
+            <div class="annual-readout">
+              <div class="big" id="annualReadout">S$12,000</div>
+              <div class="small">Annualised regular premium &middot; <span class="tier-badge" id="tierBadge">Tier 3</span></div>
+            </div>
+
+            <p class="field-label">Projected capital gain (p.a.)</p>
+            <div class="assumption-block">
+              <div class="row"><span>Your assumption, independent of dividends</span><strong id="capGainValue">6.0%</strong></div>
+              <input type="range" id="capGainSlider" min="0" max="15" step="0.5" value="6">
+              <p class="mini-note">This drives the fund's underlying capital growth. Set it to whatever you and your client want to explore, it's not tied to any fixed illustration rate.</p>
+            </div>
+
+            <p class="field-label">Expected dividend yield (p.a.)</p>
+            <div class="assumption-block teal">
+              <div class="row"><span>Fund distribution rate</span><strong id="yieldValue">7.0%</strong></div>
+              <input type="range" id="yieldSlider" min="0" max="10" step="0.5" value="7">
+              <p class="mini-note">Defaults to around 7% p.a., based on the AIA Global Adventurous Income Fund's recent quarterly distribution history. Editable, not guaranteed. Set to 0% if the funds you're picturing don't distribute dividends.</p>
+            </div>
+
+            <div class="toggle-row">
+              <div class="toggle-switch">
+                <input type="checkbox" id="withdrawToggle">
+                <label class="toggle-track" for="withdrawToggle"></label>
+              </div>
+              <div class="toggle-copy">
+                <h5>Pay dividends out as cash</h5>
+                <p><strong>Off</strong> (default): dividends are reinvested, so the fund compounds at capital gain plus dividend yield combined. <strong>On</strong>: dividends are paid out to you each year instead, so the fund grows from capital gain alone while the payout is shown separately, hover the chart to see the amount for any year.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="calc-results">
+            <div class="stat-mini-grid">
+              <div class="stat-mini">
+                <div class="label">Total Premiums Paid by End of Yr 8</div>
+                <div class="value" id="statTotalPremiums">S$0</div>
+                <div class="sub">Your annualised premium &times; 8 years, the full funding commitment</div>
+              </div>
+              <div class="stat-mini">
+                <div class="label">Welcome + Investment Bonuses</div>
+                <div class="value bronze" id="statBonuses">S$0</div>
+                <div class="sub">Fixed by your premium tier, not fund performance</div>
+              </div>
+            </div>
+
+            <div class="chart-card">
+              <h5>Projected policy value over time</h5>
+              <p class="chart-sub">Move your cursor (or finger) over the chart to see the projected policy value, and dividend payout if applicable, at any year.</p>
+              <div class="chart-legend">
+                <span class="legend-chip"><span class="swatch" style="background:var(--bronze);"></span>Projected policy value</span>
+              </div>
+              <div class="chart-plot-wrap" id="chartPlotWrap">
+                <svg class="chart" id="chartSvg" viewBox="0 0 640 280" preserveAspectRatio="none"></svg>
+                <div class="chart-tooltip" id="chartTooltip"></div>
+              </div>
+              <p class="chart-hint">Hover or tap anywhere on the line to explore a specific policy year.</p>
+            </div>
+
+            <div class="calc-disclaimer">
+              This is a simplified illustration for discussion purposes only, not a formal Benefit Illustration. It assumes every premium is paid on schedule with no Premium Holiday, applies the Supplementary Charge annually rather than monthly for the first 10 policy years only, and excludes the monthly insurance (Benefit Charge) and any surrender charge. The capital gain and dividend yield figures above are assumptions you set for discussion purposes, not the standard 4% p.a. / 8% p.a. rates mandated for a formal Benefit Illustration, prepare that separately using AIA's own tools before your client signs anything. Dividend yield is based on recent fund history where noted, fluctuates over time, is never guaranteed, and may at times be paid out of capital. Your actual policy value will differ from this illustration.
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="protection">
+    <div class="section-head">
+      <div class="section-kicker">Built-In Protection</div>
+      <h2>It's an investment plan, but it also stands behind your family</h2>
+      <p class="section-lede">Because this is an insurance policy as well as an investment vehicle, it carries a layer of protection that a pure investment account doesn't.</p>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h3>If the unexpected happens</h3>
+        <p>Should the life insured pass away while the policy is active, the plan pays out whichever is higher: the total premiums you've paid in (adjusted for any withdrawals), or the actual value the policy has grown to. Either way, your family isn't left with less than what went in.</p>
+      </div>
+      <div class="card">
+        <h3>Extra protection against accidents</h3>
+        <p>If death occurs as a result of an accident within the first two policy years, an additional payout equal to a full year of premiums is added on top of the standard death benefit.</p>
+      </div>
+      <div class="card">
+        <h3>A second name on the policy</h3>
+        <p>You can nominate a secondary insured, such as a spouse or child, so that if something happens to the original life insured, the policy simply continues under the new name rather than ending. Continuity, not a fresh start.</p>
+      </div>
+      <div class="card">
+        <h3>At maturity</h3>
+        <p>When the policy reaches its maturity date, you receive the full policy value, net of any applicable charges.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="dark-section">
+    <div class="section-head">
+      <div class="section-kicker">Staying Flexible</div>
+      <h2>Life doesn't always follow a straight line, and the plan accounts for that</h2>
+      <p class="section-lede">A handful of built-in features let you adjust course without needing to restart or cash out entirely.</p>
+    </div>
+    <div class="grid two">
+      <div class="card">
+        <h3>Add extra when you can</h3>
+        <p>Beyond your regular premiums, you can top up the policy whenever you have surplus cash, putting more to work in the same fund strategy.</p>
+      </div>
+      <div class="card">
+        <h3>Access funds if you need to</h3>
+        <p>You're able to make a partial withdrawal from your policy value, or switch between the underlying funds, as your circumstances or market outlook change.</p>
+      </div>
+      <div class="card">
+        <h3>Automated fund management</h3>
+        <p>If you'd rather not micromanage it, the policy offers optional automatic switching and rebalancing so your fund mix stays aligned to your original allocation over time.</p>
+      </div>
+      <div class="card">
+        <h3>A genuine change-of-mind window</h3>
+        <p>After your policy documents arrive, you have fourteen days to review everything carefully and cancel for a refund if it isn't the right fit after all.</p>
+      </div>
+    </div>
+  </div>
+
+  <section id="considerations">
+    <div class="section-head">
+      <div class="section-kicker">What To Weigh Before You Commit</div>
+      <h2>This works best as a long-term decision, not a short-term one</h2>
+      <p class="section-lede">Like any investment-linked policy, Wealth Venture's value moves with the performance of the underlying funds, and its cost structure is built around you staying invested for the full term and beyond.</p>
+    </div>
+    <div class="panel">
+      <h4>A few honest points worth sitting with</h4>
+      <ul>
+        <li>Your policy value isn't guaranteed. It rises and falls with the funds you've chosen, and past fund performance is never a promise of what comes next.</li>
+        <li>This plan rewards patience. The bonus structure and the projections above are heavily weighted toward the later years, so stepping away early means missing most of what makes this plan compelling in the first place.</li>
+        <li>If you chose to add an income-generating fund, its distributions are never guaranteed in rate or timing, and could, at the fund's discretion, be paid partly from capital rather than only from gains.</li>
+        <li>This is a cash-only plan, and premiums, once set, are not designed to be varied over the funding period.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="section-head" style="text-align:center;">
+      <div class="section-kicker">Where We Go From Here</div>
+      <h2>Let's talk about whether the timing and structure fit your plans</h2>
+      <p>Every part of this, the funding amount, the fund selection, and how it fits alongside what else you're already doing, should be shaped around your own situation before anything is decided.</p>
+    </div>
+    <div class="prompt-box">
+      <p><strong>A few questions worth thinking through together:</strong></p>
+      <p>Is an eight-year funding commitment realistic for your cash flow, even in a tighter year?</p>
+      <p>Looking at the numbers we just ran together, does that funding level feel comfortable or ambitious?</p>
+      <p>Does having protection built in alongside the investment matter to you, or would you rather keep the two separate?</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  var freqConfig = {
+    monthly:     { label:"Monthly",     short:"/ month",       count:12, min:650,  max:5000,  step:10,  fmtDefault:1000 },
+    quarterly:   { label:"Quarterly",   short:"/ quarter",     count:4,  min:1950, max:15000, step:10,  fmtDefault:3000 },
+    semiannual:  { label:"Semi-Annual", short:"/ half-year",   count:2,  min:3900, max:30000, step:20,  fmtDefault:6000 },
+    annual:      { label:"Annual",      short:"/ year",        count:1,  min:7800, max:60000, step:50,  fmtDefault:12000 }
+  };
+
+  var welcomeRates = {
+    tier1: [0.01, 0.03, 0.05, 0.07, 0],
+    tier2: [0.03, 0.04, 0.05, 0.07, 0.07],
+    tier3: [0.03, 0.05, 0.07, 0.09, 0.11]
+  };
+
+  var tierLabel = { tier1:"Tier 1", tier2:"Tier 2", tier3:"Tier 3" };
+
+  var HORIZON = 25;
+
+  var state = {
+    freq: "monthly",
+    amount: 1000,
+    capitalGain: 0.06,
+    distYield: 0.07,
+    withdraw: false
+  };
+
+  function getTier(annual){
+    if (annual >= 12000) return "tier3";
+    if (annual >= 9000) return "tier2";
+    return "tier1";
+  }
+
+  function fmtMoney(n){
+    n = Math.round(n);
+    var neg = n < 0;
+    n = Math.abs(n);
+    var s = "S$" + n.toLocaleString("en-US");
+    return neg ? "-" + s : s;
+  }
+
+  // Capital gain and dividend yield are modelled as two independent levers:
+  //  - capital gain always compounds the fund's value, whether or not dividends are paid
+  //  - dividend yield is "declared" every year regardless; if withdrawn it's paid out in
+  //    cash (not added to the fund), if reinvested it's added on top of the capital gain
+  function simulate(annual, capitalGain, distYield, withdraw, years){
+    var tier = getTier(annual);
+    var wr = welcomeRates[tier];
+    var value = 0;
+    var cumW = 0, cumI = 0, cumP = 0, cumD = 0, cumPrem = 0;
+    var rows = [];
+    for (var year = 1; year <= years; year++){
+      var contribution = year <= 8 ? annual : 0;
+      value += contribution;
+      cumPrem += contribution;
+
+      var w = 0;
+      if (year <= 5 && wr[year - 1] > 0){
+        w = wr[year - 1] * annual;
+        value += w;
+        cumW += w;
+      }
+
+      var inv = 0;
+      if (year >= 9 && year <= 12){
+        inv = 0.025 * annual;
+        value += inv;
+        cumI += inv;
+      }
+
+      var perf = 0;
+      if (year >= 9){
+        perf = 0.0030 * value;
+        value += perf;
+        cumP += perf;
+      }
+
+      // Supplementary Charge applies for the first 10 policy years only, then stops.
+      if (year <= 10){
+        value -= 0.036 * value;
+      }
+
+      var dividendAmount = distYield * value;
+
+      if (withdraw){
+        // Dividend is paid out to the client, not reinvested. The fund still grows
+        // from capital appreciation on its own, independent of the payout.
+        cumD += dividendAmount;
+        value += value * capitalGain;
+      } else {
+        // Dividend is reinvested: fund compounds at capital gain + dividend yield.
+        value += value * capitalGain + dividendAmount;
+        dividendAmount = 0;
+      }
+
+      if (value < 0) value = 0;
+
+      rows.push({ year: year, value: value, dividend: dividendAmount, cumPrem: cumPrem });
+    }
+    return { rows: rows, cumW: cumW, cumI: cumI, cumP: cumP, cumD: cumD, tier: tier };
+  }
+
+  // ---- DOM refs ----
+  var freqPillsWrap = document.getElementById("freqPills");
+  var amountInput = document.getElementById("amountInput");
+  var amountSlider = document.getElementById("amountSlider");
+  var amountFreqLabel = document.getElementById("amountFreqLabel");
+  var annualReadout = document.getElementById("annualReadout");
+  var tierBadge = document.getElementById("tierBadge");
+  var capGainSlider = document.getElementById("capGainSlider");
+  var capGainValue = document.getElementById("capGainValue");
+  var yieldSlider = document.getElementById("yieldSlider");
+  var yieldValue = document.getElementById("yieldValue");
+  var withdrawToggle = document.getElementById("withdrawToggle");
+  var statTotalPremiums = document.getElementById("statTotalPremiums");
+  var statBonuses = document.getElementById("statBonuses");
+  var chartSvg = document.getElementById("chartSvg");
+  var chartPlotWrap = document.getElementById("chartPlotWrap");
+  var chartTooltip = document.getElementById("chartTooltip");
+
+  var chartState = null;
+
+  function setActivePill(wrap, attr, val){
+    var pills = wrap.querySelectorAll(".pill");
+    for (var i = 0; i < pills.length; i++){
+      var p = pills[i];
+      if (p.getAttribute(attr) === String(val)) p.classList.add("active");
+      else p.classList.remove("active");
+    }
+  }
+
+  freqPillsWrap.addEventListener("click", function(e){
+    var btn = e.target.closest(".pill");
+    if (!btn) return;
+    var newFreq = btn.getAttribute("data-freq");
+    if (newFreq === state.freq) return;
+
+    var oldCfg = freqConfig[state.freq];
+    var annualNow = state.amount * oldCfg.count;
+    var newCfg = freqConfig[newFreq];
+    var newAmount = Math.round((annualNow / newCfg.count) / newCfg.step) * newCfg.step;
+    newAmount = Math.max(newCfg.min, Math.min(newCfg.max, newAmount));
+
+    state.freq = newFreq;
+    state.amount = newAmount;
+    applyFreqUI();
+    render();
+  });
+
+  function applyFreqUI(){
+    var cfg = freqConfig[state.freq];
+    setActivePill(freqPillsWrap, "data-freq", state.freq);
+    amountFreqLabel.textContent = cfg.short;
+    amountSlider.min = cfg.min;
+    amountSlider.max = cfg.max;
+    amountSlider.step = cfg.step;
+    amountSlider.value = state.amount;
+    amountInput.min = cfg.min;
+    amountInput.step = cfg.step;
+    amountInput.value = state.amount;
+  }
+
+  amountSlider.addEventListener("input", function(){
+    state.amount = parseFloat(amountSlider.value);
+    amountInput.value = state.amount;
+    render();
+  });
+
+  amountInput.addEventListener("input", function(){
+    var cfg = freqConfig[state.freq];
+    var v = parseFloat(amountInput.value);
+    if (isNaN(v)) return;
+    state.amount = v;
+    if (v >= cfg.min && v <= cfg.max) amountSlider.value = v;
+    else if (v > cfg.max) amountSlider.value = cfg.max;
+    else amountSlider.value = cfg.min;
+    render();
+  });
+
+  withdrawToggle.addEventListener("change", function(){
+    state.withdraw = withdrawToggle.checked;
+    render();
+  });
+
+  capGainSlider.addEventListener("input", function(){
+    state.capitalGain = parseFloat(capGainSlider.value) / 100;
+    capGainValue.textContent = parseFloat(capGainSlider.value).toFixed(1) + "%";
+    render();
+  });
+
+  yieldSlider.addEventListener("input", function(){
+    state.distYield = parseFloat(yieldSlider.value) / 100;
+    yieldValue.textContent = parseFloat(yieldSlider.value).toFixed(1) + "%";
+    render();
+  });
+
+  function buildChart(rows, withdraw){
+    var W = 640, H = 280;
+    var padL = 54, padR = 16, padT = 16, padB = 30;
+    var innerW = W - padL - padR;
+    var innerH = H - padT - padB;
+
+    var maxVal = 0;
+    rows.forEach(function(r){ if (r.value > maxVal) maxVal = r.value; });
+    maxVal = maxVal * 1.12;
+    if (maxVal <= 0) maxVal = 1000;
+
+    var n = rows.length;
+    function xFor(i){ return padL + (innerW * i) / (n - 1); }
+    function yFor(v){ return padT + innerH - (innerH * v) / maxVal; }
+
+    var d = "";
+    rows.forEach(function(r, i){
+      var x = xFor(i), y = yFor(r.value);
+      d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
+    });
+
+    var gridLines = "";
+    var gridLabels = "";
+    for (var g = 0; g <= 4; g++){
+      var gy = padT + (innerH * g) / 4;
+      var gv = maxVal * (1 - g / 4);
+      gridLines += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="#e4ddd2" stroke-width="1" />';
+      gridLabels += '<text x="' + (padL - 8) + '" y="' + (gy + 4).toFixed(1) + '" font-size="9.5" fill="#6b6f76" text-anchor="end" font-family="Inter, sans-serif">' + fmtCompact(gv) + '</text>';
+    }
+
+    var xLabels = "";
+    var step = n <= 16 ? 2 : (n <= 22 ? 3 : 5);
+    for (var i = 0; i < n; i++){
+      if (i % step === 0 || i === n - 1){
+        var x = xFor(i);
+        xLabels += '<text x="' + x.toFixed(1) + '" y="' + (H - 8) + '" font-size="9.5" fill="#6b6f76" text-anchor="middle" font-family="Inter, sans-serif">Yr ' + rows[i].year + '</text>';
+      }
+    }
+
+    // funding-end marker at year 8, and charge-end marker at year 10
+    var markers = "";
+    if (rows.length >= 8){
+      var mx8 = xFor(7);
+      markers += '<line x1="' + mx8.toFixed(1) + '" y1="' + padT + '" x2="' + mx8.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#c99a5f" stroke-width="1" stroke-dasharray="3,3" />' +
+        '<text x="' + mx8.toFixed(1) + '" y="' + (padT - 4) + '" font-size="9" fill="#a3763f" text-anchor="middle" font-family="Inter, sans-serif">funding ends</text>';
+    }
+    if (rows.length >= 10){
+      var mx10 = xFor(9);
+      markers += '<line x1="' + mx10.toFixed(1) + '" y1="' + padT + '" x2="' + mx10.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#8a94a0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6" />' +
+        '<text x="' + mx10.toFixed(1) + '" y="' + (H - 18) + '" font-size="8.5" fill="#6b6f76" text-anchor="middle" font-family="Inter, sans-serif">charges end</text>';
+    }
+
+    var svgContent =
+      gridLines +
+      markers +
+      '<path d="' + d + '" fill="none" stroke="#a3763f" stroke-width="2.75" />' +
+      gridLabels +
+      xLabels +
+      '<g id="hoverLayer"></g>' +
+      '<rect id="hoverCapture" x="' + padL + '" y="0" width="' + innerW + '" height="' + H + '" fill="transparent" />';
+
+    chartSvg.innerHTML = svgContent;
+
+    chartState = {
+      rows: rows, withdraw: withdraw,
+      padL: padL, padT: padT, innerW: innerW, innerH: innerH,
+      maxVal: maxVal, n: n, W: W, H: H
+    };
+  }
+
+  function fmtCompact(n){
+    if (n >= 1000000) return "$" + (n / 1000000).toFixed(1) + "M";
+    if (n >= 1000) return "$" + Math.round(n / 1000) + "k";
+    return "$" + Math.round(n);
+  }
+
+  function xForState(cs, i){ return cs.padL + (cs.innerW * i) / (cs.n - 1); }
+  function yForState(cs, v){ return cs.padT + cs.innerH - (cs.innerH * v) / cs.maxVal; }
+
+  function showTooltip(clientX, clientY){
+    if (!chartState) return;
+    var svgRect = chartSvg.getBoundingClientRect();
+    if (svgRect.width === 0) return;
+    var scaleX = chartState.W / svgRect.width;
+    var localX = (clientX - svgRect.left) * scaleX;
+
+    var frac = (localX - chartState.padL) / chartState.innerW;
+    var idx = Math.round(frac * (chartState.n - 1));
+    idx = Math.max(0, Math.min(chartState.n - 1, idx));
+
+    var r = chartState.rows[idx];
+    var x = xForState(chartState, idx);
+    var y = yForState(chartState, r.value);
+
+    var hoverLayer = chartSvg.querySelector("#hoverLayer");
+    if (hoverLayer){
+      hoverLayer.innerHTML =
+        '<line x1="' + x.toFixed(1) + '" y1="' + chartState.padT + '" x2="' + x.toFixed(1) + '" y2="' + (chartState.padT + chartState.innerH) + '" stroke="#1c2b3a" stroke-width="1" stroke-dasharray="2,3" opacity="0.5" />' +
+        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#a3763f" stroke="#fff" stroke-width="1.5" />';
+    }
+
+    var html = '<span class="tt-year">Policy Year ' + r.year + '</span>' +
+      '<div class="tt-row"><span class="tt-dot" style="background:var(--bronze);"></span>Policy value: ' + fmtMoney(r.value) + '</div>';
+
+    if (chartState.withdraw){
+      html += '<div class="tt-div">Dividend paid out this year: ' + fmtMoney(r.dividend) + '</div>';
+    }
+
+    chartTooltip.innerHTML = html;
+    chartTooltip.classList.add("visible");
+
+    var wrapRect = chartPlotWrap.getBoundingClientRect();
+    var left = clientX - wrapRect.left + 14;
+    var top = clientY - wrapRect.top - 14;
+    var ttWidth = chartTooltip.offsetWidth || 190;
+    if (left + ttWidth > wrapRect.width) left = clientX - wrapRect.left - ttWidth - 14;
+    if (left < 0) left = 4;
+    if (top < 0) top = 4;
+    chartTooltip.style.left = left + "px";
+    chartTooltip.style.top = top + "px";
+  }
+
+  function hideTooltip(){
+    chartTooltip.classList.remove("visible");
+    var hoverLayer = chartSvg.querySelector("#hoverLayer");
+    if (hoverLayer) hoverLayer.innerHTML = "";
+  }
+
+  chartPlotWrap.addEventListener("mousemove", function(e){
+    showTooltip(e.clientX, e.clientY);
+  });
+  chartPlotWrap.addEventListener("mouseleave", hideTooltip);
+  chartPlotWrap.addEventListener("touchstart", function(e){
+    if (e.touches && e.touches[0]) showTooltip(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive:true });
+  chartPlotWrap.addEventListener("touchmove", function(e){
+    if (e.touches && e.touches[0]) showTooltip(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive:true });
+  chartPlotWrap.addEventListener("touchend", hideTooltip);
+
+  function render(){
+    var cfg = freqConfig[state.freq];
+    var annual = state.amount * cfg.count;
+    var tier = getTier(annual);
+
+    annualReadout.textContent = fmtMoney(annual);
+    tierBadge.textContent = tierLabel[tier];
+    statTotalPremiums.textContent = fmtMoney(annual * 8);
+
+    var sim = simulate(annual, state.capitalGain, state.distYield, state.withdraw, HORIZON);
+
+    statBonuses.textContent = fmtMoney(sim.cumW + sim.cumI);
+
+    buildChart(sim.rows, state.withdraw);
+    hideTooltip();
+  }
+
+  // init
+  applyFreqUI();
+  setActivePill(freqPillsWrap, "data-freq", state.freq);
+  capGainValue.textContent = (state.capitalGain * 100).toFixed(1) + "%";
+  yieldValue.textContent = (state.distYield * 100).toFixed(1) + "%";
+  render();
+
+})();
+</script>
+
+</body>
+</html>
+</template>
+<template id="tpl-wv-notes"><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INTERNAL — AIA Wealth Venture Advisor Notes</title>
+<style>
+  :root{
+    --ink:#1a1a1a;
+    --muted:#555;
+    --line:#d9d9d9;
+    --bg:#f5f5f3;
+    --panel:#ffffff;
+    --warn-bg:#3a1414;
+    --warn-text:#ffe1e1;
+    --accent:#7a3b12;
+    --tag-talk:#2b5d34;
+    --tag-data:#1d4e89;
+    --tag-obj:#8a2b2b;
+    --tag-trans:#6b4c9a;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono: 'Courier New', Courier, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.5;
+    font-size:15px;
+  }
+  .banner{
+    background:var(--warn-bg);
+    color:var(--warn-text);
+    text-align:center;
+    padding:14px 12px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    font-size:14px;
+    border-bottom:3px solid #d94f4f;
+  }
+  .wrap{
+    max-width:920px;
+    margin:0 auto;
+    padding:26px 20px 60px;
+  }
+  h1{
+    font-size:24px;
+    margin:6px 0 2px;
+  }
+  .sub{
+    color:var(--muted);
+    font-size:13.5px;
+    margin-bottom:22px;
+  }
+  .quickfacts{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:16px 18px;
+    margin-bottom:28px;
+  }
+  .quickfacts h2{
+    font-size:14px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    margin:0 0 10px;
+    color:var(--accent);
+  }
+  .qf-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px 18px;
+  }
+  @media (max-width:640px){.qf-grid{grid-template-columns:1fr 1fr;}}
+  .qf-item{font-size:13px;}
+  .qf-item b{display:block; font-size:13px; color:var(--ink);}
+  .qf-item span{color:var(--muted);}
+
+  nav.toc{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 18px;
+    margin-bottom:30px;
+    font-size:13.5px;
+  }
+  nav.toc h2{font-size:13px; text-transform:uppercase; letter-spacing:0.05em; margin:0 0 8px; color:var(--accent);}
+  nav.toc ol{margin:0; padding-left:18px; columns:2;}
+  @media (max-width:640px){nav.toc ol{columns:1;}}
+  nav.toc a{color:var(--ink); text-decoration:none; border-bottom:1px dotted var(--muted);}
+
+  section.topic{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:20px 22px 8px;
+    margin-bottom:22px;
+  }
+  section.topic h2{
+    font-size:18px;
+    margin:0 0 4px;
+    padding-bottom:10px;
+    border-bottom:2px solid var(--accent);
+  }
+  .topic-num{color:var(--accent); font-weight:700; margin-right:6px;}
+
+  .block{margin:16px 0;}
+  .tag{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.04em;
+    padding:2px 8px;
+    border-radius:4px;
+    color:#fff;
+    margin-bottom:8px;
+  }
+  .tag.talk{background:var(--tag-talk);}
+  .tag.data{background:var(--tag-data);}
+  .tag.obj{background:var(--tag-obj);}
+  .tag.trans{background:var(--tag-trans);}
+
+  .block ul{margin:6px 0 0; padding-left:20px;}
+  .block li{margin-bottom:6px; font-size:14px;}
+  .block p{margin:6px 0 0; font-size:14px;}
+
+  .objection{
+    border-left:3px solid var(--tag-obj);
+    padding:8px 12px;
+    margin:8px 0;
+    background:#fbf1f1;
+    border-radius:0 6px 6px 0;
+  }
+  .objection .q{font-weight:700; font-size:13.5px; margin-bottom:3px;}
+  .objection .a{font-size:13.5px; color:#333;}
+
+  .transition{
+    border-left:3px solid var(--tag-trans);
+    padding:8px 12px;
+    margin:8px 0;
+    background:#f3f0f9;
+    border-radius:0 6px 6px 0;
+    font-size:13.5px;
+    font-style:italic;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    margin:10px 0 16px;
+    font-size:12.5px;
+  }
+  table caption{
+    text-align:left;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:4px;
+    caption-side:top;
+  }
+  th, td{
+    border:1px solid var(--line);
+    padding:5px 7px;
+    text-align:center;
+  }
+  th{
+    background:#eee9e2;
+    font-weight:700;
+  }
+  td.rowlabel, th.rowlabel{text-align:left;}
+
+  .cite{
+    font-family:var(--mono);
+    font-size:11.5px;
+    color:var(--muted);
+    background:#f0efe9;
+    padding:1px 5px;
+    border-radius:3px;
+  }
+
+  details{
+    margin:10px 0;
+    border:1px dashed var(--line);
+    border-radius:6px;
+    padding:8px 12px;
+  }
+  details summary{
+    cursor:pointer;
+    font-weight:700;
+    font-size:13.5px;
+  }
+  details[open] summary{margin-bottom:8px;}
+
+  .cheatsheet{
+    background:#fffbe9;
+    border:1px solid #e6d98a;
+    border-radius:8px;
+    padding:16px 18px;
+    margin-bottom:22px;
+  }
+  .cheatsheet h2{font-size:16px; margin:0 0 10px;}
+  .cheatsheet .qf-grid div b{display:block;}
+
+  footer.note{
+    text-align:center;
+    color:var(--muted);
+    font-size:12px;
+    margin-top:30px;
+  }
+</style>
+</head>
+<body>
+
+<div class="banner">INTERNAL — ADVISOR NOTES, NOT FOR CLIENT DISTRIBUTION</div>
+
+<div class="wrap">
+
+  <h1>AIA Wealth Venture — Advisor Reference Notes</h1>
+  <div class="sub">Companion to the client presentation file. Source: AIA Wealth Venture Product Summary, Version 1.0 (012026). Cross-check against the current Product Summary before every meeting, rates and charges are not guaranteed and AIA can revise them with written notice.</div>
+
+  <div class="quickfacts">
+    <h2>Quick Facts Cheat Sheet</h2>
+    <div class="qf-grid">
+      <div class="qf-item"><b>Product type</b><span>Limited premium ILP, cash only</span></div>
+      <div class="qf-item"><b>Premium term</b><span>8 years</span></div>
+      <div class="qf-item"><b>Allocation</b><span>100% of regular premium to units from day one</span></div>
+      <div class="qf-item"><b>Min annual premium</b><span>$7,800 (Semi-Annual $3,900 / Quarterly $1,950 / Monthly $650)</span></div>
+      <div class="qf-item"><b>Welcome Bonus</b><span>Years 1&ndash;5, totals 16% / 26% / 35% by tier</span></div>
+      <div class="qf-item"><b>Investment Bonus</b><span>2.5% p.a. at start of yrs 9&ndash;12 (10% total)</span></div>
+      <div class="qf-item"><b>Performance Bonus</b><span>0.30% p.a. of policy value, yr 9 onward, ongoing</span></div>
+      <div class="qf-item"><b>Free-look</b><span>14 days from receipt of policy docs</span></div>
+      <div class="qf-item"><b>Top-up charge</b><span>3% of top-up premium</span></div>
+      <div class="qf-item"><b>Supplementary Charge</b><span>3.60% p.a. of Regular Premium Policy Value, monthly, first 10 yrs (even on Premium Holiday)</span></div>
+      <div class="qf-item"><b>Full Surrender Charge</b><span>70% in yr 1, tapering to 0% by yr 11</span></div>
+      <div class="qf-item"><b>Reinstatement window</b><span>Within 5 years of lapse</span></div>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <h2>Jump to section</h2>
+    <ol>
+      <li><a href="#s1">Plan Overview &amp; Positioning</a></li>
+      <li><a href="#s2">Bonus Structure</a></li>
+      <li><a href="#s3">Protection Benefits</a></li>
+      <li><a href="#s4">Flexibility Features</a></li>
+      <li><a href="#s5">Fees &amp; Charges (full detail)</a></li>
+      <li><a href="#s6">Risk Disclosures &amp; Compliance Language</a></li>
+      <li><a href="#s7">Eligibility &amp; Key Minimums</a></li>
+      <li><a href="#s8">Master Objection Quick-List</a></li>
+      <li><a href="#s9">Suggested Meeting Flow</a></li>
+      <li><a href="#s10">Interactive Calculator, What's Under the Hood</a></li>
+    </ol>
+  </nav>
+
+  <section class="topic" id="s1">
+    <h2><span class="topic-num">1.</span>Plan Overview &amp; Positioning</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Frame it as a "fund it for 8, benefit for life" structure. The commitment is front-loaded; the reward curve is back-loaded. Say this plainly, don't let it sound too good to be true.</li>
+        <li>Emphasize 100% allocation from the first premium. Clients often assume ILPs eat into early premiums with charges before anything is invested. Here, unit purchase happens immediately; the supplementary charge is deducted later via unit cancellation, not off the top.</li>
+        <li>Position it as a hybrid: part investment discipline (forced 8-year savings habit), part protection (death/accidental death benefit riding along), part reward mechanism (bonuses).</li>
+        <li>Good fit for: clients who want a structured, disciplined runway with a defined end to premium obligations, and who don't need liquidity in the first 8&ndash;10 years.</li>
+        <li>Poor fit for: clients who might need the capital back within 5 years, or who want to vary premium amounts year to year (not permitted).</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>8-year premium term, ILP structure <span class="cite">Sec 2, p.1</span></li>
+        <li>100% of regular premium allocated to units at bid price <span class="cite">Sec 4.1, p.3</span></li>
+        <li>Provider: AIA Singapore Private Limited, Reg. No. 201106386R <span class="cite">Sec 1, p.1</span></li>
+        <li>Cash only, no CPF/SRS <span class="cite">Sec 2, p.1</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"Why lock in for 8 years?"</div>
+        <div class="a">Reframe: it's not locked capital, it's a defined funding schedule. After year 8 no more premiums are owed, but the policy keeps compounding and the biggest bonuses (Investment + Performance) only start in year 9. The structure rewards exactly this kind of commitment.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Isn't this just a regular investment account with insurance bolted on?"</div>
+        <div class="a">Acknowledge the overlap, then differentiate: the bonus structure (up to 35% in bonus units over 5 years, plus later Investment/Performance bonuses) isn't something a vanilla brokerage account offers, and the death benefit floor (return of premiums, minimum) protects the downside a pure investment doesn't.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Let's start with the big picture, what this plan is actually trying to do for you, before we get into the mechanics."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s2">
+    <h2><span class="topic-num">2.</span>Bonus Structure</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Three distinct bonuses, don't blur them together: Welcome (early, per-payment), Investment (mid, 4 years), Performance (late, indefinite). Walk through in that order, it maps to the client's own timeline.</li>
+        <li>Welcome Bonus rate scales with both premium size and payment frequency, monthly payers on the top tier get the richest early bonus rate (up to 11% in a single year). Worth mentioning if a client is deciding between annual vs monthly payment mode.</li>
+        <li>Investment and Performance Bonuses both require all premiums to have been paid and the policy not on Premium Holiday. This is a hard condition, flag it clearly so clients understand missed payments have knock-on consequences beyond just the immediate charge.</li>
+        <li>Performance Bonus is the one that keeps giving, it doesn't stop at year 12. This is worth emphasizing for clients focused on long-term compounding.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite — Welcome Bonus Rate (Sec 3.3, p.2)</span>
+      <table>
+        <caption>Welcome Bonus rate by policy year and annualised regular premium tier</caption>
+        <tr>
+          <th class="rowlabel">Policy Year</th>
+          <th>$7,800&ndash;$8,999 (Tier 1)</th>
+          <th>$9,000&ndash;$11,999 (Tier 2)</th>
+          <th>$12,000 &amp; above (Tier 3)</th>
+        </tr>
+        <tr><td class="rowlabel">1</td><td>1%</td><td>3%</td><td>3%</td></tr>
+        <tr><td class="rowlabel">2</td><td>3%</td><td>4%</td><td>5%</td></tr>
+        <tr><td class="rowlabel">3</td><td>5%</td><td>5%</td><td>7%</td></tr>
+        <tr><td class="rowlabel">4</td><td>7%</td><td>7%</td><td>9%</td></tr>
+        <tr><td class="rowlabel">5</td><td>&mdash;</td><td>7%</td><td>11%</td></tr>
+        <tr><th class="rowlabel">Total</th><th>16%</th><th>26%</th><th>35%</th></tr>
+      </table>
+      <p>Rate applies per premium payment received in that policy year (frequency: Annual 1x/yr, Semi-Annual 2x/yr, Quarterly 4x/yr, Monthly 12x/yr, all mapped to the same policy-year bands).</p>
+      <ul>
+        <li>Investment Bonus: 2.5% of annualised regular premium at start of years 9, 10, 11, 12 (10% cumulative), paid as regular premium units <span class="cite">Sec 3.4 / 4.4, p.2/4</span></li>
+        <li>Performance Bonus: 0.30% p.a. of Regular Premium Policy Value, paid every year starting policy year 9, no stated end year <span class="cite">Sec 3.5 / 4.5, p.2/4</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"What happens to the bonuses if I miss a premium?"</div>
+        <div class="a">Be direct: Investment and Performance Bonuses require every regular premium to be paid on time. A single Premium Holiday period can forfeit that year's Investment or Performance Bonus. Frame the 8-year commitment as protecting the bonus economics, not just a formality.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"35% sounds like marketing. Is that guaranteed?"</div>
+        <div class="a">Yes for Tier 3 clients who pay every premium on time, the Welcome Bonus rates in the table are contractual, not performance-dependent, they're a fixed percentage of premium credited as bonus units. What's not guaranteed is the value of those units once invested, that still moves with fund performance.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Now, here's where the plan actually pays you back, and it happens in three separate waves, so let me walk you through each one."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s3">
+    <h2><span class="topic-num">3.</span>Protection Benefits</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Death Benefit is a "higher of" formula, not a fixed sum assured like a traditional whole life plan. Set expectations correctly: this isn't a large multiple of premium, it's a floor (premiums paid) with upside (policy value) if the investment has performed well.</li>
+        <li>Secondary Insured Option is a strong differentiator for clients funding a policy on behalf of a child or setting up multi-generational continuity, position it that way rather than just as a technical feature.</li>
+        <li>Accidental Death Benefit window is narrow, 2 policy years from issue, 90 days from accident to death. Don't oversell this as broad accident coverage.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>Death Benefit = higher of (total regular premium + top-ups &minus; withdrawals) or policy value, less charges <span class="cite">Sec 3.1, p.1</span></li>
+        <li>Accidental Death Benefit = additional 100% of total regular premium paid, if death from injury within 90 days of an accident occurring within first 2 policy years <span class="cite">Sec 3.2, p.1</span></li>
+        <li>Secondary Insured: Policyholder/Assignee, spouse, or child under age 16; cannot exceed age 75 at appointment; cannot appoint if a beneficiary nomination or trust already exists on the policy <span class="cite">Sec 3.7, p.2&ndash;3</span></li>
+        <li>Maturity Benefit = policy value less applicable charges, policy terminates automatically at maturity <span class="cite">Sec 3.6, p.2</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"The death benefit isn't guaranteed to be much more than what I paid in."</div>
+        <div class="a">Correct, and worth being upfront about. This product's protection role is a floor against loss, not a large multiple like term or whole life. If the client's primary need is a large death benefit relative to premium, this isn't the right vehicle, that's a legitimate steer toward a protection-first product instead.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Can I name my spouse AND set up a trust?"</div>
+        <div class="a">No, a Secondary Insured cannot be appointed if a trust already exists on the policy, or vice versa. These are mutually exclusive structures, the client has to choose one and the existing one must be revoked before switching.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Beyond the growth side, this policy also does something a plain investment account can't, it protects the people depending on you. Let me show you how that works."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s4">
+    <h2><span class="topic-num">4.</span>Flexibility Features</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Top-ups are a good lever for clients with irregular income (bonuses, business owners), position as "pay the minimum on schedule, add more when cash allows."</li>
+        <li>Partial withdrawal has a floor, remaining policy value must stay at or above $10,000 after withdrawal. Don't let a client assume they can drain it to zero via partial withdrawals; full surrender is the only route to exit completely.</li>
+        <li>Fund switching and auto-rebalancing are useful for clients who want to de-risk gradually as they approach a goal, position these as tools for evolving the strategy without needing a new policy.</li>
+        <li>Premium Holiday is not an advertised "feature" so much as a fallback if a premium is missed and the policy has enough value to cover charges. Don't pitch it as flexibility, it comes with its own monthly charge and can forfeit that year's bonuses.</li>
+        <li>Free-look period: 14 days from receipt of policy docs (or from SMS/email notice if e-policy; +7 days if mailed or hand-delivered to account for delivery time). Mention this proactively, it builds trust.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>Top-up: minimum $1,000, 3% premium charge deducted, remainder buys units at bid price <span class="cite">Sec 6.2, p.6</span></li>
+        <li>Partial withdrawal: minimum $1,000 per withdrawal, remaining policy value must stay &ge; $10,000 <span class="cite">Sec 6.4, p.6&ndash;7</span></li>
+        <li>Fund switching: minimum $50 per switch (waived when switching out of AIA S$ Money Market Fund entirely) <span class="cite">Sec 6.5, p.7</span></li>
+        <li>Automatic Fund Switching / Re-Balancing: minimum $50, initial Money Market Fund balance of $1,000 required for auto-switch <span class="cite">Sec 6.6 / 6.7, p.7</span></li>
+        <li>Free-look: 14 days from receipt of policy documents; +7 days added if delivered by post or by hand <span class="cite">Sec 7.3, p.8&ndash;9</span></li>
+        <li>Reinstatement after lapse: within 5 years, requires back-payment of all outstanding premiums <span class="cite">Sec 7.4, p.9</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"Can I just skip a premium if I'm short one year?"</div>
+        <div class="a">Only via Premium Holiday, and only if the policy has enough value to cover ongoing charges, it's not an elective feature. It also carries its own monthly charge and can cost that year's Investment/Performance Bonus eligibility. Better to discuss adjusting payment frequency upfront than to rely on this as a safety valve.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"What if I need most of the money out in year 3?"</div>
+        <div class="a">Be straightforward: partial withdrawals are allowed but the $10,000 minimum remaining balance limits how much can come out, and full surrender in year 3 carries a 60% surrender charge on the Regular Premium Policy Value. This product is not built for early, large liquidity needs, if that's the client's likely scenario, flag it now rather than after they've committed.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"I want to be upfront that this plan does still flex with you if circumstances change, here's what that actually looks like in practice."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s5">
+    <h2><span class="topic-num">5.</span>Fees &amp; Charges (Full Detail)</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Six distinct charges. Clients rarely need all six in a first meeting, lead with Supplementary Charge and Surrender Charge (the two that most shape early-year economics), keep Benefit Charge and Premium Holiday Charge in your back pocket for when asked.</li>
+        <li>Supplementary Charge (3.60% p.a.) runs for the first 10 policy years regardless of Premium Holiday status, this is the charge that keeps applying even if premiums stop. Worth flagging explicitly since it's the one exception to "charges pause when you pause."</li>
+        <li>Benefit Charge scales with age and Sum-at-Risk, not a flat fee, it rises meaningfully after age 40 (see Appendix A extract below). If the policy value grows to match or exceed total premiums paid, Sum-at-Risk falls toward zero and the Benefit Charge shrinks or disappears for that month.</li>
+        <li>Surrender Charge and Partial Withdrawal Charge both taper to zero by year 11, this is the clearest visual for "the plan wants you to stay in it."</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Charge-by-Charge Reference</span>
+      <ul>
+        <li><strong>Premium Charge:</strong> 3% of each Top-Up Premium only. Regular premiums carry no premium charge. <span class="cite">Sec 5.1, p.4</span></li>
+        <li><strong>Supplementary Charge:</strong> 3.60% p.a. of Regular Premium Policy Value, deducted monthly, first 10 policy years, continues even during Premium Holiday. <span class="cite">Sec 5.2, p.4</span></li>
+        <li><strong>Benefit Charge:</strong> Annual Benefit Charge Rate &divide; 12 &times; Sum-at-Risk, deducted monthly. Sum-at-Risk = total premiums + top-ups &minus; withdrawals &minus; policy value. Zero or negative Sum-at-Risk means no charge that month. Rate varies by attained age and gender (Appendix A). <span class="cite">Sec 5.3, p.4</span></li>
+        <li><strong>Premium Holiday Charge:</strong> Applies only while on Premium Holiday; tapers from 60% down to 0% and stops permanently once the 8th annual-equivalent premium has been paid. <span class="cite">Sec 5.4, p.4&ndash;5</span></li>
+        <li><strong>Full Surrender Charge:</strong> % of Regular Premium Policy Value, see schedule below. <span class="cite">Sec 5.5, p.5</span></li>
+        <li><strong>Partial Withdrawal Charge:</strong> Factor &times; Regular Premium Policy Value Withdrawn, see schedule below. <span class="cite">Sec 5.6, p.5</span></li>
+      </ul>
+
+      <table>
+        <caption>Full Surrender Charge Rate by policy year</caption>
+        <tr><th class="rowlabel">Yr</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11+</td></tr>
+        <tr><th class="rowlabel">Rate</th><td>70%</td><td>65%</td><td>60%</td><td>55%</td><td>50%</td><td>40%</td><td>30%</td><td>20%</td><td>10%</td><td>5%</td><td>0%</td></tr>
+      </table>
+
+      <table>
+        <caption>Partial Withdrawal Charge Factor by policy year</caption>
+        <tr><th class="rowlabel">Yr</th><td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td><td>11+</td></tr>
+        <tr><th class="rowlabel">Factor</th><td>2.333</td><td>1.857</td><td>1.500</td><td>1.222</td><td>1.000</td><td>0.667</td><td>0.429</td><td>0.250</td><td>0.111</td><td>0.053</td><td>0</td></tr>
+      </table>
+
+      <details>
+        <summary>Premium Holiday Charge schedule (tap to expand)</summary>
+        <table>
+          <caption>Premium Holiday Charge Annual Rate, by number of regular premiums paid (Annual mode shown; see Sec 5.4 for Semi-Annual/Quarterly/Monthly equivalents)</caption>
+          <tr><th class="rowlabel">Premiums paid</th><td>1st</td><td>2nd</td><td>3rd</td><td>4th</td><td>5th</td><td>6th</td><td>7th</td><td>8th+</td></tr>
+          <tr><th class="rowlabel">Annual rate</th><td>60%</td><td>30%</td><td>20%</td><td>20%</td><td>10%</td><td>10%</td><td>5%</td><td>0%</td></tr>
+        </table>
+      </details>
+
+      <details>
+        <summary>Benefit Charge sample rates from Appendix A, per $1,000 Sum-at-Risk (tap to expand)</summary>
+        <table>
+          <caption>Selected attained ages, annual rate per $1,000 Sum-at-Risk</caption>
+          <tr><th class="rowlabel">Age</th><td>20</td><td>30</td><td>40</td><td>50</td><td>60</td><td>70</td><td>80</td></tr>
+          <tr><th class="rowlabel">Male</th><td>0.71</td><td>0.76</td><td>1.33</td><td>3.59</td><td>10.89</td><td>28.90</td><td>68.09</td></tr>
+          <tr><th class="rowlabel">Female</th><td>0.65</td><td>0.65</td><td>0.98</td><td>2.39</td><td>8.44</td><td>21.81</td><td>53.89</td></tr>
+        </table>
+        <p>Full table (ages 0&ndash;99, male and female) is in Appendix A of the Product Summary, pull it up live if a client wants their exact age.</p>
+      </details>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"That's a lot of different charges, why not just one simple fee?"</div>
+        <div class="a">Each charge maps to a specific thing it's paying for, insurance cover (Benefit Charge), policy administration (Supplementary Charge), or early exit (Surrender/Withdrawal Charge). Frame it as "you're not charged for things you don't use", someone who never withdraws early never pays a surrender charge.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Why does the Supplementary Charge keep running even on Premium Holiday?"</div>
+        <div class="a">It's the one charge explicitly designed to continue regardless, it funds ongoing policy administration for the first 10 years irrespective of payment status. Worth stating plainly rather than letting the client discover it later, it's a real cost of pausing premiums.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"These charges aren't guaranteed?"</div>
+        <div class="a">Correct, AIA reserves the right to revise fees and charges with at least 1 month's written notice. Standard for the product category, but worth disclosing proactively rather than waiting to be asked. <span class="cite">Sec 10, Important Notes, p.13</span></div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Let's be transparent about what this costs, because understanding the fee structure is really what tells you whether this plan fits your time horizon."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s6">
+    <h2><span class="topic-num">6.</span>Risk Disclosures &amp; Compliance Language</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>Always verbalize, don't just gesture at, the core risk disclosure: policy value is not guaranteed, moves with the underlying funds, and a loss of principal is possible. This is a compliance requirement, not optional color.</li>
+        <li>Dividend distributions (if the client selects income-generating funds) are not guaranteed in rate or frequency, and AIA may distribute out of capital, which can erode the original investment. Flag this specifically if a client is drawn to a fund for its "yield."</li>
+        <li>State clearly that this is a long-term product, not suited to clients seeking short-term gains, and that early termination usually costs more than it returns.</li>
+        <li>Note this Product Summary does not form part of the insurance contract itself, always point clients to the actual policy contract and the Product Highlights Sheet for binding terms.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <ul>
+        <li>Policy value is not guaranteed; fund performance is not guaranteed; past performance is not indicative of future performance <span class="cite">Sec 9, p.12&ndash;13</span></li>
+        <li>Dividend distributions may be paid from capital, which can reduce original investment and future returns <span class="cite">Sec 9, p.13</span></li>
+        <li>Product Summary does not form part of the contract of insurance; only the actual policy contract binds the parties <span class="cite">Sec 10, p.13</span></li>
+        <li>Limitation of Benefit: liability capped at 100% of policy value in cases of suicide within 1 year of issue/reinstatement, material misrepresentation within 2 years, or fraud at any time <span class="cite">Sec 7.6, p.9</span></li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"So there's a real chance I could lose money?"</div>
+        <div class="a">Yes, be direct about this. Policy value can fall as well as rise, and a possible loss of premiums can't be ruled out. It's precisely why fund selection and time horizon matter so much in this conversation, don't soften this point, it protects both the client and you.</div>
+      </div>
+    </div>
+
+    <div class="block">
+      <span class="tag trans">Transition Line</span>
+      <div class="transition">"Before we go further, I want to make sure the risk side is just as clear as the upside side, because that's the only way this decision is actually informed."</div>
+    </div>
+  </section>
+
+  <section class="topic" id="s7">
+    <h2><span class="topic-num">7.</span>Eligibility &amp; Key Minimums</h2>
+    <div class="block">
+      <span class="tag data">Data Points to Cite</span>
+      <table>
+        <tr><th class="rowlabel">Payment Mode</th><th>Minimum Annualised Premium</th></tr>
+        <tr><td class="rowlabel">Annual</td><td>$7,800</td></tr>
+        <tr><td class="rowlabel">Semi-Annual</td><td>$3,900</td></tr>
+        <tr><td class="rowlabel">Quarterly</td><td>$1,950</td></tr>
+        <tr><td class="rowlabel">Monthly</td><td>$650</td></tr>
+      </table>
+      <ul>
+        <li>Regular premium amount cannot be varied once set <span class="cite">Sec 6.1, p.6</span></li>
+        <li>Top-up minimum: $1,000 <span class="cite">Sec 6.2, p.6</span></li>
+        <li>Partial withdrawal minimum: $1,000; must leave &ge; $10,000 remaining policy value <span class="cite">Sec 6.4, p.6&ndash;7</span></li>
+        <li>Fund switch minimum: $50 <span class="cite">Sec 6.5, p.7</span></li>
+        <li>Dealing cut-off: 2:00pm SGT, forward pricing on bid-bid basis <span class="cite">Sec 8.2, p.9</span></li>
+        <li>AIA reserves the right to revise minimums at its discretion <span class="cite">Sec 6.1, p.6</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="topic" id="s8">
+    <h2><span class="topic-num">8.</span>Master Objection Quick-List</h2>
+    <div class="block">
+      <p>Consolidated for fast lookup mid-conversation, full context is in the relevant section above.</p>
+      <div class="objection"><div class="q">"8 years feels long."</div><div class="a">Reframe as a defined funding schedule, not locked capital; biggest bonuses only unlock after year 8.</div></div>
+      <div class="objection"><div class="q">"What if I need cash early?"</div><div class="a">Partial withdrawal possible (min $10,000 balance retained) but surrender charge is steep in early years, be upfront this isn't a liquidity vehicle.</div></div>
+      <div class="objection"><div class="q">"Is my capital guaranteed?"</div><div class="a">No. Value tracks the chosen funds; loss of principal is possible.</div></div>
+      <div class="objection"><div class="q">"What's the actual death benefit?"</div><div class="a">Higher of total premiums paid or policy value, a floor, not a large multiple.</div></div>
+      <div class="objection"><div class="q">"Can charges change?"</div><div class="a">Yes, with minimum 1 month written notice, up to stated maximums where applicable.</div></div>
+      <div class="objection"><div class="q">"Why does the Supplementary Charge continue on Premium Holiday?"</div><div class="a">Designed to fund ongoing admin regardless of payment status, for the first 10 years.</div></div>
+    </div>
+  </section>
+
+  <section class="topic" id="s9">
+    <h2><span class="topic-num">9.</span>Suggested Meeting Flow</h2>
+    <div class="block">
+      <span class="tag trans">Full Sequence of Transitions</span>
+      <ol>
+        <li>Open with the plan's core idea (Section 1) — front-loaded commitment, back-loaded reward.</li>
+        <li>Walk through the three bonuses in chronological order (Section 2) — Welcome, then Investment, then Performance.</li>
+        <li>Pivot to protection (Section 3) — "it's not just growth, it also protects your family."</li>
+        <li>Cover flexibility features (Section 4) — top-ups, withdrawals, fund switching, free-look.</li>
+        <li>Be transparent on costs (Section 5) — lead with Supplementary and Surrender Charge, keep the rest ready if asked.</li>
+        <li>Close with risk disclosure (Section 6) — non-negotiable, always cover before any commitment is discussed.</li>
+        <li>End on the discussion prompt from the client presentation, let the client's own answers guide next steps, not a hard close.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="topic" id="s10">
+    <h2><span class="topic-num">10.</span>Interactive Calculator &mdash; What's Under the Hood</h2>
+
+    <div class="block">
+      <span class="tag talk">Talking Points</span>
+      <ul>
+        <li>The client presentation now includes a live calculator: client picks payment frequency and premium, and sees Welcome/Investment/Performance bonus figures and a projected policy value chart update in real time. Use it as a conversation tool, hand the client the mouse or let them touch the slider themselves, that's what makes it land.</li>
+        <li>If a client asks "is this guaranteed," the answer is layered: the Welcome and Investment Bonus dollar figures ARE contractual (fixed % of premium, don't move with fund performance). The projected policy value and Performance Bonus figures are NOT guaranteed, they use standard illustration rates, not a promise.</li>
+        <li>Sequence matters: the calculator sits after the bonus explanation and after the lock-in/surrender chart, by design, so the client sees the commitment and the mechanics before playing with their own numbers. Don't skip straight to the calculator in a first meeting, it plays better as the payoff after the context has been set.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag data">Assumptions Baked Into the Calculator (cite if asked)</span>
+      <ul>
+        <li><strong>Growth rates, 4% p.a. and 8% p.a.:</strong> these are the two Illustrated Investment Rates of Return (IIRR) mandated by MAS/LIA guidelines for investment-linked policy benefit illustrations in Singapore. They are not the lower and upper bounds of what the underlying funds could return, they're a standardised pair used across the industry so illustrations are comparable. Source: LIA Guidelines on Policy Illustrations; MAS Notice 307 on Investment-Linked Policies.</li>
+        <li><strong>Welcome Bonus and Investment Bonus dollar figures:</strong> calculated directly from the contractual rate tables in Sections 3.3 and 3.4 of the Product Summary, tier-matched to the annualised premium entered. These do not change with the growth-rate scenario, they're fixed regardless of fund performance.</li>
+        <li><strong>Performance Bonus (0.30% p.a. of policy value):</strong> compounds on the simulated policy value each year from policy year 9 onward, so it scales with whichever growth scenario is shown, this is why it appears as a range rather than a single figure.</li>
+        <li><strong>Supplementary Charge (3.60% p.a.):</strong> applied once per simulated year for the first 10 years, as a simplification of the actual monthly deduction. Close enough for discussion purposes, not exact to the cent.</li>
+        <li><strong>Deliberately excluded from the calculator:</strong> the monthly Benefit Charge (cost of insurance, age- and gender-based, see Appendix A) and the Full Surrender Charge. Both are real costs but adding them would require age and gender inputs and would clutter a tool meant for a quick, live "what if" conversation. Say so if asked, "the full picture, including your specific age-based insurance cost, is what goes into your formal Benefit Illustration, which I'll prepare separately."</li>
+        <li><strong>Income fund toggle &mdash; AIA Global Adventurous Income Fund:</strong> this is a real ILP sub-fund available under AIA Wealth Venture, investing across three underlying income strategies (AIA Equity Income Fund, Allianz Income and Growth, Franklin Income Fund). Its most recent quarterly distribution annualises to roughly 7% p.a. (source: AIA's published Dividend Distribution notice for the fund). That figure is what the calculator defaults to, but it is editable in the tool and should always be caveated as historical, not guaranteed, and subject to change quarterly.</li>
+        <li><strong>How the income toggle affects the projection:</strong> the calculator treats the growth rate (4% or 8%) as the fund's assumed total return, and the distribution is paid out of that total return. If the assumed distribution rate is higher than the assumed total return, the model correctly shows the policy value declining over time, because the shortfall is effectively being paid out of capital. This mirrors the real risk disclosure in Section 9 of the Product Summary: distributions can be paid from capital and this can reduce future returns. Don't let a client walk away thinking a 7% distribution is "free money" on top of full growth, the tool is built to avoid that impression, and your explanation should reinforce it.</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <span class="tag obj">Objections &amp; Responses</span>
+      <div class="objection">
+        <div class="q">"So which number is my actual policy value going to be?"</div>
+        <div class="a">Neither exactly, and both are useful. The range between the 4% and 8% figures brackets a reasonable set of outcomes for discussion, not a prediction. Your real value depends on which funds you pick and how they actually perform.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"If I add the income fund, aren't I losing growth?"</div>
+        <div class="a">You're trading some capital growth for cash income along the way, that's the fundamental trade-off of any income-generating fund, not unique to this policy. Whether that trade makes sense depends on whether the client wants growing policy value or a stream of payouts, worth a direct conversation about which one they're actually solving for.</div>
+      </div>
+      <div class="objection">
+        <div class="q">"Why does the chart only go out 15, 20 or 25 years, not the full policy life?"</div>
+        <div class="a">Kept the horizon options short for readability in a live conversation. The mechanics (Performance Bonus, charges after year 10, fund growth) all continue on the same logic beyond year 25, happy to model a longer or client-specific horizon separately if useful.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">End of advisor notes. Verify all rates against the current Product Summary and current AIA fund distribution notices before each client meeting, terms and fund yields are subject to change.</footer>
+
+</div>
+
+</body>
+</html>
+</template>
 </body>
 </html>
