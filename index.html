@@ -220,51 +220,42 @@
   #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a2332; color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,.25);}
   #toast.show{opacity:1;}
 
-  /* ============ PRINT: fact-find document ============ */
+  /* ============ PRINT: client-facing insurance & investment summary (landscape) ============ */
   #printDoc{display:none;}
   @media print{
+    @page{size:landscape; margin:8mm;}
     body *{visibility:hidden;}
     #printDoc, #printDoc *{visibility:visible;}
-    #printDoc{display:block; position:absolute; top:0; left:0; width:100%; background:#fff; color:#1a2332; font-size:11px; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
-    @page{margin:12mm;}
-    #printDoc .pd-band{height:6px; background:#0f4c81; border-radius:3px; margin-bottom:12px;}
-    #printDoc .pd-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;}
-    #printDoc h1{font-size:20px; color:#0f4c81; margin:0 0 2px;}
-    #printDoc .pd-sub{color:#555; font-size:11px;}
-    #printDoc .pd-adv{text-align:right; font-size:10px; color:#444; line-height:1.5;}
-    #printDoc .pd-adv b{font-size:12px; color:#0f4c81;}
-    #printDoc h3{font-size:11.5px; margin:15px 0 6px; color:#0f4c81; text-transform:uppercase; letter-spacing:.6px; border-bottom:2px solid #0f4c81; padding-bottom:3px;}
-    #printDoc table{width:100%; border-collapse:collapse; margin-bottom:4px;}
-    #printDoc th{position:static; top:auto; z-index:auto; background:#0f4c81; color:#fff; font-size:9px; letter-spacing:.4px; text-transform:uppercase; padding:5px 8px; text-align:left; border:1px solid #0f4c81;}
-    #printDoc td{padding:5px 8px; border:1px solid #dbe2ea;}
+    #printDoc{display:block; position:absolute; top:0; left:0; width:100%; background:#fff; color:#1a2332; font-size:12px; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    #printDoc .pcs-band{height:6px; background:#0f4c81; border-radius:3px; margin-bottom:14px;}
+    #printDoc .pcs-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;}
+    #printDoc h1{font-size:26px; color:#0f4c81; margin:0 0 3px;}
+    #printDoc .pcs-sub{color:#555; font-size:13px;}
+    #printDoc .pcs-adv{text-align:right; font-size:11px; color:#444; line-height:1.5;}
+    #printDoc .pcs-adv b{font-size:13px; color:#0f4c81;}
+    #printDoc h3{font-size:14px; margin:20px 0 8px; color:#0f4c81; text-transform:uppercase; letter-spacing:.6px; border-bottom:2px solid #0f4c81; padding-bottom:4px;}
+    #printDoc table{width:100%; border-collapse:collapse; margin-bottom:6px;}
+    #printDoc th{position:static; top:auto; z-index:auto; background:#0f4c81; color:#fff; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; padding:7px 10px; text-align:left; border:1px solid #0f4c81;}
+    #printDoc td{padding:7px 10px; border:1px solid #dbe2ea; font-size:12px;}
     #printDoc tbody tr:nth-child(even) td{background:#f5f8fb;}
     #printDoc tr.tot td{background:#e8f0f8 !important; font-weight:700; color:#0f4c81;}
     #printDoc td.r, #printDoc th.r{text-align:right; white-space:nowrap;}
-    #printDoc .pd-hero{display:flex; gap:8px; margin:12px 0;}
-    #printDoc .pd-hero>div{flex:1; border:1px solid #dbe2ea; border-top:3px solid #0f4c81; border-radius:6px; padding:8px 10px; background:#fbfcfe;}
-    #printDoc .pd-hero .l{font-size:8.5px; text-transform:uppercase; color:#666; letter-spacing:.5px;}
-    #printDoc .pd-hero .n{font-size:15px; font-weight:700; color:#1a2332;}
-    #printDoc .pd-hero .s{font-size:8.5px; color:#888;}
-    #printDoc .pd-hero>div.hl{background:#0f4c81; border-color:#0f4c81;}
-    #printDoc .pd-hero>div.hl .l, #printDoc .pd-hero>div.hl .s{color:#bcd2e6;}
-    #printDoc .pd-hero>div.hl .n{color:#fff;}
-    #printDoc .pd-note{font-size:9px; color:#777; margin-top:4px;}
-    #printDoc .pd-footer{margin-top:20px; padding-top:8px; border-top:2px solid #0f4c81; font-size:9.5px; color:#555; display:flex; justify-content:space-between;}
+    #printDoc .pcs-empty{color:#777; margin-top:20px; font-size:13px;}
+    #printDoc .pcs-footer{margin-top:26px; padding-top:10px; border-top:2px solid #0f4c81; font-size:10.5px; color:#555;}
 
-    /* ---- proposal presentation deck, printed one slide per page ---- */
+    /* ---- proposal presentation deck, printed exactly as it looks on screen: one slide per
+           landscape A4 page, same navy/cream/gold branding, no visible chrome/controls ---- */
     #proposalLayer.open, #proposalLayer.open *{visibility:visible;}
-    #proposalLayer.open{position:static !important; display:block !important; background:#fff !important;}
+    #proposalLayer.open{position:static !important; display:block !important;}
     #proposalLayer.open .pp-progress, #proposalLayer.open .pp-count, #proposalLayer.open .pp-close,
     #proposalLayer.open .pp-fs, #proposalLayer.open .pp-chrome{display:none !important;}
     #proposalLayer.open .pp-deck{display:block !important; height:auto !important; width:auto !important; transform:none !important;}
     #proposalLayer.open .pp-slide{
-      position:static !important; flex:none !important; width:100% !important; height:auto !important;
-      min-height:0 !important; overflow:visible !important; page-break-after:always; break-after:page;
+      page-break-after:always; break-after:page; page-break-inside:avoid; break-inside:avoid;
       -webkit-print-color-adjust:exact; print-color-adjust:exact;
     }
     #proposalLayer.open .pp-slide:last-child{page-break-after:auto !important; break-after:auto !important;}
     #proposalLayer.open .pp-reveal{opacity:1 !important; transform:none !important; transition:none !important; filter:none !important;}
-    #proposalLayer.open .pp-mech{overflow:visible !important; max-height:none !important;}
   }
 
   /* ============ DARK MODE: hardcoded colors that don't ride on variables ============ */
@@ -2291,74 +2282,29 @@ const App = {
     $('#ffHero').innerHTML = h;
   },
 
-  /* ---------- print ---------- */
+  /* ---------- print: client-facing Insurance & Investment summary (landscape, name + plans +
+     premiums + notes only — no internal cashflow/CPF figures, per Ben's request) ---------- */
   printFactFind(){
     const p=this.person(); if(!p) return;
-    const ff=this.currentFF(); const c=this.calcFF(ff); const s=this.data.settings;
-    const rows=(arr)=>arr.map(r=>r).join('');
+    const ff=this.currentFF(); const s=this.data.settings;
     const money=(v)=>v?fmt(num(v)):'—';
     const today=new Date().toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'});
-    let h=`<div class="pd-band"></div>
-    <div class="pd-head">
-      <div><h1>Cashflow &amp; Financial Snapshot</h1>
-      <div class="pd-sub">Prepared for <b>${esc(p.name)}</b>${c.age!==null?' (age '+c.age+')':''} · ${today}</div></div>
-      <div class="pd-adv"><b>${esc(s.advisorName||'Your Advisor')}</b><br>${esc(s.advisorTitle||'')}${s.advisorTitle?'<br>':''}${esc(s.advisorPhone||'')}${s.advisorEmail?' · '+esc(s.advisorEmail):''}</div>
-    </div>
-    <div class="pd-hero">
-      <div><div class="l">Take-home income /mth</div><div class="n">${fmt(c.takeHome)}</div><div class="s">${fmt(c.takeHome*12)} /yr</div></div>
-      <div><div class="l">Expenses /mth</div><div class="n">${fmt(c.expTotal)}</div><div class="s">${fmt(c.expTotal*12)} /yr</div></div>
-      <div><div class="l">Premiums /mth</div><div class="n">${fmt(c.insTotal+c.invTotal)}</div><div class="s">insurance + investments</div></div>
-      <div class="hl"><div class="l">Net cashflow /mth</div><div class="n">${fmt(c.netCashflow)}</div><div class="s">${fmt(c.netCashflow*12)} /yr</div></div>
+    const insurance=(ff.insurance||[]).filter(x=>x.name||num(x.mth)||num(x.yr));
+    const investments=(ff.investments||[]).filter(x=>x.name||num(x.mth)||num(x.yr));
+    const insTotalMth=insurance.reduce((a,x)=>a+num(x.mth),0), insTotalYr=insurance.reduce((a,x)=>a+num(x.yr),0);
+    const invTotalMth=investments.reduce((a,x)=>a+num(x.mth),0), invTotalYr=investments.reduce((a,x)=>a+num(x.yr),0);
+    const planTable=(title,list,totalMth,totalYr)=>`<h3>${title}</h3><table><thead><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr></thead><tbody>
+      ${list.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td></tr>`).join('')}</tbody>
+      <tr class="tot"><td>Total</td><td class="r">${fmt(totalMth)}</td><td class="r">${fmt(totalYr)}</td><td></td></tr></table>`;
+    let h=`<div class="pcs-band"></div>
+    <div class="pcs-head">
+      <div><h1>${esc(p.name)}</h1><div class="pcs-sub">Insurance &amp; Investment Summary &middot; ${today}</div></div>
+      <div class="pcs-adv"><b>${esc(s.advisorName||'Your Advisor')}</b><br>${esc(s.advisorTitle||'')}${s.advisorTitle?'<br>':''}${esc(s.advisorPhone||'')}${s.advisorEmail?' &middot; '+esc(s.advisorEmail):''}</div>
     </div>`;
-    { const cfRows=[];
-      cfRows.push(['Take-home income', c.takeHome]);
-      if(c.other) cfRows.push(['Other income', c.other]);
-      if(c.expTotal) cfRows.push(['Monthly expenses', -c.expTotal]);
-      if(c.invTotal) cfRows.push(['Investment premiums', -c.invTotal]);
-      if(c.insTotal) cfRows.push(['Insurance premiums', -c.insTotal]);
-      if(c.sav) cfRows.push(['Savings set aside', -c.sav]);
-      h+=`<h3>Cashflow breakdown</h3><table><tr><th></th><th class="r">Monthly</th></tr><tbody>
-      ${cfRows.map(([l,v])=>`<tr><td>${l}</td><td class="r">${v<0?'&minus; ':''}${fmt(Math.abs(v))}</td></tr>`).join('')}</tbody>
-      <tr class="tot"><td>Net cashflow</td><td class="r">${fmt(c.netCashflow)}</td></tr></table>`;
-    }
-    h+=`<h3>Income</h3>
-    <table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr><tbody>
-    <tr><td>Gross income</td><td class="r">${fmt(c.gross)}</td><td class="r">${fmt(c.gross*12)}</td></tr>
-    <tr><td>Take-home income${c.employed?' (after employee CPF)':''}</td><td class="r">${fmt(c.takeHome)}</td><td class="r">${fmt(c.takeHome*12)}</td></tr>
-    <tr><td>Other income</td><td class="r">${fmt(c.other)}</td><td class="r">${fmt(c.other*12)}</td></tr></tbody></table>`;
-    h+=`<h3>Monthly expenses</h3><table><tr><th>Category</th><th class="r">Amount /mth</th></tr><tbody>
-    ${rows(ff.expenses.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}</tbody>
-    <tr class="tot"><td>Total</td><td class="r">${fmt(c.expTotal)}</td></tr></table>`;
-    h+=`<h3>Liquid assets</h3><table><tr><th>Item</th><th class="r">Balance</th></tr><tbody>
-    ${rows(ff.bank.filter(x=>x.label||num(x.amt)).map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`))}</tbody>
-    <tr class="tot"><td>Total</td><td class="r">${fmt(c.bankTotal)}</td></tr></table>`;
-    h+=`<h3>CPF</h3><table><tr><th>Account</th><th class="r">Balance</th></tr><tbody>
-    ${['OA','SA','MA','RA'].map(k=>`<tr><td>${k}</td><td class="r">${money(ff.cpf[k])}</td></tr>`).join('')}</tbody>
-    <tr class="tot"><td>Total</td><td class="r">${fmt(c.cpfBal)}</td></tr></table>`;
-    if(c.br&&c.employed){ const s55=this.show55(ff,c);
-    h+=`<table><tr><th></th><th class="r">Monthly</th><th class="r">Yearly</th></tr><tbody>
-    <tr><td>CPF contribution (OA, SA, MA) at ${(c.br.er+c.br.ee).toFixed(1)}%</td><td class="r">${fmt(c.cpfContrib)}</td><td class="r">${fmt(c.cpfContrib*12)}</td></tr>
-    ${s55?`<tr><td>Accessible CPF after 55 (OA + SA portion)</td><td class="r">${fmt(c.accessible55)}</td><td class="r">${fmt(c.accessible55*12)}</td></tr></tbody>
-    <tr class="tot"><td>Total net accessible cashflow</td><td class="r">${fmt(c.totalAccessible)}</td><td class="r">${fmt(c.totalAccessible*12)}</td></tr>`:'</tbody>'}</table>
-    <div class="pd-note">CPF rates effective ${esc(s.cpfEffective||'')}, Ordinary Wage ceiling ${fmt(num(s.owCeiling))}/mth. Contribution allocation at age ${c.age}: OA ${c.br.oa}% / SA ${c.br.sa}% / MA ${c.br.ma}%.</div>`; }
-    if(ff.insurance.length){
-    h+=`<h3>Protection summary</h3>
-    <div class="pd-hero">
-      <div><div class="l">Total Death cover</div><div class="n">${money(c.covDeath)}</div></div>
-      <div><div class="l">Total TPD cover</div><div class="n">${money(c.covTpd)}</div></div>
-      <div><div class="l">Total Early/Int CI</div><div class="n">${money(c.covEci)}</div></div>
-      <div><div class="l">Total Late CI</div><div class="n">${money(c.covLci)}</div></div>
-    </div>
-    <table><tr><th>Plan</th><th class="r">Prem /mth</th><th class="r">Prem /yr</th><th>Coverage</th><th class="r">Death</th><th class="r">TPD</th><th class="r">Early/Int CI</th><th class="r">Late CI</th></tr><tbody>
-    ${rows(ff.insurance.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td><td class="r">${money(x.death)}</td><td class="r">${money(x.tpd)}</td><td class="r">${money(x.eci)}</td><td class="r">${money(x.lci)}</td></tr>`))}</tbody>
-    <tr class="tot"><td>Total</td><td class="r">${fmt(c.insTotal)}</td><td class="r">${fmt(c.insTotal*12)}</td><td></td><td class="r">${money(c.covDeath)}</td><td class="r">${money(c.covTpd)}</td><td class="r">${money(c.covEci)}</td><td class="r">${money(c.covLci)}</td></tr></table>`; }
-    if(ff.investments.length){ h+=`<h3>Investment / savings plans</h3><table><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr><tbody>
-    ${rows(ff.investments.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td></tr>`))}</tbody>
-    <tr class="tot"><td>Total</td><td class="r">${fmt(c.invTotal)}</td><td class="r">${fmt(c.invTotal*12)}</td><td></td></tr></table>`; }
-    h+=`<div class="pd-footer">
-      <div>Prepared by <b>${esc(s.advisorName||'')}</b>${s.advisorTitle?' · '+esc(s.advisorTitle):''}<br>${esc(s.advisorPhone||'')}${s.advisorEmail?' · '+esc(s.advisorEmail):''}</div>
-      <div style="text-align:right">Figures as provided by client on ${new Date().toLocaleDateString('en-SG')}.<br>For discussion purposes; not a contract of insurance.</div>
-    </div>`;
+    if(insurance.length) h+=planTable('Insurance Plans', insurance, insTotalMth, insTotalYr);
+    if(investments.length) h+=planTable('Investment Plans', investments, invTotalMth, invTotalYr);
+    if(!insurance.length && !investments.length) h+=`<div class="pcs-empty">No insurance or investment plans recorded yet.</div>`;
+    h+=`<div class="pcs-footer">Prepared by <b>${esc(s.advisorName||'')}</b>${s.advisorTitle?' &middot; '+esc(s.advisorTitle):''}${s.advisorPhone?' &middot; '+esc(s.advisorPhone):''}${s.advisorEmail?' &middot; '+esc(s.advisorEmail):''}<br>For discussion purposes only; not a contract of insurance.</div>`;
     $('#printDoc').innerHTML=h;
     window.print();
   },
@@ -2592,8 +2538,14 @@ const App = {
   printProposal(){
     const p=this.person(); if(!p) return;
     App.Proposal.open(p.id);
-    const closeAfter=()=>{ App.Proposal.close(); window.removeEventListener('afterprint', closeAfter); };
-    window.addEventListener('afterprint', closeAfter);
+    const onBeforePrint=()=>ppFitMechPages();
+    const onAfterPrint=()=>{
+      ppUnfitMechPages(); App.Proposal.close();
+      window.removeEventListener('beforeprint', onBeforePrint);
+      window.removeEventListener('afterprint', onAfterPrint);
+    };
+    window.addEventListener('beforeprint', onBeforePrint);
+    window.addEventListener('afterprint', onAfterPrint);
     setTimeout(()=>window.print(), 60);
   },
   propScalar(key,val){
@@ -3123,6 +3075,32 @@ function ppAccidentTotal(pol){
   const occ=pol.occClass==='classes34'?'classes34':'classes12';
   const premBasic=T.premium[occ].basic, premHosp=T.premium[occ].hosp;
   return premBasic[tier-1] + (pol.includeHospRider ? premHosp[tier-1] : 0);
+}
+
+// Print/PDF only: the Hospital & Solitaire PA pages (.pp-mech) are the only slides dense enough to
+// ever overflow one printed page. Rather than let a printed page cut them off or spill onto a 2nd
+// page, shrink them to fit exactly — same technique real slide exporters use. Must scale from a
+// wrapper distinct from the element that clips overflow (transform doesn't change the pre-transform
+// overflow/scrollHeight math), so we temporarily let .pp-mech overflow freely and let the ancestor
+// .pp-slide (fixed one-page height, overflow:hidden, untransformed) do the actual clipping/fit.
+function ppFitMechPages(){
+  document.querySelectorAll('#proposalLayer.open .pp-slide').forEach(slide=>{
+    const mech=slide.querySelector('.pp-mech'); if(!mech) return;
+    mech.style.overflow='visible'; mech.style.maxHeight='none';
+    mech.style.transform=''; mech.style.transformOrigin=''; mech.style.width='';
+    const avail=slide.clientHeight, need=mech.scrollHeight;
+    if(need>avail && need>0){
+      const scale=Math.max(0.55, avail/need);
+      mech.style.transformOrigin='top left';
+      mech.style.transform=`scale(${scale.toFixed(4)})`;
+      mech.style.width=(100/scale).toFixed(2)+'%';
+    }
+  });
+}
+function ppUnfitMechPages(){
+  document.querySelectorAll('#proposalLayer.open .pp-mech').forEach(mech=>{
+    mech.style.overflow=''; mech.style.maxHeight=''; mech.style.transform=''; mech.style.transformOrigin=''; mech.style.width='';
+  });
 }
 
 /* ---------- page renderers (return HTML strings) ---------- */
