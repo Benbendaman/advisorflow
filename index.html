@@ -235,21 +235,36 @@
     #printDoc .pd-adv b{font-size:12px; color:#0f4c81;}
     #printDoc h3{font-size:11.5px; margin:15px 0 6px; color:#0f4c81; text-transform:uppercase; letter-spacing:.6px; border-bottom:2px solid #0f4c81; padding-bottom:3px;}
     #printDoc table{width:100%; border-collapse:collapse; margin-bottom:4px;}
-    #printDoc th{background:#0f4c81; color:#fff; font-size:9px; letter-spacing:.4px; text-transform:uppercase; padding:5px 8px; text-align:left; border:1px solid #0f4c81;}
+    #printDoc th{position:static; top:auto; z-index:auto; background:#0f4c81; color:#fff; font-size:9px; letter-spacing:.4px; text-transform:uppercase; padding:5px 8px; text-align:left; border:1px solid #0f4c81;}
     #printDoc td{padding:5px 8px; border:1px solid #dbe2ea;}
     #printDoc tbody tr:nth-child(even) td{background:#f5f8fb;}
     #printDoc tr.tot td{background:#e8f0f8 !important; font-weight:700; color:#0f4c81;}
     #printDoc td.r, #printDoc th.r{text-align:right; white-space:nowrap;}
     #printDoc .pd-hero{display:flex; gap:8px; margin:12px 0;}
-    #printDoc .pd-hero div{flex:1; border:1px solid #dbe2ea; border-top:3px solid #0f4c81; border-radius:6px; padding:8px 10px; background:#fbfcfe;}
+    #printDoc .pd-hero>div{flex:1; border:1px solid #dbe2ea; border-top:3px solid #0f4c81; border-radius:6px; padding:8px 10px; background:#fbfcfe;}
     #printDoc .pd-hero .l{font-size:8.5px; text-transform:uppercase; color:#666; letter-spacing:.5px;}
     #printDoc .pd-hero .n{font-size:15px; font-weight:700; color:#1a2332;}
     #printDoc .pd-hero .s{font-size:8.5px; color:#888;}
-    #printDoc .pd-hero div.hl{background:#0f4c81; border-color:#0f4c81;}
-    #printDoc .pd-hero div.hl .l, #printDoc .pd-hero div.hl .s{color:#bcd2e6;}
-    #printDoc .pd-hero div.hl .n{color:#fff;}
+    #printDoc .pd-hero>div.hl{background:#0f4c81; border-color:#0f4c81;}
+    #printDoc .pd-hero>div.hl .l, #printDoc .pd-hero>div.hl .s{color:#bcd2e6;}
+    #printDoc .pd-hero>div.hl .n{color:#fff;}
     #printDoc .pd-note{font-size:9px; color:#777; margin-top:4px;}
     #printDoc .pd-footer{margin-top:20px; padding-top:8px; border-top:2px solid #0f4c81; font-size:9.5px; color:#555; display:flex; justify-content:space-between;}
+
+    /* ---- proposal presentation deck, printed one slide per page ---- */
+    #proposalLayer.open, #proposalLayer.open *{visibility:visible;}
+    #proposalLayer.open{position:static !important; display:block !important; background:#fff !important;}
+    #proposalLayer.open .pp-progress, #proposalLayer.open .pp-count, #proposalLayer.open .pp-close,
+    #proposalLayer.open .pp-fs, #proposalLayer.open .pp-chrome{display:none !important;}
+    #proposalLayer.open .pp-deck{display:block !important; height:auto !important; width:auto !important; transform:none !important;}
+    #proposalLayer.open .pp-slide{
+      position:static !important; flex:none !important; width:100% !important; height:auto !important;
+      min-height:0 !important; overflow:visible !important; page-break-after:always; break-after:page;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    #proposalLayer.open .pp-slide:last-child{page-break-after:auto !important; break-after:auto !important;}
+    #proposalLayer.open .pp-reveal{opacity:1 !important; transform:none !important; transition:none !important; filter:none !important;}
+    #proposalLayer.open .pp-mech{overflow:visible !important; max-height:none !important;}
   }
 
   /* ============ DARK MODE: hardcoded colors that don't ride on variables ============ */
@@ -842,6 +857,7 @@
       <h1 id="propName"></h1>
       <div class="spacer"></div>
       <button class="btn small primary" onclick="App.presentProposal()">&#9654; Present</button>
+      <button class="btn small" onclick="App.printProposal()">🖶 Print / Save PDF</button>
     </div>
 
     <div class="card">
@@ -2573,6 +2589,13 @@ const App = {
     this.renderProposalEditor();
   },
   presentProposal(){ const p=this.person(); if(!p) return; App.Proposal.open(p.id); },
+  printProposal(){
+    const p=this.person(); if(!p) return;
+    App.Proposal.open(p.id);
+    const closeAfter=()=>{ App.Proposal.close(); window.removeEventListener('afterprint', closeAfter); };
+    window.addEventListener('afterprint', closeAfter);
+    setTimeout(()=>window.print(), 60);
+  },
   propScalar(key,val){
     const pr=this.currentProposal(); if(!pr) return;
     pr[key] = (key==='income') ? num(val) : val;
