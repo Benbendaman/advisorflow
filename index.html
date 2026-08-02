@@ -562,9 +562,14 @@
         <div id="dueFollowups"></div>
       </div>
       <div class="card">
-        <h2>Client care due <span class="h2link" onclick="App.showPage('clients'); App.renderAll()">all clients →</span></h2>
-        <div class="cardhint">Gifts, check-ins, birthdays and reviews that are due for existing clients.</div>
+        <h2>To-do list <span class="h2link" onclick="App.showPage('clients'); App.renderAll()">all clients →</span></h2>
+        <div class="cardhint">Client care tasks due (gifts, check-ins, birthdays, reviews) plus anything you add yourself.</div>
         <div id="dueCare"></div>
+        <div style="margin-top:10px; display:flex; gap:8px">
+          <input type="text" id="todoInput" placeholder="Add a to-do..." style="flex:1" onkeydown="if(event.key==='Enter'){App.addTodo()}">
+          <input type="date" id="todoDate" style="max-width:150px" title="Optional due date">
+          <button class="btn small" onclick="App.addTodo()">Add</button>
+        </div>
       </div>
     </div>
     <div class="grid cols-2">
@@ -1244,6 +1249,7 @@ function settingsToRow(d){
     plan_presets_ins: d.planPresetsIns,
     plan_presets_inv: d.planPresetsInv,
     hnw_migrated: !!d.hnwMigrated,
+    todos: d.todos || [],
     updated_at: new Date().toISOString(),
   };
 }
@@ -1253,6 +1259,7 @@ function applySettingsRow(d, row){
   d.planPresetsIns = row.plan_presets_ins || DEFAULT_PLANS_INS.slice();
   d.planPresetsInv = row.plan_presets_inv || DEFAULT_PLANS_INV.slice();
   d.hnwMigrated = !!row.hnw_migrated;
+  d.todos = row.todos || [];
 }
 
 /* ---------- app ---------- */
@@ -1369,11 +1376,13 @@ const App = {
       planPresetsIns: DEFAULT_PLANS_INS.slice(),
       planPresetsInv: DEFAULT_PLANS_INV.slice(),
       people: [],
+      todos: [],
     };
   },
   // one-time shape upgrades, run after any full data replacement (cloud load or backup import)
   runMigrations(){
     if(!this.data.cpfRates||!this.data.cpfRates.length) this.data.cpfRates=JSON.parse(JSON.stringify(DEFAULT_RATES));
+    if(!this.data.todos) this.data.todos=[];
     let changed=false;
     // one-time upgrade: promote "HNW" markers stashed in notes (from the AdvisorQuest migration) to a real flag
     if(!this.data.hnwMigrated){
@@ -1660,7 +1669,27 @@ const App = {
       // open service requests stay visible until done (due date optional)
       this.openSRs(p).forEach(r=>out.push({p, t:{id:r.id, label:'🛠 '+r.label, due:r.due||r.openedAt}, sr:true}));
     });
-    return out.sort((a,b)=>a.t.due.localeCompare(b.t.due));
+    // manually-added to-dos (not tied to a client): shown until checked off, due date optional
+    (this.data.todos||[]).forEach(t=>{ if(!t.done && (!t.due || daysUntil(t.due)<=0)) out.push({t, manual:true}); });
+    return out.sort((a,b)=>(a.t.due||'').localeCompare(b.t.due||''));
+  },
+  addTodo(){
+    const input=$('#todoInput'), dateInput=$('#todoDate');
+    const label=(input.value||'').trim(), due=dateInput.value||'';
+    if(!label){ toast('Type something to add'); return; }
+    this.data.todos=this.data.todos||[];
+    this.data.todos.push({id:uid(), label, due, done:false, createdAt:todayStr()});
+    input.value=''; dateInput.value='';
+    this.save(); this.renderToday();
+  },
+  toggleTodo(id, checked){
+    const t=(this.data.todos||[]).find(x=>x.id===id); if(!t) return;
+    t.done=checked;
+    this.save(); this.renderToday();
+  },
+  removeTodo(id){
+    this.data.todos=(this.data.todos||[]).filter(x=>x.id!==id);
+    this.save(); this.renderToday();
   },
   renderToday(){
     const dueF=this.dueFollowupsList(), dueC=this.dueCareList();
@@ -1680,7 +1709,7 @@ const App = {
     const noDate=this.data.people.filter(p=>p.stage!=='onboarded' && !p.nextFollowUp).length;
     $('#todayStats').innerHTML = `
       <div class="card stat"><div class="n" style="color:${dueF.length?'var(--bad)':'var(--good)'}">${dueF.length}</div><div class="l">Follow-ups due</div></div>
-      <div class="card stat"><div class="n" style="color:${dueC.length?'var(--warn)':'var(--good)'}">${dueC.length}</div><div class="l">Care tasks due</div></div>
+      <div class="card stat"><div class="n" style="color:${dueC.length?'var(--warn)':'var(--good)'}">${dueC.length}</div><div class="l">To-dos due</div></div>
       <div class="card stat"><div class="n">${active}</div><div class="l">Active prospects</div></div>
       <div class="card stat"><div class="n">${clients}</div><div class="l">Clients</div></div>`;
     const cap=this.state.showAllDue?dueF.length:8;
@@ -1696,12 +1725,17 @@ const App = {
         </div>
       </div>`).join('') + (dueF.length>cap?`<button class="btn small showmore" onclick="App.state.showAllDue=true; App.renderToday()">Show all ${dueF.length} due</button>`:'')
       : '<div class="empty">Nothing due. Clean slate.</div>';
-    $('#dueCare').innerHTML = dueC.length ? dueC.map(({p,t,sr})=>`
-      <div class="care-item">
-        <input type="checkbox" onchange="App.${sr?'toggleSR':'toggleCare'}('${p.id}','${t.id}', this.checked)">
+    $('#dueCare').innerHTML = dueC.length ? dueC.map(({p,t,sr,manual})=>{
+      const onchange = manual ? `App.toggleTodo('${t.id}', this.checked)` : `App.${sr?'toggleSR':'toggleCare'}('${p.id}','${t.id}', this.checked)`;
+      const who = manual ? '' : `<b style="cursor:pointer" onclick="App.openPerson('${p.id}','clients')">${esc(p.name)}</b> · `;
+      const del = manual ? `<button class="btn small" title="Remove" onclick="App.removeTodo('${t.id}')">✕</button>` : '';
+      return `<div class="care-item">
+        <input type="checkbox" onchange="${onchange}">
         <div style="flex:1"><div class="t">${esc(t.label)}</div>
-        <div class="when"><b style="cursor:pointer" onclick="App.openPerson('${p.id}','clients')">${esc(p.name)}</b> · ${duePill(t.due)}</div></div>
-      </div>`).join('') : '<div class="empty">No care tasks due.</div>';
+        <div class="when">${who}${t.due?duePill(t.due):'<span class="pill">no date</span>'}</div></div>
+        ${del}
+      </div>`;
+    }).join('') : '<div class="empty">Nothing to do. Clean slate.</div>';
     // birthdays next 14 days — clients AND prospects, straight from DOB
     const bdays=this.data.people
       .filter(p=>p.dob)
@@ -1723,10 +1757,12 @@ const App = {
       if(effStage(p)!==null && p.nextFollowUp){ const d=daysUntil(p.nextFollowUp); if(d>0&&d<=14) up.push({date:p.nextFollowUp, html:`Follow up <b>${esc(p.name)}</b>`, id:p.id, from:'pipeline'}); }
       (p.careTasks||[]).forEach(t=>{ if(!t.done && !t.label.includes('Birthday')){ const d=daysUntil(t.due); if(d>0&&d<=14) up.push({date:t.due, html:`${esc(t.label)} — <b>${esc(p.name)}</b>`, id:p.id, from:'clients'}); }});
     });
+    // future-dated manual to-dos (today-or-overdue ones already show in the To-do list card above)
+    (this.data.todos||[]).forEach(t=>{ if(!t.done && t.due){ const d=daysUntil(t.due); if(d>0&&d<=14) up.push({date:t.due, html:esc(t.label), manual:true, todoId:t.id}); } });
     up.sort((a,b)=>a.date.localeCompare(b.date));
     $('#upcoming').innerHTML = up.length ? up.map(u=>`
       <div class="care-item"><div style="flex:1">${u.html}<div class="when">${fmtDate(u.date)}</div></div>
-      <button class="btn small" onclick="App.openPerson('${u.id}','${u.from}')">Open</button></div>`).join('')
+      ${u.manual ? `<button class="btn small" title="Remove" onclick="App.removeTodo('${u.todoId}')">✕</button>` : `<button class="btn small" onclick="App.openPerson('${u.id}','${u.from}')">Open</button>`}</div>`).join('')
       : '<div class="empty">Nothing scheduled in the next two weeks.</div>';
   },
 
