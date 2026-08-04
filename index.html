@@ -1843,11 +1843,11 @@ const App = {
           <span>${expanded?'▾':'▸'}</span> ${esc(monthLabelFromKey(key))}${tag} <span style="font-weight:400; font-size:12px; color:var(--ink-faint)">${count} ${count===1?'person':'people'}</span>
         </h2>
         ${expanded ? `<div class="grid cols-2" style="margin-top:14px; margin-bottom:-6px">
-          <div>
+          <div style="background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:14px">
             <div class="cardhint" style="margin-bottom:6px">New prospects (${g.prospects.length})</div>
             ${g.prospects.length ? g.prospects.map(pipeRow).join('') : '<div class="empty">No prospects.</div>'}
           </div>
-          <div>
+          <div style="background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:14px">
             <div class="cardhint" style="margin-bottom:6px">Client cases to revisit (${g.cases.length})</div>
             ${g.cases.length ? g.cases.map(pipeRow).join('') : '<div class="empty">No client cases.</div>'}
           </div>
