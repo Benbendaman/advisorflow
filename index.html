@@ -588,7 +588,7 @@
   <!-- ============ PIPELINE ============ -->
   <section class="page" id="page-pipeline">
     <h1>Pipeline</h1>
-    <div class="sub">Everyone who isn't a client yet, each with a next-touch date. The Today tab surfaces only the ones that are due.</div>
+    <div class="sub">Grouped by next-touch month — this month is expanded, the rest collapsed. New prospects and client cases to revisit sit side by side.</div>
     <div class="chips" id="pipeChips"></div>
     <div class="toolbar">
       <input type="search" id="pipeSearch" placeholder="Search name..." oninput="App.renderPipeline()">
@@ -601,13 +601,8 @@
       <div class="spacer"></div>
       <button class="btn primary" onclick="App.openPersonModal()">+ Add prospect</button>
     </div>
-    <div class="card" style="padding:6px 10px">
-      <table id="pipeTable">
-        <thead><tr><th>Name</th><th>Stage</th><th>Source</th><th>Next touch</th><th>Last note</th><th></th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <div class="empty" id="pipeEmpty" style="display:none">No prospects yet. Add your first one.</div>
-    </div>
+    <div id="pipeMonths"></div>
+    <div class="empty" id="pipeEmpty" style="display:none">No prospects yet. Add your first one.</div>
   </section>
 
   <!-- ============ MEETING MODE ============ -->
@@ -1163,6 +1158,30 @@ function duePill(dateStr){
 }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),2200); }
 
+/* ---------- pipeline: grouped-by-month view ---------- */
+// Overdue people fold straight into the current month's bucket (their original month, if any,
+// would otherwise be collapsed and easy to miss). People with no next-touch date get their own
+// always-visible "No date set" bucket rather than being silently dropped from the monthly view.
+function pipeMonthKey(p, curKey){
+  if(!p.nextFollowUp) return '__nodate';
+  const pKey=p.nextFollowUp.slice(0,7);
+  return pKey<=curKey ? curKey : pKey;
+}
+function monthLabelFromKey(key){
+  if(key==='__nodate') return 'No date set';
+  const [y,m]=key.split('-').map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString('en-SG',{month:'long', year:'numeric'});
+}
+function pipeRow(p){
+  const isCase=p.stage==='onboarded';
+  const lastNote=isCase ? (p.activeCase.label||'New case') : ((p.log&&p.log.length)?p.log[0].text:'');
+  return `<div class="care-item">
+    <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','${isCase?'clients':'pipeline'}')">${esc(p.name)}</b>${hnwPill(p)}${p.nickname?` <span class="nick">${esc(p.nickname)}</span>`:''} ${stagePill(effStage(p))}${p.askReferral?' <span class="pill ref">🤝</span>':''}
+    <div class="when">${duePill(p.nextFollowUp)} · ${esc(lastNote||'—')}</div></div>
+    <button class="btn small" onclick="App.openPerson('${p.id}','${isCase?'clients':'pipeline'}')">Open</button>
+  </div>`;
+}
+
 /* ---------- meeting-tagged notes ---------- */
 function meetingNumsFor(p){
   const nums=new Set();
@@ -1265,7 +1284,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client' },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client' },
 
   init(){
     // nav
@@ -1772,6 +1791,16 @@ const App = {
     else { this.state.pipeSpecial=''; $('#pipeStageFilter').value=v; }
     this.renderPipeline();
   },
+  isPipeMonthExpanded(key){
+    const exp=this.state.pipeExpanded||{};
+    if(key in exp) return exp[key];
+    return key===todayStr().slice(0,7) || key==='__nodate'; // default: this month + no-date open, rest collapsed
+  },
+  togglePipeMonth(key){
+    this.state.pipeExpanded=this.state.pipeExpanded||{};
+    this.state.pipeExpanded[key]=!this.isPipeMonthExpanded(key);
+    this.renderPipeline();
+  },
   renderPipeline(){
     const q=($('#pipeSearch').value||'').toLowerCase();
     const st=this.state.pipeSpecial || $('#pipeStageFilter').value, so=$('#pipeSourceFilter').value;
@@ -1789,20 +1818,41 @@ const App = {
     else if(st==='__ref') list=list.filter(p=>p.askReferral);
     else if(st) list=list.filter(p=>effStage(p)===st);
     if(so) list=list.filter(p=>p.source===so);
-    list.sort((a,b)=>(a.nextFollowUp||'9999').localeCompare(b.nextFollowUp||'9999'));
-    const tb=$('#pipeTable tbody');
-    tb.innerHTML=list.map(p=>{
-      const isCase=p.stage==='onboarded';
-      const lastNote=isCase?(p.activeCase.label||'New case'):((p.log&&p.log.length)?p.log[0].text:'');
-      const od=p.nextFollowUp && daysUntil(p.nextFollowUp)<=0;
-      return `<tr class="rowlink ${od?'overdue':''}" onclick="App.openPerson('${p.id}','${isCase?'clients':'pipeline'}')">
-        <td>${nameCell(p)}</td>
-        <td>${stagePill(effStage(p))}${isCase?' <span class="pill case">client case</span>':''}${p.askReferral?' <span class="pill ref">🤝 ref</span>':''}</td>
-        <td style="color:var(--ink-soft)">${esc(p.source||'—')}</td>
-        <td>${duePill(p.nextFollowUp)}</td>
-        <td style="color:var(--ink-soft); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(lastNote)}</td>
-        <td onclick="event.stopPropagation()"><button class="btn small" onclick="App.openPerson('${p.id}','pipeline')">Open</button></td>
-      </tr>`;
+
+    // group by next-touch month: overdue folds into "this month", undated people get their own
+    // always-visible bucket, and only "this month" is expanded by default — everything else
+    // collapses so opening Pipeline doesn't dump the whole funnel on screen at once.
+    const curKey=todayStr().slice(0,7);
+    const groups={ [curKey]: {prospects:[], cases:[]} }; // this-month bucket always exists, even empty
+    list.forEach(p=>{
+      const key=pipeMonthKey(p, curKey);
+      if(!groups[key]) groups[key]={prospects:[], cases:[]};
+      (p.stage==='onboarded' ? groups[key].cases : groups[key].prospects).push(p);
+    });
+    const sortFn=(a,b)=>(a.nextFollowUp||'9999').localeCompare(b.nextFollowUp||'9999');
+    Object.values(groups).forEach(g=>{ g.prospects.sort(sortFn); g.cases.sort(sortFn); });
+    const futureKeys=Object.keys(groups).filter(k=>k!=='__nodate' && k!==curKey).sort();
+    const orderedKeys=[...(groups['__nodate']?['__nodate']:[]), curKey, ...futureKeys];
+
+    $('#pipeMonths').innerHTML = orderedKeys.map(key=>{
+      const g=groups[key], expanded=this.isPipeMonthExpanded(key);
+      const count=g.prospects.length+g.cases.length;
+      const tag = key===curKey ? ' <span class="pill ok">this month</span>' : '';
+      return `<div class="card">
+        <h2 style="cursor:pointer; user-select:none; display:flex; align-items:center; gap:8px; margin:0" onclick="App.togglePipeMonth('${key}')">
+          <span>${expanded?'▾':'▸'}</span> ${esc(monthLabelFromKey(key))}${tag} <span style="font-weight:400; font-size:12px; color:var(--ink-faint)">${count} ${count===1?'person':'people'}</span>
+        </h2>
+        ${expanded ? `<div class="grid cols-2" style="margin-top:14px; margin-bottom:-6px">
+          <div>
+            <div class="cardhint" style="margin-bottom:6px">New prospects (${g.prospects.length})</div>
+            ${g.prospects.length ? g.prospects.map(pipeRow).join('') : '<div class="empty">No prospects.</div>'}
+          </div>
+          <div>
+            <div class="cardhint" style="margin-bottom:6px">Client cases to revisit (${g.cases.length})</div>
+            ${g.cases.length ? g.cases.map(pipeRow).join('') : '<div class="empty">No client cases.</div>'}
+          </div>
+        </div>` : ''}
+      </div>`;
     }).join('');
     $('#pipeEmpty').style.display=list.length?'none':'block';
   },
