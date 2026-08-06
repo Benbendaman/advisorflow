@@ -1028,6 +1028,15 @@
   </div>
 </div>
 
+<!-- meeting wrap-up modal: shown when exiting meeting mode, so stage/case changes don't require hunting the person down elsewhere -->
+<div class="modal-back" id="wrapupModal">
+  <div class="modal">
+    <button class="close" onclick="App.closeWrapup(); App.finishExitMeeting();">&times;</button>
+    <h2>Meeting wrap-up</h2>
+    <div id="wrapupBody"></div>
+  </div>
+</div>
+
 <datalist id="dlSR">
   <option value="File hospitalisation claim"><option value="File accident claim"><option value="File CI claim">
   <option value="Change address"><option value="Update contact details"><option value="Update beneficiary / nomination">
@@ -1318,9 +1327,11 @@ const App = {
     }, true);
     // modal close on backdrop / escape
     $('#personModal').addEventListener('click', e=>{ if(e.target.id==='personModal') this.closeModal(); });
+    $('#wrapupModal').addEventListener('click', e=>{ if(e.target.id==='wrapupModal'){ this.closeWrapup(); this.finishExitMeeting(); } });
     document.addEventListener('keydown', e=>{
       if(e.key!=='Escape') return;
       if($('#personModal').classList.contains('open')) this.closeModal();
+      else if($('#wrapupModal').classList.contains('open')){ this.closeWrapup(); this.finishExitMeeting(); }
       else if(this.state.presenting) this.endMeeting();
     });
     this.updateThemeBtn();
@@ -1565,16 +1576,96 @@ const App = {
     this.showPage('factfind'); this.renderFactFind();
   },
   endMeeting(){
+    this.openWrapup();
+  },
+  finishExitMeeting(){
     this.state.presenting=false;
     document.body.classList.remove('present');
     $('#ffBack').style.display='inline-flex';
     $('#exitPresent').style.display='none';
-    const p=this.person();
-    if(p && p.stage==='onboarded'){
-      const ym=todayStr().slice(0,7);
-      if(p.lastMetMonth!==ym && confirm('Mark '+p.name+' as met this month ('+ym+')?')){ p.lastMetMonth=ym; this.save(); }
-    }
     this.showPage('present'); this.renderAll();
+  },
+  /* ---------- meeting wrap-up: fires on "Exit meeting mode" so stage/case can move without
+     leaving the meeting flow to hunt the person down in Pipeline/Clients first ---------- */
+  openWrapup(){
+    const p=this.person();
+    if(!p){ this.finishExitMeeting(); return; }
+    $('#wrapupModal').classList.add('open');
+    this.renderWrapup();
+  },
+  closeWrapup(){ $('#wrapupModal').classList.remove('open'); },
+  renderWrapup(){
+    const p=this.person(); if(!p) return;
+    const box=$('#wrapupBody');
+    if(p.stage!=='onboarded'){
+      box.innerHTML=`
+        <p class="cardhint">Meeting logged for <b>${esc(p.name)}</b>. What's next?</p>
+        <button class="btn primary" style="width:100%; margin-bottom:14px" onclick="App.wrapupMoveToClient()">🎉 Move to client</button>
+        <div class="form-row">
+          <div><label>Or update pipeline stage</label>
+            <select id="wrapupStage">
+              ${STAGES.filter(s=>s.id!=='onboarded').map(s=>`<option value="${s.id}" ${p.stage===s.id?'selected':''}>${s.label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="App.closeWrapup(); App.finishExitMeeting();">Just exit</button>
+          <button class="btn primary" onclick="App.wrapupApplyStage()">Save stage &amp; exit</button>
+        </div>`;
+    } else if(p.activeCase){
+      const ac=p.activeCase;
+      box.innerHTML=`
+        <p class="cardhint">Meeting logged for <b>${esc(p.name)}</b> — case: ${esc(ac.label||'untitled case')}. What's next?</p>
+        <div class="form-row">
+          <div><label>Case stage</label>
+            <select id="wrapupCaseStage">
+              ${CASE_STAGES.map(s=>`<option value="${s}" ${ac.stage===s?'selected':''}>${stageObj(s).label}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex; gap:8px; margin:4px 0 2px">
+          <button class="btn small primary" onclick="App.wrapupCloseCase(true)">Case won ✓</button>
+          <button class="btn small danger" onclick="App.wrapupCloseCase(false)">Drop case</button>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" onclick="App.closeWrapup(); App.finishExitMeeting();">Just exit</button>
+          <button class="btn primary" onclick="App.wrapupApplyCaseStage()">Save stage &amp; exit</button>
+        </div>`;
+    } else {
+      const ym=todayStr().slice(0,7);
+      const already=p.lastMetMonth===ym;
+      box.innerHTML=`
+        <p class="cardhint">Meeting logged for <b>${esc(p.name)}</b>.</p>
+        <div class="modal-actions">
+          ${already?'':`<button class="btn primary" onclick="App.wrapupMarkMet()">Mark met this month (${esc(ym)})</button>`}
+          <button class="btn" onclick="App.closeWrapup(); App.finishExitMeeting();">Exit</button>
+        </div>`;
+    }
+  },
+  wrapupMoveToClient(){
+    if(!this.person()) return;
+    this.changeStage('onboarded');
+    this.closeWrapup(); this.finishExitMeeting();
+  },
+  wrapupApplyStage(){
+    const p=this.person(); if(!p) return;
+    this.changeStage($('#wrapupStage').value);
+    this.closeWrapup(); this.finishExitMeeting();
+  },
+  wrapupApplyCaseStage(){
+    const p=this.person(); if(!p||!p.activeCase) return;
+    this.caseField('stage', $('#wrapupCaseStage').value);
+    this.closeWrapup(); this.finishExitMeeting();
+  },
+  wrapupCloseCase(won){
+    this.closeCase(won); // has its own confirm() — if cancelled, activeCase is untouched
+    const p=this.person();
+    if(!p || !p.activeCase){ this.closeWrapup(); this.finishExitMeeting(); } else { this.renderWrapup(); }
+  },
+  wrapupMarkMet(){
+    const p=this.person(); if(!p) return;
+    p.lastMetMonth=todayStr().slice(0,7); this.save();
+    this.closeWrapup(); this.finishExitMeeting();
   },
   setTier(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.tier=v; this.save(); } },
   setLastMet(id,v){ const p=this.data.people.find(x=>x.id===id); if(p){ p.lastMetMonth=v; this.save(); } },
