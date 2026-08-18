@@ -186,6 +186,60 @@
     th{position:static;}
   }
 
+  /* ============ MOBILE OPTIMIZATION ============ */
+  @media(max-width:680px){
+    /* header: logo/icons on row 1, tab strip gets its own full-width scrollable row 2 —
+       stops the tabs getting squeezed to near-nothing next to the fixed-width icon buttons */
+    .header-inner{flex-wrap:wrap; height:auto; min-height:50px; padding:8px 14px; row-gap:8px; gap:10px;}
+    .logo{font-size:14.5px;}
+    nav.tabs{order:3; flex:1 1 100%; width:100%; -webkit-overflow-scrolling:touch;}
+    nav.tabs button{padding:8px 12px; font-size:13px;}
+    #syncStatus{order:2; margin-left:auto; max-width:110px; overflow:hidden; text-overflow:ellipsis;}
+    .header-inner .btn.small{padding:6px 10px;}
+    main{padding:16px 14px 90px;}
+  }
+  @media(max-width:520px){
+    .grid.cols-2, .grid.cols-3, .grid.cols-4{grid-template-columns:1fr;}
+    .hero{grid-template-columns:1fr;}
+    h1{font-size:18px;}
+  }
+  @media(max-width:680px){
+    /* toolbars (search/filter rows above Pipeline, Clients etc.) stack full-width instead of
+       squeezing several inputs + a primary button into one cramped scrollable line */
+    .toolbar{flex-direction:column; align-items:stretch;}
+    .toolbar > *{width:100%; max-width:none;}
+    .toolbar select{width:100%;}
+    .toolbar .spacer{display:none;}
+    .toolbar input[type=search]{max-width:none;}
+  }
+  @media(max-width:680px){
+    /* bigger tap targets — small buttons/checkboxes/chips are easy to miss-tap on a phone,
+       and iOS Safari auto-zooms the page when a focused input's font is under 16px */
+    input, select, textarea{font-size:16px;}
+    .minitable input, .minitable textarea, select.mini, input.mini{font-size:14px;}
+    .btn{padding:9px 15px;}
+    .btn.small{padding:8px 13px; font-size:12.5px;}
+    .care-item input[type=checkbox]{width:20px; height:20px;}
+    .chip{padding:7px 15px;}
+    .del{padding:6px 10px; font-size:17px;}
+    td, th{padding:10px 8px;}
+  }
+  @media(max-width:680px){
+    /* modals: let them use more of the small screen and stack action buttons full-width so
+       the primary action isn't a tiny target next to Cancel */
+    .modal-back{padding:0;}
+    .modal{max-width:none; width:100%; min-height:100vh; border-radius:0; padding:18px 16px 24px;}
+    .modal-actions{flex-direction:column-reverse;}
+    .modal-actions .btn{width:100%; justify-content:center;}
+  }
+  @media(max-width:680px){
+    /* fact-find / meeting-mode header: back/exit + name + action buttons were fighting for
+       one row next to a large name heading */
+    body.present .ff-header h1{font-size:19px;}
+    .ff-header{gap:8px;}
+    .ff-header .btn{padding:7px 12px; font-size:12.5px;}
+  }
+
   /* meeting mode */
   body.present .ff-header h1{font-size:26px;}
   body.present header.app, body.present footer.app{display:none;}
