@@ -270,6 +270,21 @@
   .casebox .form-row{margin-bottom:8px;}
   select.mini, input.mini{padding:3px 6px; font-size:12px; width:auto;}
 
+  /* social media: content-brief cards + pillar tags */
+  .block{margin:16px 0;}
+  .social-card{border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; cursor:pointer; transition:border-color .15s, box-shadow .15s;}
+  .social-card:last-of-type{margin-bottom:12px;}
+  .social-card:hover{border-color:var(--accent); box-shadow:var(--shadow);}
+  .sc-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .sc-date{font-size:11.5px; color:var(--ink-faint); font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
+  .sc-title{font-weight:700; font-size:14px; margin-bottom:6px;}
+  .sc-meta{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .sc-format{font-size:12px; color:var(--ink-soft);}
+  .pill.pillar-fa_career{background:var(--accent-soft); color:var(--accent);}
+  .pill.pillar-personal_human{background:var(--good-soft); color:var(--good);}
+  .pill.pillar-otg_adventure{background:var(--warn-soft); color:var(--warn);}
+  .pill.pillar-fa_otg_blend{background:#eee8f8; color:#5b3a9e;}
+
   /* toast */
   #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a2332; color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,.25);}
   #toast.show{opacity:1;}
@@ -592,6 +607,7 @@
       <button data-page="present">Meeting</button>
       <button data-page="clients">Clients</button>
       <button data-page="presentations">Presentations</button>
+      <button data-page="social">Social Media</button>
       <button data-page="settings">Settings</button>
     </nav>
     <span id="syncStatus"></span>
@@ -989,6 +1005,18 @@
     <div id="presViewer"></div>
   </section>
 
+  <!-- ============ SOCIAL MEDIA (planning only — no posting, no API) ============ -->
+  <section class="page" id="page-social">
+    <h1>Social Media</h1>
+    <div class="sub">Content briefs for Instagram — what a post says, looks like, and is for. Planning and reference only, nothing here posts anything.</div>
+    <div class="toolbar">
+      <select id="socialMonth" onchange="App.state.socialMonth=this.value; App.renderSocial()"></select>
+      <div class="spacer"></div>
+      <button class="btn primary" onclick="App.addSocialPost()">+ Add post</button>
+    </div>
+    <div id="socialWeeks"></div>
+  </section>
+
   <!-- ============ SETTINGS ============ -->
   <section class="page" id="page-settings">
     <h1>Settings</h1>
@@ -1091,6 +1119,15 @@
   </div>
 </div>
 
+<!-- social post detail modal: the actual content brief for one Instagram post -->
+<div class="modal-back" id="socialModal">
+  <div class="modal wide">
+    <button class="close" onclick="App.closeSocialModal()">&times;</button>
+    <h2>Post brief</h2>
+    <div id="socialBody"></div>
+  </div>
+</div>
+
 <datalist id="dlSR">
   <option value="File hospitalisation claim"><option value="File accident claim"><option value="File CI claim">
   <option value="Change address"><option value="Update contact details"><option value="Update beneficiary / nomination">
@@ -1123,6 +1160,38 @@ const STAGES = [
 ];
 const SOURCES = ['Referral','Warm / friend','Instagram','Existing client','Cold','Other'];
 const CASE_STAGES = ['contacted','appointment','factfind','proposal'];
+
+/* ---------- social media: content-planning only, no posting/API integration ---------- */
+const SOCIAL_PLATFORMS = ['Instagram Post','Instagram Reel','Story'];
+const SOCIAL_FORMATS = ['Carousel','Single Image','Reel','Text-only'];
+const SOCIAL_PILLARS = [
+  {id:'fa_career',      label:'FA / Career'},
+  {id:'personal_human', label:'Personal / Human'},
+  {id:'otg_adventure',  label:'OTG / Adventure'},
+  {id:'fa_otg_blend',   label:'FA × OTG Blend'},
+];
+function pillarLabel(id){ const p=SOCIAL_PILLARS.find(x=>x.id===id); return p?p.label:''; }
+function formatIcon(f){ return f==='Carousel'?'🖼️':f==='Reel'?'🎬':f==='Text-only'?'📝':f==='Single Image'?'📷':'📄'; }
+function blankSocialPost(date){
+  return { id:uid(), title:'', date:date||todayStr(), platform:'Instagram Post', format:'Carousel', pillar:'',
+    status:'idea', hook:'', caption:'', messaging:'', slides:[], script:'', shotList:[], musicNotes:'', cta:'', notes:'',
+    createdAt:todayStr(), updatedAt:todayStr() };
+}
+// Mon-Sun calendar weeks that make up a given month (as {start,end} Date objects, both inclusive,
+// clipped to the month's actual first/last day so week 1 and the last week can be partial).
+function weeksOfMonth(year, monthIdx){
+  const first=new Date(year, monthIdx, 1), last=new Date(year, monthIdx+1, 0);
+  const weeks=[]; let cur=new Date(first);
+  while(cur<=last){
+    const dow=(cur.getDay()+6)%7; // days since Monday
+    let weekEnd=new Date(cur); weekEnd.setDate(cur.getDate()+(6-dow));
+    if(weekEnd>last) weekEnd=new Date(last);
+    weeks.push({start:new Date(cur), end:new Date(weekEnd)});
+    cur=new Date(weekEnd); cur.setDate(cur.getDate()+1);
+  }
+  return weeks;
+}
+function isoDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 /* ---------- presentations: self-contained client decks + private advisor notes, stored as
    <template> elements below so their own CSS/JS can't collide with AdvisorFlow's. More plans
@@ -1320,6 +1389,50 @@ function rowToPerson(row){
     proposal: row.proposal || null,
   };
 }
+function socialPostToRow(x){
+  return {
+    id: x.id,
+    title: x.title || '',
+    date: x.date || null,
+    platform: x.platform || 'Instagram Post',
+    format: x.format || 'Carousel',
+    pillar: x.pillar || null,
+    status: x.status || 'idea',
+    hook: x.hook || null,
+    caption: x.caption || null,
+    messaging: x.messaging || null,
+    slides: x.slides || [],
+    script: x.script || null,
+    shot_list: x.shotList || [],
+    music_notes: x.musicNotes || null,
+    cta: x.cta || null,
+    notes: x.notes || null,
+    created_at: x.createdAt || null,
+    updated_at: new Date().toISOString(),
+  };
+}
+function rowToSocialPost(row){
+  return {
+    id: row.id,
+    title: row.title || '',
+    date: row.date || '',
+    platform: row.platform || 'Instagram Post',
+    format: row.format || 'Carousel',
+    pillar: row.pillar || '',
+    status: row.status || 'idea',
+    hook: row.hook || '',
+    caption: row.caption || '',
+    messaging: row.messaging || '',
+    slides: row.slides || [],
+    script: row.script || '',
+    shotList: row.shot_list || [],
+    musicNotes: row.music_notes || '',
+    cta: row.cta || '',
+    notes: row.notes || '',
+    createdAt: row.created_at || '',
+    updatedAt: row.updated_at || '',
+  };
+}
 function settingsToRow(d){
   return {
     advisor_name: d.settings.advisorName || '',
@@ -1348,7 +1461,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client' },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client', socialMonth:'', editingSocialId:null },
 
   init(){
     // nav
@@ -1382,10 +1495,12 @@ const App = {
     // modal close on backdrop / escape
     $('#personModal').addEventListener('click', e=>{ if(e.target.id==='personModal') this.closeModal(); });
     $('#wrapupModal').addEventListener('click', e=>{ if(e.target.id==='wrapupModal'){ this.closeWrapup(); this.finishExitMeeting(); } });
+    $('#socialModal').addEventListener('click', e=>{ if(e.target.id==='socialModal') this.closeSocialModal(); });
     document.addEventListener('keydown', e=>{
       if(e.key!=='Escape') return;
       if($('#personModal').classList.contains('open')) this.closeModal();
       else if($('#wrapupModal').classList.contains('open')){ this.closeWrapup(); this.finishExitMeeting(); }
+      else if($('#socialModal').classList.contains('open')) this.closeSocialModal();
       else if(this.state.presenting) this.endMeeting();
     });
     this.updateThemeBtn();
@@ -1462,12 +1577,14 @@ const App = {
       planPresetsInv: DEFAULT_PLANS_INV.slice(),
       people: [],
       todos: [],
+      socialPosts: [],
     };
   },
   // one-time shape upgrades, run after any full data replacement (cloud load or backup import)
   runMigrations(){
     if(!this.data.cpfRates||!this.data.cpfRates.length) this.data.cpfRates=JSON.parse(JSON.stringify(DEFAULT_RATES));
     if(!this.data.todos) this.data.todos=[];
+    if(!this.data.socialPosts) this.data.socialPosts=[]; // older local caches predate the Social Media tab
     let changed=false;
     // one-time upgrade: promote "HNW" markers stashed in notes (from the AdvisorQuest migration) to a real flag
     if(!this.data.hnwMigrated){
@@ -1499,15 +1616,18 @@ const App = {
   async load(){
     this.data=this.blank();
     try{
-      const [sRes, pRes] = await Promise.all([
+      const [sRes, pRes, spRes] = await Promise.all([
         sb.from('settings').select('*').maybeSingle(),
         sb.from('people').select('*').order('created_at', {ascending:true}),
+        sb.from('social_posts').select('*').order('date', {ascending:true}),
       ]);
       if(sRes.error) throw sRes.error;
       if(pRes.error) throw pRes.error;
+      if(spRes.error) throw spRes.error;
       if(sRes.data) applySettingsRow(this.data, sRes.data);
       else await sb.from('settings').upsert(settingsToRow(this.data)); // first-ever login: seed a settings row
       this.data.people=(pRes.data||[]).map(rowToPerson);
+      this.data.socialPosts=(spRes.data||[]).map(rowToSocialPost);
       this.state.online=true;
       this.setSyncStatus('saved');
       try{ localStorage.setItem('advisorflow_v1', JSON.stringify(this.data)); }catch(e){}
@@ -1549,6 +1669,19 @@ const App = {
       if(toDelete.length){
         const { error: delErr } = await sb.from('people').delete().in('id', toDelete);
         if(delErr) throw delErr;
+      }
+      const spRows=this.data.socialPosts.map(socialPostToRow);
+      if(spRows.length){
+        const { error: spErr } = await sb.from('social_posts').upsert(spRows, {onConflict:'id'});
+        if(spErr) throw spErr;
+      }
+      const { data: spServerIds, error: spIdErr } = await sb.from('social_posts').select('id');
+      if(spIdErr) throw spIdErr;
+      const spLocalIds=new Set(this.data.socialPosts.map(x=>x.id));
+      const spToDelete=(spServerIds||[]).map(r=>r.id).filter(id=>!spLocalIds.has(id));
+      if(spToDelete.length){
+        const { error: spDelErr } = await sb.from('social_posts').delete().in('id', spToDelete);
+        if(spDelErr) throw spDelErr;
       }
       const { error: setErr } = await sb.from('settings').upsert(settingsToRow(this.data));
       if(setErr) throw setErr;
@@ -1596,6 +1729,7 @@ const App = {
     if(this.state.page==='person') this.renderPerson();
     if(this.state.page==='factfind') this.renderFactFind();
     if(this.state.page==='proposal') this.renderProposalEditor();
+    if(this.state.page==='social') this.renderSocial();
   },
 
   /* ---------- meeting mode ---------- */
@@ -2580,6 +2714,162 @@ const App = {
     const html=this.loadPresTemplate(isClient?plan.clientTpl:plan.notesTpl);
     const blob=new Blob([html],{type:'text/html'});
     window.open(URL.createObjectURL(blob), '_blank');
+  },
+
+  /* ---------- social media: Instagram content briefs, planning/reference only ---------- */
+  renderSocial(){
+    const posts=this.data.socialPosts||[];
+    const curKey=todayStr().slice(0,7);
+    const monthKeys=Array.from(new Set([curKey, ...posts.map(p=>(p.date||'').slice(0,7)).filter(Boolean)])).sort();
+    if(!this.state.socialMonth || !monthKeys.includes(this.state.socialMonth)) this.state.socialMonth=curKey;
+    const sel=$('#socialMonth');
+    sel.innerHTML=monthKeys.map(k=>`<option value="${k}" ${k===this.state.socialMonth?'selected':''}>${monthLabelFromKey(k)}</option>`).join('');
+    sel.value=this.state.socialMonth;
+    const [y,m]=this.state.socialMonth.split('-').map(Number);
+    const weeks=weeksOfMonth(y, m-1);
+    $('#socialWeeks').innerHTML=weeks.map((w,i)=>{
+      const startIso=isoDate(w.start), endIso=isoDate(w.end);
+      const items=posts.filter(p=>p.date>=startIso && p.date<=endIso).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      return `<div class="card">
+        <h2>Week ${i+1} <span class="cardhint" style="display:inline; margin-left:6px">${fmtDate(startIso)} – ${fmtDate(endIso)}</span></h2>
+        ${items.length ? items.map(p=>this.socialCardHtml(p)).join('') : '<div class="empty">Nothing planned this week yet.</div>'}
+        <button class="btn small addrow" onclick="App.addSocialPost('${startIso}')">+ Add post to this week</button>
+      </div>`;
+    }).join('');
+  },
+  socialCardHtml(p){
+    return `<div class="social-card" onclick="App.openSocialModal('${p.id}')">
+      <div class="sc-top">
+        <span class="sc-date">${fmtDate(p.date)}</span>
+        <button class="pill ${p.status==='posted'?'ok':'stage-new'}" onclick="event.stopPropagation(); App.toggleSocialStatus('${p.id}')" title="Click to toggle status">${p.status==='posted'?'✓ Posted':'Idea'}</button>
+      </div>
+      <div class="sc-title">${esc(p.title||'Untitled')}</div>
+      <div class="sc-meta">
+        ${p.pillar?`<span class="pill pillar-${esc(p.pillar)}">${esc(pillarLabel(p.pillar))}</span>`:''}
+        <span class="sc-format">${formatIcon(p.format)} ${esc(p.format)}</span>
+      </div>
+    </div>`;
+  },
+  addSocialPost(dateStr){
+    const p=blankSocialPost(dateStr);
+    this.data.socialPosts=this.data.socialPosts||[];
+    this.data.socialPosts.push(p);
+    this.save();
+    this.openSocialModal(p.id);
+  },
+  socialPost(id){ return (this.data.socialPosts||[]).find(x=>x.id===(id||this.state.editingSocialId)) || null; },
+  openSocialModal(id){
+    const p=this.socialPost(id); if(!p) return;
+    this.state.editingSocialId=p.id;
+    $('#socialModal').classList.add('open');
+    this.renderSocialModal();
+  },
+  closeSocialModal(){
+    $('#socialModal').classList.remove('open');
+    this.state.editingSocialId=null;
+    this.renderSocial();
+  },
+  renderSocialModal(){
+    const p=this.socialPost(); if(!p) return;
+    const isCarousel=p.format==='Carousel';
+    const isReel=p.format==='Reel';
+    const box=$('#socialBody');
+    box.innerHTML=`
+      <div class="form-row">
+        <div><label>Title (internal, not shown publicly)</label><input type="text" value="${esc(p.title)}" oninput="App.socialField('title',this.value)" placeholder="e.g. Refused to be normal"></div>
+        <div><label>Target date</label><input type="date" value="${esc(p.date)}" onchange="App.socialFieldRerender('date',this.value)"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Platform</label><select onchange="App.socialField('platform',this.value)">
+          ${SOCIAL_PLATFORMS.map(x=>`<option ${p.platform===x?'selected':''}>${x}</option>`).join('')}
+        </select></div>
+        <div><label>Format</label><select onchange="App.socialFieldRerender('format',this.value)">
+          ${SOCIAL_FORMATS.map(x=>`<option ${p.format===x?'selected':''}>${x}</option>`).join('')}
+        </select></div>
+      </div>
+      <div class="form-row">
+        <div><label>Content pillar</label><select onchange="App.socialFieldRerender('pillar',this.value)">
+          <option value="">— choose —</option>
+          ${SOCIAL_PILLARS.map(x=>`<option value="${x.id}" ${p.pillar===x.id?'selected':''}>${x.label}</option>`).join('')}
+        </select></div>
+        <div><label>Status</label><select onchange="App.socialFieldRerender('status',this.value)">
+          <option value="idea" ${p.status==='idea'?'selected':''}>Idea</option>
+          <option value="posted" ${p.status==='posted'?'selected':''}>Posted</option>
+        </select></div>
+      </div>
+      <div class="form-row single"><div><label>Hook — opening line / slide 1 headline / reel's first spoken line</label><input type="text" value="${esc(p.hook)}" oninput="App.socialField('hook',this.value)"></div></div>
+      <div class="form-row single"><div><label>Caption — full IG caption, ready to copy-paste</label><textarea rows="5" oninput="App.socialField('caption',this.value)">${esc(p.caption)}</textarea></div></div>
+      <div class="form-row single"><div><label title="Not shown publicly — your own note on what this post is for">Messaging — what this post is for ⓘ</label><input type="text" value="${esc(p.messaging)}" oninput="App.socialField('messaging',this.value)" placeholder="e.g. vulnerability play, build trust"></div></div>
+      ${isCarousel ? `
+      <div class="block">
+        <label>Slides</label>
+        <table class="minitable"><tbody>
+          ${(p.slides||[]).map((s,i)=>`<tr>
+            <td style="width:34px; color:var(--ink-faint); font-size:12px">${i+1}</td>
+            <td><input type="text" placeholder="Headline" value="${esc(s.headline)}" oninput="App.socialRow('slides',${i},'headline',this.value)"></td>
+            <td><input type="text" placeholder="Subline (optional)" value="${esc(s.subline)}" oninput="App.socialRow('slides',${i},'subline',this.value)"></td>
+            <td style="width:36px"><button class="del" onclick="App.socialDelRow('slides',${i})">&times;</button></td>
+          </tr>`).join('')}
+        </tbody></table>
+        <button class="btn small addrow" onclick="App.socialAddRow('slides')">+ Add slide</button>
+      </div>` : ''}
+      ${isReel ? `
+      <div class="form-row single"><div><label>Script — full spoken script</label><textarea rows="5" oninput="App.socialField('script',this.value)">${esc(p.script)}</textarea></div></div>
+      <div class="block">
+        <label>Shot list</label>
+        <table class="minitable"><tbody>
+          ${(p.shotList||[]).map((s,i)=>`<tr>
+            <td><input type="text" placeholder="Script line this shot covers" value="${esc(s.line)}" oninput="App.socialRow('shotList',${i},'line',this.value)"></td>
+            <td><input type="text" placeholder="Shot description" value="${esc(s.shot)}" oninput="App.socialRow('shotList',${i},'shot',this.value)"></td>
+            <td style="width:36px"><button class="del" onclick="App.socialDelRow('shotList',${i})">&times;</button></td>
+          </tr>`).join('')}
+        </tbody></table>
+        <button class="btn small addrow" onclick="App.socialAddRow('shotList')">+ Add shot</button>
+      </div>
+      <div class="form-row single"><div><label>Music notes (optional)</label><input type="text" value="${esc(p.musicNotes)}" oninput="App.socialField('musicNotes',this.value)"></div></div>` : ''}
+      <div class="form-row single"><div><label>CTA — closing question / comment-CTA line</label><input type="text" value="${esc(p.cta)}" oninput="App.socialField('cta',this.value)"></div></div>
+      <div class="form-row single"><div><label>Notes</label><textarea rows="3" oninput="App.socialField('notes',this.value)">${esc(p.notes)}</textarea></div></div>
+      <div class="modal-actions" style="justify-content:space-between">
+        <button class="btn danger" onclick="App.deleteSocialPost()">Delete</button>
+        <button class="btn primary" onclick="App.closeSocialModal()">Done</button>
+      </div>`;
+  },
+  socialField(k,v){
+    const p=this.socialPost(); if(!p) return;
+    p[k]=v; p.updatedAt=new Date().toISOString();
+    this.save();
+  },
+  socialFieldRerender(k,v){
+    this.socialField(k,v);
+    this.renderSocialModal();
+  },
+  socialRow(section,i,field,value){
+    const p=this.socialPost(); if(!p||!p[section]||!p[section][i]) return;
+    p[section][i][field]=value; p.updatedAt=new Date().toISOString();
+    this.save();
+  },
+  socialAddRow(section){
+    const p=this.socialPost(); if(!p) return;
+    p[section]=p[section]||[];
+    p[section].push(section==='slides'?{headline:'',subline:''}:{line:'',shot:''});
+    this.save(); this.renderSocialModal();
+  },
+  socialDelRow(section,i){
+    const p=this.socialPost(); if(!p||!p[section]) return;
+    p[section].splice(i,1); this.save(); this.renderSocialModal();
+  },
+  toggleSocialStatus(id){
+    const p=this.socialPost(id); if(!p) return;
+    p.status = p.status==='posted' ? 'idea' : 'posted';
+    p.updatedAt=new Date().toISOString();
+    this.save(); this.renderSocial();
+    if(this.state.editingSocialId===p.id) this.renderSocialModal();
+  },
+  deleteSocialPost(){
+    const p=this.socialPost(); if(!p) return;
+    if(!confirm('Delete "'+(p.title||'this post')+'"? This cannot be undone.')) return;
+    this.data.socialPosts=this.data.socialPosts.filter(x=>x.id!==p.id);
+    this.save(); this.closeSocialModal();
   },
 
   /* ---------- settings ---------- */
