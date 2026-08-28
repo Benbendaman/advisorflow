@@ -1461,7 +1461,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client', socialMonth:'', editingSocialId:null },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client', socialMonth:'', editingSocialId:null, cloudLoadOk:false },
 
   init(){
     // nav
@@ -1629,11 +1629,14 @@ const App = {
       this.data.people=(pRes.data||[]).map(rowToPerson);
       this.data.socialPosts=(spRes.data||[]).map(rowToSocialPost);
       this.state.online=true;
+      this.state.cloudLoadOk=true; // only true on a genuine, fresh, successful read from Supabase this session
       this.setSyncStatus('saved');
       try{ localStorage.setItem('advisorflow_v1', JSON.stringify(this.data)); }catch(e){}
+      this.maybeBackupToday(); // Supabase's free tier has no automatic backups — this is the app's own safety net
     }catch(e){
       console.warn('AdvisorFlow: cloud load failed, using last local cache', e);
       this.state.online=false;
+      this.state.cloudLoadOk=false;
       this.setSyncStatus('offline');
       try{ const raw=localStorage.getItem('advisorflow_v1'); if(raw) this.data=JSON.parse(raw); }catch(e2){}
       toast('Offline — showing last synced data.');
@@ -1661,27 +1664,34 @@ const App = {
         const { error } = await sb.from('people').upsert(rows, {onConflict:'id'});
         if(error) throw error;
       }
-      // remove cloud rows for people deleted locally (deletePerson/wipe don't call the cloud directly)
-      const { data: serverIds, error: idErr } = await sb.from('people').select('id');
-      if(idErr) throw idErr;
-      const localIds=new Set(this.data.people.map(p=>p.id));
-      const toDelete=(serverIds||[]).map(r=>r.id).filter(id=>!localIds.has(id));
-      if(toDelete.length){
-        const { error: delErr } = await sb.from('people').delete().in('id', toDelete);
-        if(delErr) throw delErr;
+      // remove cloud rows for people deleted locally (deletePerson calls this implicitly via save()).
+      // SAFETY: only ever run this diff-delete after a genuine successful cloud load this session, and
+      // never when the local list is empty — an empty/failed load must never be read as "delete everything".
+      // (App.wipe() clears the cloud tables directly instead, bypassing this guard on purpose.)
+      if(this.state.cloudLoadOk && this.data.people.length){
+        const { data: serverIds, error: idErr } = await sb.from('people').select('id');
+        if(idErr) throw idErr;
+        const localIds=new Set(this.data.people.map(p=>p.id));
+        const toDelete=(serverIds||[]).map(r=>r.id).filter(id=>!localIds.has(id));
+        if(toDelete.length){
+          const { error: delErr } = await sb.from('people').delete().in('id', toDelete);
+          if(delErr) throw delErr;
+        }
       }
       const spRows=this.data.socialPosts.map(socialPostToRow);
       if(spRows.length){
         const { error: spErr } = await sb.from('social_posts').upsert(spRows, {onConflict:'id'});
         if(spErr) throw spErr;
       }
-      const { data: spServerIds, error: spIdErr } = await sb.from('social_posts').select('id');
-      if(spIdErr) throw spIdErr;
-      const spLocalIds=new Set(this.data.socialPosts.map(x=>x.id));
-      const spToDelete=(spServerIds||[]).map(r=>r.id).filter(id=>!spLocalIds.has(id));
-      if(spToDelete.length){
-        const { error: spDelErr } = await sb.from('social_posts').delete().in('id', spToDelete);
-        if(spDelErr) throw spDelErr;
+      if(this.state.cloudLoadOk && this.data.socialPosts.length){
+        const { data: spServerIds, error: spIdErr } = await sb.from('social_posts').select('id');
+        if(spIdErr) throw spIdErr;
+        const spLocalIds=new Set(this.data.socialPosts.map(x=>x.id));
+        const spToDelete=(spServerIds||[]).map(r=>r.id).filter(id=>!spLocalIds.has(id));
+        if(spToDelete.length){
+          const { error: spDelErr } = await sb.from('social_posts').delete().in('id', spToDelete);
+          if(spDelErr) throw spDelErr;
+        }
       }
       const { error: setErr } = await sb.from('settings').upsert(settingsToRow(this.data));
       if(setErr) throw setErr;
@@ -1704,6 +1714,25 @@ const App = {
     else if(s==='offline') el.textContent='Offline — will retry';
     else el.textContent='';
     el.title = s==='offline' ? "Changes are saved on this device and will sync once you're back online." : '';
+  },
+  // Supabase's free tier has no point-in-time recovery or automatic backups, so this app keeps its
+  // own daily snapshot on every successful cloud load. One row per calendar day (upsert overwrites
+  // same-day snapshots), pruned after ~30 days. This is a floor to restore from, not a substitute
+  // for the sync-safety guards in flushSync — it exists in case something we haven't thought of yet
+  // still manages to corrupt or wipe the live tables.
+  async maybeBackupToday(){
+    if(!this.data.people.length) return; // nothing meaningful to snapshot yet
+    try{
+      const today=todayStr();
+      await sb.from('backups').upsert({
+        id: uid()+'_'+today,
+        backup_date: today,
+        people_count: this.data.people.length,
+        snapshot: { people:this.data.people, settings:this.data.settings, socialPosts:this.data.socialPosts },
+      }, { onConflict:'owner_id,backup_date' });
+      const cutoff=addDays(today, -30);
+      await sb.from('backups').delete().lt('backup_date', cutoff);
+    }catch(e){ console.warn('AdvisorFlow: daily backup snapshot failed (non-fatal)', e); }
   },
 
   person(){ return this.data.people.find(p=>p.id===this.state.currentPersonId) || null; },
@@ -3041,10 +3070,19 @@ const App = {
     this.save(); this.renderAll(); this.showPage('pipeline');
     toast('Sample prospect added — open Kenneth to see a filled fact-find.');
   },
-  wipe(){
+  async wipe(){
     if(!confirm('Erase ALL data? Export a backup first if you want to keep anything.')) return;
     if(!confirm('Really sure? This deletes every prospect, client, fact-find and note.')) return;
-    this.data=this.blank(); this.save(); this.renderAll(); this.showPage('today');
+    // deliberate, double-confirmed full wipe — clears the cloud tables directly rather than relying
+    // on flushSync's automatic diff-delete, which is intentionally guarded against ever running on an
+    // empty local list (that guard exists specifically to stop an accidental empty state from wiping real data)
+    try{
+      await sb.from('people').delete().not('id','is',null);
+      await sb.from('social_posts').delete().not('id','is',null);
+    }catch(e){ console.warn('AdvisorFlow: cloud wipe failed', e); }
+    this.data=this.blank();
+    this.state.cloudLoadOk=true; // this wipe IS the source of truth now, safe for future syncs to trust
+    this.save(); this.renderAll(); this.showPage('today');
     toast('All data erased.');
   },
 
