@@ -275,6 +275,8 @@
   .social-card{border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; cursor:pointer; transition:border-color .15s, box-shadow .15s;}
   .social-card:last-of-type{margin-bottom:12px;}
   .social-card:hover{border-color:var(--accent); box-shadow:var(--shadow);}
+  .social-card.dimmed{opacity:.5;}
+  .social-card.dimmed:hover{opacity:.85;}
   .sc-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
   .sc-date{font-size:11.5px; color:var(--ink-faint); font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
   .sc-title{font-weight:700; font-size:14px; margin-bottom:6px;}
@@ -625,6 +627,7 @@
     <div class="sub" id="todayDate"></div>
     <div id="backupNudge"></div>
     <div class="grid cols-4" id="todayStats"></div>
+    <div id="nextSocialCard"></div>
     <div class="grid cols-2" style="margin-top:16px">
       <div class="card">
         <h2>Prospects to touch <span class="h2link" onclick="App.showPage('pipeline'); App.renderAll()">full pipeline →</span></h2>
@@ -1011,6 +1014,14 @@
     <div class="sub">Content briefs for Instagram — what a post says, looks like, and is for. Planning and reference only, nothing here posts anything.</div>
     <div class="toolbar">
       <select id="socialMonth" onchange="App.state.socialMonth=this.value; App.renderSocial()"></select>
+      <select id="socialPillarFilter" onchange="App.state.socialPillarFilter=this.value; App.renderSocial()">
+        <option value="">All pillars</option>
+      </select>
+      <select id="socialStatusFilter" onchange="App.state.socialStatusFilter=this.value; App.renderSocial()">
+        <option value="">All statuses</option>
+        <option value="idea">Idea</option>
+        <option value="posted">Posted</option>
+      </select>
       <div class="spacer"></div>
       <button class="btn primary" onclick="App.addSocialPost()">+ Add post</button>
     </div>
@@ -1177,15 +1188,17 @@ function blankSocialPost(date){
     status:'idea', hook:'', caption:'', messaging:'', slides:[], script:'', shotList:[], musicNotes:'', cta:'', notes:'',
     createdAt:todayStr(), updatedAt:todayStr() };
 }
-// Mon-Sun calendar weeks that make up a given month (as {start,end} Date objects, both inclusive,
-// clipped to the month's actual first/last day so week 1 and the last week can be partial).
+// Full Mon-Sun calendar weeks covering a given month (as {start,end} Date objects, both inclusive).
+// Standard calendar-UI convention: week rows are always a complete 7 days, even when that pulls in a
+// few trailing/leading days from the adjacent month (e.g. Aug 2026 starts on a Saturday, so week 1
+// includes the last two days of July) — those spillover days get dimmed in rendering, not hidden.
 function weeksOfMonth(year, monthIdx){
   const first=new Date(year, monthIdx, 1), last=new Date(year, monthIdx+1, 0);
-  const weeks=[]; let cur=new Date(first);
-  while(cur<=last){
-    const dow=(cur.getDay()+6)%7; // days since Monday
-    let weekEnd=new Date(cur); weekEnd.setDate(cur.getDate()+(6-dow));
-    if(weekEnd>last) weekEnd=new Date(last);
+  const gridStart=new Date(first); gridStart.setDate(first.getDate()-((first.getDay()+6)%7)); // back up to Monday
+  const gridEnd=new Date(last); gridEnd.setDate(last.getDate()+(6-((last.getDay()+6)%7))); // forward to Sunday
+  const weeks=[]; let cur=new Date(gridStart);
+  while(cur<=gridEnd){
+    const weekEnd=new Date(cur); weekEnd.setDate(cur.getDate()+6);
     weeks.push({start:new Date(cur), end:new Date(weekEnd)});
     cur=new Date(weekEnd); cur.setDate(cur.getDate()+1);
   }
@@ -1461,7 +1474,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client', socialMonth:'', editingSocialId:null, cloudLoadOk:false },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client', socialMonth:'', editingSocialId:null, cloudLoadOk:false, socialPillarFilter:'', socialStatusFilter:'' },
 
   init(){
     // nav
@@ -1474,6 +1487,7 @@ const App = {
     const so=$('#pipeSourceFilter'); SOURCES.forEach(s=>so.insertAdjacentHTML('beforeend',`<option>${s}</option>`));
     const pm=$('#pm_source'); SOURCES.forEach(s=>pm.insertAdjacentHTML('beforeend',`<option>${s}</option>`));
     const ps=$('#pStage'); STAGES.forEach(s=>ps.insertAdjacentHTML('beforeend',`<option value="${s.id}">${s.label}</option>`));
+    const spf=$('#socialPillarFilter'); SOCIAL_PILLARS.forEach(x=>spf.insertAdjacentHTML('beforeend',`<option value="${x.id}">${x.label}</option>`));
     // settings bindings
     $$('[data-set]').forEach(el=>{
       el.addEventListener('input', ()=>{ this.data.settings[el.dataset.set] = el.type==='number' ? num(el.value) : el.value; this.save(); });
@@ -1578,6 +1592,7 @@ const App = {
       people: [],
       todos: [],
       socialPosts: [],
+      pendingDeletes: { people:[], socialPosts:[] },
     };
   },
   // one-time shape upgrades, run after any full data replacement (cloud load or backup import)
@@ -1585,6 +1600,7 @@ const App = {
     if(!this.data.cpfRates||!this.data.cpfRates.length) this.data.cpfRates=JSON.parse(JSON.stringify(DEFAULT_RATES));
     if(!this.data.todos) this.data.todos=[];
     if(!this.data.socialPosts) this.data.socialPosts=[]; // older local caches predate the Social Media tab
+    if(!this.data.pendingDeletes) this.data.pendingDeletes={ people:[], socialPosts:[] }; // older local caches predate the pending-delete queue
     let changed=false;
     // one-time upgrade: promote "HNW" markers stashed in notes (from the AdvisorQuest migration) to a real flag
     if(!this.data.hnwMigrated){
@@ -1664,34 +1680,28 @@ const App = {
         const { error } = await sb.from('people').upsert(rows, {onConflict:'id'});
         if(error) throw error;
       }
-      // remove cloud rows for people deleted locally (deletePerson calls this implicitly via save()).
-      // SAFETY: only ever run this diff-delete after a genuine successful cloud load this session, and
-      // never when the local list is empty — an empty/failed load must never be read as "delete everything".
-      // (App.wipe() clears the cloud tables directly instead, bypassing this guard on purpose.)
-      if(this.state.cloudLoadOk && this.data.people.length){
-        const { data: serverIds, error: idErr } = await sb.from('people').select('id');
-        if(idErr) throw idErr;
-        const localIds=new Set(this.data.people.map(p=>p.id));
-        const toDelete=(serverIds||[]).map(r=>r.id).filter(id=>!localIds.has(id));
-        if(toDelete.length){
-          const { error: delErr } = await sb.from('people').delete().in('id', toDelete);
-          if(delErr) throw delErr;
-        }
-      }
       const spRows=this.data.socialPosts.map(socialPostToRow);
       if(spRows.length){
         const { error: spErr } = await sb.from('social_posts').upsert(spRows, {onConflict:'id'});
         if(spErr) throw spErr;
       }
-      if(this.state.cloudLoadOk && this.data.socialPosts.length){
-        const { data: spServerIds, error: spIdErr } = await sb.from('social_posts').select('id');
-        if(spIdErr) throw spIdErr;
-        const spLocalIds=new Set(this.data.socialPosts.map(x=>x.id));
-        const spToDelete=(spServerIds||[]).map(r=>r.id).filter(id=>!spLocalIds.has(id));
-        if(spToDelete.length){
-          const { error: spDelErr } = await sb.from('social_posts').delete().in('id', spToDelete);
-          if(spDelErr) throw spDelErr;
-        }
+      // Deletions are driven by an explicit, positive queue of ids the user actually asked to delete
+      // (pushed by deletePerson()/deleteSocialPost()), never inferred by diffing "what's missing locally"
+      // against the server. That diff approach is what wiped every real record once already: an empty or
+      // stale local list got read as "delete everything". An explicit queue can't do that — it only ever
+      // removes ids someone specifically deleted, so it's also safe alongside rows added directly via SQL
+      // (they're just never in the queue, so they're never touched). Ids are only cleared from the queue
+      // once the server confirms the delete, so a delete made while offline survives and retries later.
+      this.data.pendingDeletes=this.data.pendingDeletes||{people:[],socialPosts:[]};
+      if(this.data.pendingDeletes.people.length){
+        const { error: delErr } = await sb.from('people').delete().in('id', this.data.pendingDeletes.people);
+        if(delErr) throw delErr;
+        this.data.pendingDeletes.people=[];
+      }
+      if(this.data.pendingDeletes.socialPosts.length){
+        const { error: spDelErr } = await sb.from('social_posts').delete().in('id', this.data.pendingDeletes.socialPosts);
+        if(spDelErr) throw spDelErr;
+        this.data.pendingDeletes.socialPosts=[];
       }
       const { error: setErr } = await sb.from('settings').upsert(settingsToRow(this.data));
       if(setErr) throw setErr;
@@ -2040,6 +2050,7 @@ const App = {
       <div class="card stat"><div class="n" style="color:${dueC.length?'var(--warn)':'var(--good)'}">${dueC.length}</div><div class="l">To-dos due</div></div>
       <div class="card stat"><div class="n">${active}</div><div class="l">Active prospects</div></div>
       <div class="card stat"><div class="n">${clients}</div><div class="l">Clients</div></div>`;
+    this.renderNextSocialCard();
     const cap=this.state.showAllDue?dueF.length:8;
     $('#dueFollowups').innerHTML = dueF.length ? dueF.slice(0,cap).map(p=>`
       <div class="care-item">
@@ -2422,6 +2433,8 @@ const App = {
     const p=this.person(); if(!p) return;
     if(!confirm('Delete '+p.name+' and all their data (notes, fact-find, care tasks)? This cannot be undone.')) return;
     this.data.people=this.data.people.filter(x=>x.id!==p.id);
+    this.data.pendingDeletes=this.data.pendingDeletes||{people:[],socialPosts:[]};
+    if(!this.data.pendingDeletes.people.includes(p.id)) this.data.pendingDeletes.people.push(p.id);
     this.save(); this.backFromPerson();
     toast('Deleted.');
   },
@@ -2746,28 +2759,55 @@ const App = {
   },
 
   /* ---------- social media: Instagram content briefs, planning/reference only ---------- */
+  renderNextSocialCard(){
+    const box=$('#nextSocialCard'); if(!box) return;
+    const next=(this.data.socialPosts||[]).filter(p=>p.status==='idea').sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'))[0];
+    if(!next){ box.innerHTML=''; return; }
+    const overdue=next.date && daysUntil(next.date)<0;
+    box.innerHTML=`<div class="card" style="margin-top:16px; cursor:pointer" onclick="App.state.socialMonth=(${JSON.stringify(next.date||'')}).slice(0,7); App.showPage('social'); App.renderAll(); App.openSocialModal('${next.id}')">
+      <div style="display:flex; align-items:center; gap:10px">
+        <span style="font-size:20px">${formatIcon(next.format)}</span>
+        <div style="flex:1">
+          <div style="font-size:12px; color:var(--ink-faint); font-weight:600; text-transform:uppercase; letter-spacing:.3px">Next social post${overdue?' — overdue':''}</div>
+          <div style="font-weight:700">${esc(next.title||'Untitled')} <span style="font-weight:400; color:var(--ink-soft)">· ${next.date?fmtDate(next.date):'no date set'}</span></div>
+        </div>
+      </div>
+    </div>`;
+  },
   renderSocial(){
     const posts=this.data.socialPosts||[];
     const curKey=todayStr().slice(0,7);
-    const monthKeys=Array.from(new Set([curKey, ...posts.map(p=>(p.date||'').slice(0,7)).filter(Boolean)])).sort();
+    const curYear=Number(curKey.slice(0,4));
+    // month picker always covers Jan-Dec of the current year (so you can plan ahead into an empty
+    // month), plus any month outside that range that already has posts in it, so nothing disappears
+    const yearMonths=Array.from({length:12}, (_,i)=>curYear+'-'+String(i+1).padStart(2,'0'));
+    const postMonths=posts.map(p=>(p.date||'').slice(0,7)).filter(Boolean);
+    const monthKeys=Array.from(new Set([...yearMonths, ...postMonths])).sort();
     if(!this.state.socialMonth || !monthKeys.includes(this.state.socialMonth)) this.state.socialMonth=curKey;
     const sel=$('#socialMonth');
     sel.innerHTML=monthKeys.map(k=>`<option value="${k}" ${k===this.state.socialMonth?'selected':''}>${monthLabelFromKey(k)}</option>`).join('');
     sel.value=this.state.socialMonth;
+
+    const pillarFilter=this.state.socialPillarFilter||'', statusFilter=this.state.socialStatusFilter||'';
+    let filtered=posts;
+    if(pillarFilter) filtered=filtered.filter(p=>p.pillar===pillarFilter);
+    if(statusFilter) filtered=filtered.filter(p=>p.status===statusFilter);
+
     const [y,m]=this.state.socialMonth.split('-').map(Number);
+    const selMonthKey=this.state.socialMonth;
     const weeks=weeksOfMonth(y, m-1);
     $('#socialWeeks').innerHTML=weeks.map((w,i)=>{
       const startIso=isoDate(w.start), endIso=isoDate(w.end);
-      const items=posts.filter(p=>p.date>=startIso && p.date<=endIso).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      const items=filtered.filter(p=>p.date>=startIso && p.date<=endIso).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
       return `<div class="card">
         <h2>Week ${i+1} <span class="cardhint" style="display:inline; margin-left:6px">${fmtDate(startIso)} – ${fmtDate(endIso)}</span></h2>
-        ${items.length ? items.map(p=>this.socialCardHtml(p)).join('') : '<div class="empty">Nothing planned this week yet.</div>'}
+        ${items.length ? items.map(p=>this.socialCardHtml(p, p.date.slice(0,7)!==selMonthKey)).join('') : '<div class="empty">Nothing planned this week yet.</div>'}
         <button class="btn small addrow" onclick="App.addSocialPost('${startIso}')">+ Add post to this week</button>
       </div>`;
     }).join('');
   },
-  socialCardHtml(p){
-    return `<div class="social-card" onclick="App.openSocialModal('${p.id}')">
+  socialCardHtml(p, dimmed){
+    return `<div class="social-card${dimmed?' dimmed':''}" onclick="App.openSocialModal('${p.id}')" ${dimmed?'title="Not in the selected month"':''}>
       <div class="sc-top">
         <span class="sc-date">${fmtDate(p.date)}</span>
         <button class="pill ${p.status==='posted'?'ok':'stage-new'}" onclick="event.stopPropagation(); App.toggleSocialStatus('${p.id}')" title="Click to toggle status">${p.status==='posted'?'✓ Posted':'Idea'}</button>
@@ -2827,7 +2867,9 @@ const App = {
         </select></div>
       </div>
       <div class="form-row single"><div><label>Hook — opening line / slide 1 headline / reel's first spoken line</label><input type="text" value="${esc(p.hook)}" oninput="App.socialField('hook',this.value)"></div></div>
-      <div class="form-row single"><div><label>Caption — full IG caption, ready to copy-paste</label><textarea rows="5" oninput="App.socialField('caption',this.value)">${esc(p.caption)}</textarea></div></div>
+      <div class="form-row single"><div><label>Caption — full IG caption, ready to copy-paste
+        <button class="btn small ghost" style="float:right; margin-top:-4px" onclick="App.socialCopyCaption()">📋 Copy caption</button>
+      </label><textarea rows="5" oninput="App.socialField('caption',this.value)">${esc(p.caption)}</textarea></div></div>
       <div class="form-row single"><div><label title="Not shown publicly — your own note on what this post is for">Messaging — what this post is for ⓘ</label><input type="text" value="${esc(p.messaging)}" oninput="App.socialField('messaging',this.value)" placeholder="e.g. vulnerability play, build trust"></div></div>
       ${isCarousel ? `
       <div class="block">
@@ -2837,6 +2879,7 @@ const App = {
             <td style="width:34px; color:var(--ink-faint); font-size:12px">${i+1}</td>
             <td><input type="text" placeholder="Headline" value="${esc(s.headline)}" oninput="App.socialRow('slides',${i},'headline',this.value)"></td>
             <td><input type="text" placeholder="Subline (optional)" value="${esc(s.subline)}" oninput="App.socialRow('slides',${i},'subline',this.value)"></td>
+            <td style="width:44px"><button class="btn small ghost" title="Copy this slide's text" onclick="App.socialCopySlide(${i})">📋</button></td>
             <td style="width:36px"><button class="del" onclick="App.socialDelRow('slides',${i})">&times;</button></td>
           </tr>`).join('')}
         </tbody></table>
@@ -2887,6 +2930,21 @@ const App = {
     const p=this.socialPost(); if(!p||!p[section]) return;
     p[section].splice(i,1); this.save(); this.renderSocialModal();
   },
+  copyText(text){
+    if(!text){ toast('Nothing to copy yet'); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=>toast('Copied ✓')).catch(()=>toast('Copy failed — select and copy manually'));
+    } else toast('Copy not supported in this browser — select and copy manually');
+  },
+  socialCopyCaption(){
+    const p=this.socialPost(); if(!p) return;
+    this.copyText(p.caption||'');
+  },
+  socialCopySlide(i){
+    const p=this.socialPost(); if(!p||!p.slides||!p.slides[i]) return;
+    const s=p.slides[i];
+    this.copyText(s.subline ? (s.headline+'\n'+s.subline) : (s.headline||''));
+  },
   toggleSocialStatus(id){
     const p=this.socialPost(id); if(!p) return;
     p.status = p.status==='posted' ? 'idea' : 'posted';
@@ -2898,6 +2956,8 @@ const App = {
     const p=this.socialPost(); if(!p) return;
     if(!confirm('Delete "'+(p.title||'this post')+'"? This cannot be undone.')) return;
     this.data.socialPosts=this.data.socialPosts.filter(x=>x.id!==p.id);
+    this.data.pendingDeletes=this.data.pendingDeletes||{people:[],socialPosts:[]};
+    if(!this.data.pendingDeletes.socialPosts.includes(p.id)) this.data.pendingDeletes.socialPosts.push(p.id);
     this.save(); this.closeSocialModal();
   },
 
