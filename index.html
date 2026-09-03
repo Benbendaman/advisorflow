@@ -304,6 +304,7 @@
     #printDoc .pcs-sub{color:#555; font-size:13px;}
     #printDoc .pcs-adv{text-align:right; font-size:11px; color:#444; line-height:1.5;}
     #printDoc .pcs-adv b{font-size:13px; color:#0f4c81;}
+    #printDoc .pcs-cols{display:grid; grid-template-columns:1fr 1fr; gap:0 20px; align-items:start;}
     #printDoc h3{font-size:14px; margin:20px 0 8px; color:#0f4c81; text-transform:uppercase; letter-spacing:.6px; border-bottom:2px solid #0f4c81; padding-bottom:4px;}
     #printDoc table{width:100%; border-collapse:collapse; margin-bottom:6px;}
     #printDoc th{position:static; top:auto; z-index:auto; background:#0f4c81; color:#fff; font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; padding:7px 10px; text-align:left; border:1px solid #0f4c81;}
@@ -2691,25 +2692,38 @@ const App = {
     $('#ffHero').innerHTML = h;
   },
 
-  /* ---------- print: client-facing Insurance & Investment summary (landscape, name + plans +
-     premiums + notes only — no internal cashflow/CPF figures, per Ben's request) ---------- */
+  /* ---------- print: client-facing portfolio summary (landscape) — Income, Expenses,
+     Insurance & Investment plans. Income/expense figures restored to this view per Ben's
+     later request (previously stripped; see git history if that needs revisiting). ---------- */
   printFactFind(){
     const p=this.person(); if(!p) return;
-    const ff=this.currentFF(); const s=this.data.settings;
+    const ff=this.currentFF(); const s=this.data.settings; const c=this.calcFF(ff);
     const money=(v)=>v?fmt(num(v)):'—';
     const today=new Date().toLocaleDateString('en-SG',{day:'numeric',month:'long',year:'numeric'});
     const insurance=(ff.insurance||[]).filter(x=>x.name||num(x.mth)||num(x.yr));
     const investments=(ff.investments||[]).filter(x=>x.name||num(x.mth)||num(x.yr));
+    const expenses=(ff.expenses||[]).filter(x=>x.label||num(x.amt));
     const insTotalMth=insurance.reduce((a,x)=>a+num(x.mth),0), insTotalYr=insurance.reduce((a,x)=>a+num(x.yr),0);
     const invTotalMth=investments.reduce((a,x)=>a+num(x.mth),0), invTotalYr=investments.reduce((a,x)=>a+num(x.yr),0);
     const planTable=(title,list,totalMth,totalYr)=>`<h3>${title}</h3><table><thead><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr></thead><tbody>
       ${list.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td></tr>`).join('')}</tbody>
       <tr class="tot"><td>Total</td><td class="r">${fmt(totalMth)}</td><td class="r">${fmt(totalYr)}</td><td></td></tr></table>`;
+    const incomeTable=`<h3>Monthly Income</h3><table><thead><tr><th>Item</th><th class="r">Amount /mth</th></tr></thead><tbody>
+      <tr><td>Gross income</td><td class="r">${money(c.gross)}</td></tr>
+      ${c.employed?`<tr><td>Less: CPF (employee share)</td><td class="r">-${money(c.employeeCPF)}</td></tr>`:''}
+      <tr><td>Take-home income</td><td class="r">${money(c.takeHome)}</td></tr>
+      ${num(c.other)?`<tr><td>Other income</td><td class="r">${money(c.other)}</td></tr>`:''}
+      </tbody>
+      <tr class="tot"><td>Total available</td><td class="r">${fmt(c.takeHome+num(c.other))}</td></tr></table>`;
+    const expenseTable=`<h3>Monthly Expenses</h3><table><thead><tr><th>Item</th><th class="r">Amount /mth</th></tr></thead><tbody>
+      ${expenses.length?expenses.map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`).join(''):'<tr><td colspan="2" style="color:#888;">No expenses recorded</td></tr>'}</tbody>
+      <tr class="tot"><td>Total</td><td class="r">${fmt(c.expTotal)}</td></tr></table>`;
     let h=`<div class="pcs-band"></div>
     <div class="pcs-head">
-      <div><h1>${esc(p.name)}</h1><div class="pcs-sub">Insurance &amp; Investment Summary &middot; ${today}</div></div>
+      <div><h1>${esc(p.name)}</h1><div class="pcs-sub">Portfolio Summary &middot; ${today}</div></div>
       <div class="pcs-adv"><b>${esc(s.advisorName||'Your Advisor')}</b><br>${esc(s.advisorTitle||'')}${s.advisorTitle?'<br>':''}${esc(s.advisorPhone||'')}${s.advisorEmail?' &middot; '+esc(s.advisorEmail):''}</div>
     </div>`;
+    h+=`<div class="pcs-cols">${incomeTable}${expenseTable}</div>`;
     if(insurance.length) h+=planTable('Insurance Plans', insurance, insTotalMth, insTotalYr);
     if(investments.length) h+=planTable('Investment Plans', investments, invTotalMth, invTotalYr);
     if(!insurance.length && !investments.length) h+=`<div class="pcs-empty">No insurance or investment plans recorded yet.</div>`;
