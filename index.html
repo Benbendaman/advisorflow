@@ -1214,6 +1214,7 @@ const PRESENTATIONS = [
   { id:'wv',  label:'AIA Wealth Venture',        clientTpl:'tpl-wv-client',  notesTpl:'tpl-wv-notes' },
   { id:'pwv', label:'AIA Platinum Wealth Venture', clientTpl:'tpl-pwv-client', notesTpl:'tpl-pwv-notes' },
   { id:'invest101', label:'Investment Foundations 101', clientTpl:'tpl-invest101-client', notesTpl:'tpl-invest101-notes' },
+  { id:'estate', label:'Estate Planning', clientTpl:'tpl-estate-client', notesTpl:'tpl-estate-notes' },
 ];
 // effective pipeline stage: clients ride the pipeline only through an open case
 function effStage(p){ return p.stage==='onboarded' ? (p.activeCase ? p.activeCase.stage : null) : p.stage; }
@@ -11035,6 +11036,1302 @@ function resetPanel(btn){
 
 </div>
 
+</body>
+</html></template>
+
+<template id="tpl-estate-client"><html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Estate Planning · Benjamin Ng</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:#0f2744;}
+:root{
+  --navy:#0f2744;--navy2:#1a3a5c;--gold:#c9a84c;--gold2:#e8d49a;
+  --white:#ffffff;--light:#f4f5f8;--muted:#64748b;--border:#dde3ed;
+  --red:#991b1b;--green:#1a5c38;--amber:#92400e;
+}
+
+/* ── DECK ── */
+.deck{position:fixed;inset:0;}
+
+/* ── SLIDE ── */
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:36px 64px 88px;
+  opacity:0;pointer-events:none;
+  transition:opacity 0.38s ease,transform 0.38s ease;
+  transform:scale(1.018);
+  overflow-y:auto;
+}
+.slide.active{opacity:1;pointer-events:all;transform:scale(1);}
+
+/* Backgrounds */
+.dark{background:linear-gradient(145deg,var(--navy) 0%,#1c426e 58%,var(--navy2) 100%);}
+.dark::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 68% 38%,rgba(201,168,76,0.1) 0%,transparent 55%);
+}
+.light{background:var(--light);}
+.white{background:var(--white);}
+
+/* ── CONTENT ── */
+.content{width:100%;max-width:960px;margin:0 auto;position:relative;z-index:1;}
+
+/* ── TAGS ── */
+.tag{display:inline-block;font-size:0.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;padding:4px 12px;border-radius:20px;margin-bottom:12px;}
+.tg-gd{background:#fef3cd;color:#7a5c1a;}
+.tg-gd-dk{background:rgba(201,168,76,0.15);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
+.tg-nv{background:#e8edf5;color:var(--navy);}
+.tg-rd{background:#fdecea;color:var(--red);}
+.tg-gn{background:#e6f4ed;color:var(--green);}
+
+/* ── TYPOGRAPHY ── */
+.s-eyebrow{font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;color:var(--gold);margin-bottom:18px;display:flex;align-items:center;gap:12px;}
+.s-eyebrow::before{content:'';width:30px;height:2px;background:var(--gold);display:inline-block;}
+h1.s-h1{font-size:clamp(2rem,4.5vw,3.2rem);font-weight:800;color:var(--white);line-height:1.1;letter-spacing:-0.5px;margin-bottom:16px;}
+h1.s-h1 em{font-style:normal;color:var(--gold);}
+h2.s-h2{font-size:clamp(1.25rem,2.8vw,1.85rem);font-weight:700;line-height:1.25;margin-bottom:10px;}
+.dark h2.s-h2{color:var(--white);}
+.light h2.s-h2,.white h2.s-h2{color:var(--navy);}
+p.s-sub{font-size:0.88rem;line-height:1.72;margin-bottom:18px;}
+.dark p.s-sub{color:rgba(255,255,255,0.58);}
+.light p.s-sub,.white p.s-sub{color:var(--muted);}
+
+/* ── HERO ── */
+.hero-sub{font-size:clamp(0.95rem,1.8vw,1.05rem);color:rgba(255,255,255,0.58);max-width:560px;line-height:1.75;margin-bottom:30px;}
+.stats{display:flex;gap:12px;flex-wrap:wrap;}
+.stat{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.11);border-radius:10px;padding:14px 18px;}
+.stat .num{font-size:1.5rem;font-weight:800;color:var(--gold);}
+.stat .lbl{font-size:0.67rem;color:rgba(255,255,255,0.5);margin-top:3px;line-height:1.4;max-width:130px;}
+
+/* ── QUOTE ── */
+.quote-card{background:rgba(255,255,255,0.06);border:1px solid rgba(201,168,76,0.3);border-left:4px solid var(--gold);border-radius:0 12px 12px 0;padding:22px 30px;max-width:640px;font-size:1.1rem;font-style:italic;color:rgba(255,255,255,0.9);line-height:1.78;}
+
+/* ── ISA TABLE ── */
+.isa-wrap{overflow-x:auto;border-radius:10px;box-shadow:0 2px 20px rgba(15,39,68,0.1);margin-bottom:12px;}
+.isa-tbl{width:100%;border-collapse:collapse;min-width:480px;}
+.isa-tbl thead tr{background:var(--navy);}
+.isa-tbl th{padding:10px 14px;text-align:left;color:rgba(255,255,255,0.78);font-size:0.67rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;}
+.isa-tbl td{padding:9px 14px;border-bottom:1px solid #f0f2f5;font-size:0.8rem;color:#334155;vertical-align:middle;}
+.isa-tbl tr:last-child td{border-bottom:none;}
+.isa-tbl tr:nth-child(even) td{background:#fafbfc;}
+.snum{width:22px;height:22px;background:var(--navy);color:white;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:700;flex-shrink:0;}
+.good{color:var(--green);font-weight:600;}
+.warn{color:var(--amber);font-weight:600;}
+.bad{color:var(--red);font-weight:600;}
+.pill{display:inline-block;font-size:0.62rem;background:#fdecea;color:var(--red);padding:2px 8px;border-radius:10px;font-weight:600;}
+.isa-note{padding:10px 14px;background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 6px 6px 0;font-size:0.77rem;color:var(--amber);line-height:1.6;}
+
+/* ── RISK CARDS ── */
+.risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
+.risk-card{background:var(--white);border-radius:12px;padding:18px 20px;border:1px solid var(--border);position:relative;overflow:hidden;}
+.risk-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.risk-card.cr::before{background:var(--red);}
+.risk-card.ca::before{background:#f59e0b;}
+.ricon{font-size:1.5rem;margin-bottom:8px;}
+.risk-card h3{font-size:0.83rem;font-weight:700;color:var(--navy);margin-bottom:6px;}
+.risk-card p{font-size:0.77rem;color:var(--muted);line-height:1.55;}
+.hook{margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:5px;font-size:0.73rem;font-style:italic;color:#475569;border-left:2px solid var(--gold);}
+
+/* ── TOOLKIT ── */
+.tools-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px;}
+.tool-card{background:var(--white);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.tool-hd{background:var(--navy);padding:12px 13px;}
+.tool-ico{font-size:1.15rem;margin-bottom:4px;}
+.tool-hd h3{color:white;font-size:0.77rem;font-weight:700;margin-bottom:2px;}
+.tool-hd .tsub{color:rgba(255,255,255,0.42);font-size:0.61rem;}
+.tool-body{padding:12px 13px;}
+.dot{display:flex;gap:6px;align-items:flex-start;font-size:0.71rem;color:#475569;margin-bottom:5px;line-height:1.45;}
+.dot::before{content:'·';color:var(--gold);font-weight:900;font-size:0.9rem;flex-shrink:0;margin-top:-1px;}
+.talert{margin-top:8px;background:#fdecea;border-radius:5px;padding:7px 9px;font-size:0.67rem;color:var(--red);line-height:1.5;}
+.ttip{margin-top:8px;background:#e6f4ed;border-radius:5px;padding:7px 9px;font-size:0.67rem;color:var(--green);line-height:1.5;}
+
+/* ── GAP ── */
+.gap-wrap{background:rgba(255,255,255,0.055);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:26px 30px;max-width:800px;}
+.gap-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.gap-lbl{font-size:0.7rem;font-weight:600;color:rgba(255,255,255,0.55);min-width:165px;}
+.gap-bwrap{flex:1;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;height:34px;}
+.gap-b{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:0.7rem;font-weight:700;color:white;}
+.gb-n{background:linear-gradient(90deg,#991b1b,#c0392b);width:100%;}
+.gb-a{background:linear-gradient(90deg,#1a5c38,#27ae60);width:56%;}
+.gb-g{background:linear-gradient(90deg,#c9a84c,#e8c96a);width:44%;}
+.gap-div{border:none;border-top:1px dashed rgba(255,255,255,0.13);margin:16px 0;}
+.gap-result{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.25);border-radius:10px;padding:13px 18px;display:flex;align-items:center;gap:14px;margin-bottom:14px;}
+.gap-num{font-size:1.9rem;font-weight:800;color:var(--gold);flex-shrink:0;}
+.gap-txt{font-size:0.78rem;color:rgba(255,255,255,0.65);line-height:1.6;}
+.gap-items{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.gap-item{background:rgba(255,255,255,0.04);border-radius:7px;padding:10px 12px;font-size:0.72rem;color:rgba(255,255,255,0.6);}
+.gap-item strong{color:white;display:block;margin-bottom:2px;font-size:0.74rem;}
+
+/* ── CHECKLIST ── */
+.cl-layout{display:flex;gap:36px;align-items:flex-start;flex-wrap:wrap;}
+.cl-left{flex:1;min-width:220px;}
+.cl-right{flex:2;min-width:280px;}
+.cl-wrap{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;box-shadow:0 2px 18px rgba(15,39,68,0.07);}
+.cl-hd{background:var(--navy);padding:12px 20px;font-size:0.78rem;font-weight:700;color:white;}
+.cl-item{display:flex;align-items:flex-start;gap:12px;padding:11px 20px;border-bottom:1px solid #f4f5f7;}
+.cl-item:last-child{border-bottom:none;}
+.cl-box{width:20px;height:20px;border:2px solid var(--border);border-radius:5px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s;background:white;}
+.cl-box:hover{border-color:var(--navy);}
+.cl-box.on{background:var(--navy);border-color:var(--navy);}
+.cl-box.on::after{content:'✓';font-size:0.7rem;color:white;font-weight:700;}
+.cl-content h4{font-size:0.8rem;font-weight:700;color:var(--navy);margin-bottom:2px;}
+.cl-content p{font-size:0.73rem;color:var(--muted);line-height:1.45;}
+.cl-badge{font-size:0.58rem;padding:2px 7px;border-radius:8px;font-weight:700;margin-left:5px;}
+.free{background:#e6f4ed;color:var(--green);}
+.paid{background:#fef9f0;color:#7a5c1a;}
+
+/* ── CLOSING ── */
+.dq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:680px;margin-top:20px;}
+.dq{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);border-radius:10px;padding:16px 18px;font-size:0.84rem;color:rgba(255,255,255,0.82);line-height:1.55;}
+.dq::before{content:'→ ';color:var(--gold);font-weight:700;}
+
+/* ── NAV BAR ── */
+.nav-bar{
+  position:fixed;bottom:0;left:0;right:0;z-index:300;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 28px;
+  background:rgba(8,18,32,0.78);
+  backdrop-filter:blur(14px);
+  border-top:1px solid rgba(255,255,255,0.07);
+}
+.nav-btn{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.14);
+  border-radius:8px;padding:8px 18px;cursor:pointer;
+  font-size:0.76rem;font-weight:600;color:rgba(255,255,255,0.78);
+  transition:all 0.15s;font-family:inherit;
+}
+.nav-btn:hover:not(:disabled){background:rgba(255,255,255,0.16);color:white;border-color:rgba(255,255,255,0.28);}
+.nav-btn:disabled{opacity:0.28;cursor:default;}
+.nav-center{display:flex;flex-direction:column;align-items:center;gap:8px;}
+.nav-counter{font-size:0.67rem;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:0.5px;}
+.dots{display:flex;gap:6px;align-items:center;}
+.dot-ind{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.22);cursor:pointer;transition:all 0.25s;}
+.dot-ind.on{background:var(--gold);width:22px;border-radius:3px;}
+
+/* ── HERO TWO-COLUMN ── */
+.hero-layout{display:flex;gap:48px;align-items:center;width:100%;}
+.hero-left{flex:1;min-width:0;}
+.hero-right{flex:0 0 260px;display:flex;flex-direction:column;align-items:center;gap:18px;}
+.photo-ring{width:220px;border-radius:14px;overflow:hidden;border:3px solid rgba(201,168,76,0.55);box-shadow:0 0 0 6px rgba(201,168,76,0.12),0 8px 32px rgba(0,0,0,0.4);}
+.photo-ring img{width:100%;height:auto;display:block;}
+.aepp-card{background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.38);border-radius:12px;padding:16px 18px;text-align:center;width:100%;}
+.aepp-desig{font-size:1.6rem;font-weight:800;color:var(--gold);letter-spacing:-0.5px;line-height:1;}
+.aepp-title{font-size:0.72rem;font-weight:600;color:rgba(255,255,255,0.82);margin-top:5px;line-height:1.4;}
+.aepp-bodies{font-size:0.6rem;color:rgba(255,255,255,0.4);margin-top:4px;line-height:1.5;}
+.aepp-divider{width:32px;height:1px;background:rgba(201,168,76,0.35);margin:8px auto;}
+
+/* ── CREDENTIAL BADGE ── */
+.cred-badge{display:inline-flex;align-items:center;gap:12px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.32);border-radius:9px;padding:9px 16px;margin-bottom:18px;}
+.cred-desig{font-size:1rem;font-weight:800;color:var(--gold);letter-spacing:-0.2px;white-space:nowrap;}
+.cred-div{width:1px;height:28px;background:rgba(201,168,76,0.28);flex-shrink:0;}
+.cred-detail{display:flex;flex-direction:column;gap:2px;}
+.cred-label{font-size:0.72rem;font-weight:600;color:rgba(255,255,255,0.88);}
+.cred-meta{font-size:0.61rem;color:rgba(255,255,255,0.42);line-height:1.4;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .slide{padding:28px 32px 88px;}
+  .tools-grid{grid-template-columns:repeat(3,1fr);}
+}
+@media(max-width:640px){
+  .slide{padding:20px 20px 80px;}
+  .tools-grid{grid-template-columns:repeat(2,1fr);}
+  .risk-grid{grid-template-columns:1fr;}
+  .dq-grid{grid-template-columns:1fr;}
+  .gap-items{grid-template-columns:1fr;}
+  .gap-lbl{min-width:100px;font-size:0.64rem;}
+  .stats{flex-direction:column;}
+  .cl-layout{flex-direction:column;}
+  h1.s-h1{font-size:1.75rem;}
+  h2.s-h2{font-size:1.2rem;}
+}
+@media print{
+  html,body{overflow:visible;height:auto;}
+  .deck{position:relative;}
+  .nav-bar{display:none;}
+  .slide{position:relative;opacity:1!important;transform:none!important;pointer-events:all;page-break-after:always;min-height:100vh;}
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- ══ SLIDE 1: HERO ══ -->
+  <div class="slide dark" id="s0">
+    <div class="content">
+      <div class="hero-layout">
+        <div class="hero-left">
+          <div class="s-eyebrow">Estate Planning in Singapore</div>
+          <h1 class="s-h1">Is Your Wealth Ready<br/>to <em>Pass On?</em></h1>
+          <p class="hero-sub">Most people spend decades building their wealth. Very few take the time to decide who receives it, when, and how. A clear plan today protects the people you love from months of legal complexity during the worst possible time.</p>
+          <div class="stats">
+            <div class="stat"><div class="num">80%</div><div class="lbl">of Singaporeans have no Will</div></div>
+            <div class="stat"><div class="num">6–12</div><div class="lbl">months for a typical estate to be released through court</div></div>
+            <div class="stat"><div class="num">$0</div><div class="lbl">cost to nominate CPF and register an LPA today</div></div>
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="photo-ring">
+            <img src="data:image/jpeg;base64,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" alt="Benjamin Ng"/>
+          </div>
+          <div class="aepp-card">
+            <div class="aepp-desig">AEPP®</div>
+            <div class="aepp-divider"></div>
+            <div class="aepp-title">Associate Estate Planning Practitioner</div>
+            <div class="aepp-bodies">Estate Planning Practitioners Ltd (SG)<br/>Society of Will Writers (UK)<br/>Certified July 2026</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 2: THE QUESTION ══ -->
+  <div class="slide dark" id="s1">
+    <div class="content">
+      <div class="tag tg-gd-dk">One Question</div>
+      <h2 class="s-h2">The Conversation Most Families Never Have</h2>
+      <p class="s-sub">Estate planning isn't about death. It's about the people who depend on you, and what happens to everything you've built when you're not around.</p>
+      <div class="quote-card">
+        "If you were to go on a permanent holiday tomorrow — would your full net worth reach the people you love, in the way you intend?"
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 3: ISA ══ -->
+  <div class="slide white" id="s2">
+    <div class="content">
+      <div class="tag tg-rd">Without a Will</div>
+      <h2 class="s-h2">The Government Has Already Written Your Estate Plan</h2>
+      <p class="s-sub" style="max-width:640px;">Dying without a Will means the Intestate Succession Act determines who receives your estate — and the result often doesn't reflect what you would have chosen.</p>
+      <div class="isa-wrap">
+        <table class="isa-tbl">
+          <thead>
+            <tr><th>#</th><th>Your Family Situation</th><th>What the Law Decides</th><th>Potential Issue</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><span class="snum">1</span></td><td>Spouse only (no children, no parents)</td><td class="good">Spouse: 100%</td><td>—</td></tr>
+            <tr><td><span class="snum">2</span></td><td>Spouse + children</td><td class="warn">Spouse: 50% · Children share: 50%</td><td><span class="pill">Minor children's share held by court</span></td></tr>
+            <tr><td><span class="snum">3</span></td><td>Children only (spouse has passed)</td><td class="warn">Children share equally</td><td><span class="pill">Special needs child gets unprotected lump sum</span></td></tr>
+            <tr><td><span class="snum">4</span></td><td>Spouse + parents (no children)</td><td class="warn">Spouse: 50% · Parents: 50%</td><td><span class="pill">In-laws get half — conflict risk</span></td></tr>
+            <tr><td><span class="snum">5</span></td><td>Parents only</td><td class="good">Parents: 100%</td><td>—</td></tr>
+            <tr><td><span class="snum">6</span></td><td>Siblings only</td><td class="warn">Siblings share equally</td><td>—</td></tr>
+            <tr><td><span class="snum">7</span></td><td>No surviving family</td><td class="bad">Estate goes to the Government</td><td><span class="pill">Irreversible</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="isa-note"><strong>Important:</strong> CPF savings and nominated insurance policies sit completely outside your estate — they follow a separate process with much faster payout timelines.</div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 4: FOUR RISKS ══ -->
+  <div class="slide light" id="s3">
+    <div class="content">
+      <div class="tag tg-nv">What Can Go Wrong</div>
+      <h2 class="s-h2">Four Ways the Best Intentions Fall Short</h2>
+      <div class="risk-grid">
+        <div class="risk-card cr">
+          <div class="ricon">🔒</div>
+          <h3>Assets Get Frozen at the Worst Time</h3>
+          <p>Sole-name accounts, investments, and property are legally frozen at death. The courts can take 6–12 months to release them — your family cannot access anything in the meantime.</p>
+          <div class="hook">"Who pays the mortgage and school fees while your estate is being settled?"</div>
+        </div>
+        <div class="risk-card cr">
+          <div class="ricon">📜</div>
+          <h3>The Wrong People Inherit</h3>
+          <p>Without a Will, the law decides. In blended families, unmarried relationships, or estranged situations — the outcome is rarely what you would have chosen.</p>
+          <div class="hook">"Your parents, your spouse, and your children may each have a legal claim — and they may not all agree."</div>
+        </div>
+        <div class="risk-card ca">
+          <div class="ricon">🧠</div>
+          <h3>Incapacity Arrives Before Death</h3>
+          <p>A stroke, accident, or early dementia can leave someone unable to manage their affairs. Without an LPA, the family must go through a costly, months-long court process just to pay the bills.</p>
+          <div class="hook">"A Will only protects your family after you die. Who has authority while you're still alive but can't sign anything?"</div>
+        </div>
+        <div class="risk-card ca">
+          <div class="ricon">🎯</div>
+          <h3>Money Arrives Without Structure</h3>
+          <p>A large inheritance landing with a young adult, someone with financial difficulties, or a beneficiary in a divorce can disappear quickly — or be seized by creditors before it does any good.</p>
+          <div class="hook">"Receiving the right amount at the wrong time, with no conditions, can cause more harm than good."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 5: TOOLKIT ══ -->
+  <div class="slide white" id="s4">
+    <div class="content">
+      <div class="tag tg-gn">The Planning Toolkit</div>
+      <h2 class="s-h2">Five Instruments That Work Together</h2>
+      <p class="s-sub">A complete estate plan isn't one document — it's a coordinated set of legal instructions and financial arrangements. Each one solves a different problem.</p>
+      <div class="tools-grid">
+        <div class="tool-card">
+          <div class="tool-hd">
+            <div class="tool-ico">✍️</div>
+            <h3>Your Will</h3>
+            <div class="tsub">The Foundation</div>
+          </div>
+          <div class="tool-body">
+            <div class="dot">Overrides the ISA entirely</div>
+            <div class="dot">Appoints executor and guardian</div>
+            <div class="dot">Set conditions on gifts by age</div>
+            <div class="dot">Include a testamentary trust</div>
+            <div class="talert">Marriage automatically revokes an existing Will</div>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-hd">
+            <div class="tool-ico">🧠</div>
+            <h3>Lasting Power of Attorney</h3>
+            <div class="tsub">Incapacity Planning</div>
+          </div>
+          <div class="tool-body">
+            <div class="dot">Covers you while still alive</div>
+            <div class="dot">Authorises a trusted person to act</div>
+            <div class="dot">Form 1 suits most people</div>
+            <div class="dot">Pair with an AMD for medical wishes</div>
+            <div class="ttip">Free to register right now</div>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-hd">
+            <div class="tool-ico">💚</div>
+            <h3>CPF Nomination</h3>
+            <div class="tsub">Fast-Track to Family</div>
+          </div>
+          <div class="tool-body">
+            <div class="dot">Bypasses estate entirely</div>
+            <div class="dot">Pays out in ~10 working days</div>
+            <div class="dot">Marriage cancels a nomination</div>
+            <div class="dot">Divorce does NOT cancel it</div>
+            <div class="talert">Ex-spouse may still be listed</div>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-hd">
+            <div class="tool-ico">📋</div>
+            <h3>Insurance Nomination</h3>
+            <div class="tsub">Immediate Liquidity</div>
+          </div>
+          <div class="tool-body">
+            <div class="dot">Pays out in 7–14 days</div>
+            <div class="dot">Revocable: change anytime</div>
+            <div class="dot">Trust nom: creditor-protected</div>
+            <div class="dot">Marriage does NOT cancel it</div>
+            <div class="ttip">Bridges family through probate period</div>
+          </div>
+        </div>
+        <div class="tool-card">
+          <div class="tool-hd">
+            <div class="tool-ico">🏛️</div>
+            <h3>Trust Structure</h3>
+            <div class="tsub">Long-Term Control</div>
+          </div>
+          <div class="tool-body">
+            <div class="dot">Testamentary: inside Will, free</div>
+            <div class="dot">Living trust: bypasses probate</div>
+            <div class="dot">Protects minors and special needs</div>
+            <div class="dot">Prevents lump-sum misuse</div>
+            <div class="talert">Living trust has setup costs of $15K+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 6: GAP ══ -->
+  <div class="slide dark" id="s5">
+    <div class="content">
+      <div class="tag tg-gd-dk">The Liquidity Gap</div>
+      <h2 class="s-h2">What Your Family Needs — Right Away</h2>
+      <p class="s-sub">The real test isn't how much you have. It's how much can actually reach your family in the first few weeks, while everything else is frozen.</p>
+      <div class="gap-wrap">
+        <div class="gap-row">
+          <div class="gap-lbl">Total cash needed</div>
+          <div class="gap-bwrap"><div class="gap-b gb-n">Mortgage · Loans · Funeral · Legal fees</div></div>
+        </div>
+        <div class="gap-row">
+          <div class="gap-lbl">Available immediately</div>
+          <div class="gap-bwrap"><div class="gap-b gb-a">Nominated CPF · Nominated Insurance</div></div>
+        </div>
+        <div class="gap-row">
+          <div class="gap-lbl">The gap</div>
+          <div class="gap-bwrap"><div class="gap-b gb-g">This is what we plan for</div></div>
+        </div>
+        <div class="gap-div"></div>
+        <div class="gap-result">
+          <div class="gap-num">?</div>
+          <div class="gap-txt">The size of this gap is different for every family. Knowing your specific number is where the plan becomes real — and the solution becomes obvious.</div>
+        </div>
+        <div class="gap-items">
+          <div class="gap-item"><strong>What creates the need</strong>Monthly expenses × 12 months, outstanding loans, mortgage balance, funeral and legal fees</div>
+          <div class="gap-item"><strong>Available quickly</strong>Nominated CPF (~10 days), nominated insurance (7–14 days), joint bank accounts</div>
+          <div class="gap-item"><strong>Frozen during probate</strong>Sole-name accounts, shares, property, business interests — typically 6–12+ months</div>
+          <div class="gap-item"><strong>The planning goal</strong>Enough liquid assets reach family within days, not months, so life continues without disruption</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 7: CHECKLIST ══ -->
+  <div class="slide light" id="s6">
+    <div class="content">
+      <div class="cl-layout">
+        <div class="cl-left">
+          <div class="tag tg-nv">Your Starting Point</div>
+          <h2 class="s-h2">Where Does Your Plan Stand Today?</h2>
+          <p class="s-sub">Most people have done more than they think — and have more gaps than they realise. Let's work through this together.</p>
+        </div>
+        <div class="cl-right">
+          <div class="cl-wrap">
+            <div class="cl-hd">Estate Planning Essentials</div>
+            <div class="cl-item">
+              <div class="cl-box" onclick="this.classList.toggle('on')"></div>
+              <div class="cl-content"><h4>CPF Nomination <span class="cl-badge free">Free</span></h4><p>Nominated and reviewed after every major life event</p></div>
+            </div>
+            <div class="cl-item">
+              <div class="cl-box" onclick="this.classList.toggle('on')"></div>
+              <div class="cl-content"><h4>Insurance Nominations <span class="cl-badge free">Free</span></h4><p>All active policies have a current, valid nomination</p></div>
+            </div>
+            <div class="cl-item">
+              <div class="cl-box" onclick="this.classList.toggle('on')"></div>
+              <div class="cl-content"><h4>Lasting Power of Attorney <span class="cl-badge free">Free now</span></h4><p>Trusted person appointed for incapacity scenarios</p></div>
+            </div>
+            <div class="cl-item">
+              <div class="cl-box" onclick="this.classList.toggle('on')"></div>
+              <div class="cl-content"><h4>Current, Valid Will <span class="cl-badge paid">From ~$700</span></h4><p>Reflects current wishes, family, and assets</p></div>
+            </div>
+            <div class="cl-item">
+              <div class="cl-box" onclick="this.classList.toggle('on')"></div>
+              <div class="cl-content"><h4>Liquidity Gap Reviewed <span class="cl-badge free">Free to calculate</span></h4><p>Family's first 30-day needs are understood and covered</p></div>
+            </div>
+            <div class="cl-item">
+              <div class="cl-box" onclick="this.classList.toggle('on')"></div>
+              <div class="cl-content"><h4>Trust Structure Considered <span class="cl-badge paid">If applicable</span></h4><p>Appropriate given your beneficiaries and complexity</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SLIDE 8: CLOSING ══ -->
+  <div class="slide dark" id="s7">
+    <div class="content">
+      <div class="tag tg-gd-dk">Let's Talk</div>
+      <h2 class="s-h2">Your Situation Is Unique</h2>
+      <p class="s-sub" style="max-width:520px;">There's no one-size-fits-all estate plan. The right starting point is an honest look at your specific family, your assets, and what you want to happen.</p>
+      <div class="dq-grid">
+        <div class="dq">Who depends on you financially — and for how long?</div>
+        <div class="dq">If both you and your spouse passed tonight, what happens to your children?</div>
+        <div class="dq">How much can your family access in the first 30 days after your passing?</div>
+        <div class="dq">Are your nominations and Will still accurate after your last major life change?</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- ══ NAV BAR ══ -->
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="prev()">← Previous</button>
+  <div class="nav-center">
+    <div class="dots" id="dots"></div>
+    <div class="nav-counter" id="counter">1 / 8</div>
+  </div>
+  <button class="nav-btn" id="nextBtn" onclick="next()">Next →</button>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const dotsEl  = document.getElementById('dots');
+const counter = document.getElementById('counter');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+let cur = 0;
+const total = slides.length;
+
+// Build indicator dots
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot-ind' + (i === 0 ? ' on' : '');
+  d.onclick = () => goTo(i);
+  dotsEl.appendChild(d);
+});
+
+function goTo(n) {
+  n = Math.max(0, Math.min(n, total - 1));
+  if (n === cur) return;
+  slides[cur].classList.remove('active');
+  dotsEl.children[cur].classList.remove('on');
+  cur = n;
+  slides[cur].classList.add('active');
+  dotsEl.children[cur].classList.add('on');
+  counter.textContent = (cur + 1) + ' / ' + total;
+  prevBtn.disabled = cur === 0;
+  nextBtn.disabled = cur === total - 1;
+}
+
+function next() { goTo(cur + 1); }
+function prev() { goTo(cur - 1); }
+
+// Keyboard navigation
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ')  { e.preventDefault(); next(); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                      { e.preventDefault(); prev(); }
+  if (e.key === 'Home') goTo(0);
+  if (e.key === 'End')  goTo(total - 1);
+});
+
+// Touch swipe
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend',   e => {
+  const dx = e.changedTouches[0].clientX - tx;
+  if (Math.abs(dx) > 50) { dx < 0 ? next() : prev(); }
+}, { passive: true });
+
+// Checklist boxes
+document.querySelectorAll('.cl-box').forEach(b => {
+  b.addEventListener('click', function() { this.classList.toggle('on'); });
+});
+
+// Init
+prevBtn.disabled = true;
+</script>
+</body>
+</html></template>
+<template id="tpl-estate-notes"><html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FA Notes — Estate Planning | Internal Only</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Inter','Segoe UI',system-ui,sans-serif;
+  background:#0d1117;color:#c9d1d9;font-size:14px;line-height:1.65;
+}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--gold:#e3b341;--gold2:#f0d27a;
+  --green:#3fb950;--red:#f85149;--amber:#d29922;
+  --blue:#58a6ff;--purple:#bc8cff;--muted:#8b949e;--white:#f0f6fc;
+}
+
+/* ── INTERNAL BANNER ── */
+.int-banner{
+  background:#3d1a1a;border-bottom:2px solid var(--red);
+  padding:10px 24px;text-align:center;
+  font-size:0.72rem;font-weight:800;letter-spacing:1.5px;
+  text-transform:uppercase;color:#ff7b7b;
+  position:sticky;top:0;z-index:200;
+}
+
+/* ── TOPNAV ── */
+.topnav{
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  padding:0 20px;display:flex;align-items:center;gap:0;
+  overflow-x:auto;position:sticky;top:40px;z-index:190;
+}
+.topnav a{
+  display:inline-block;padding:12px 14px;font-size:0.72rem;font-weight:600;
+  color:var(--muted);text-decoration:none;white-space:nowrap;
+  border-bottom:2px solid transparent;transition:all 0.15s;
+}
+.topnav a:hover{color:var(--white);border-color:var(--gold);}
+.nav-brand{
+  color:var(--gold);font-weight:700;margin-right:14px;
+  font-size:0.75rem;padding:12px 0;white-space:nowrap;flex-shrink:0;
+}
+
+/* ── LAYOUT ── */
+.page{max-width:1060px;margin:0 auto;padding:0 20px 80px;}
+.sec{padding:44px 0 28px;border-bottom:1px solid var(--border);}
+.sec:last-child{border-bottom:none;}
+.sec-title{
+  display:flex;align-items:center;gap:10px;
+  font-size:1rem;font-weight:800;color:var(--white);
+  padding-bottom:10px;border-bottom:2px solid var(--gold);
+  margin-bottom:6px;
+}
+.sec-sub{font-size:0.76rem;color:var(--muted);margin-bottom:20px;}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:12px;}
+.card:last-child{margin-bottom:0;}
+.card-hd{font-size:0.78rem;font-weight:700;color:var(--white);margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.card p{font-size:0.78rem;color:#8d97a5;line-height:1.65;margin-bottom:7px;}
+.card p:last-child{margin-bottom:0;}
+.card strong{color:#bdc7d0;}
+
+/* ── TAGS ── */
+.tag{
+  display:inline-block;font-size:0.6rem;font-weight:800;text-transform:uppercase;
+  letter-spacing:0.7px;padding:2px 7px;border-radius:4px;margin-bottom:8px;
+}
+.tg{background:rgba(227,179,65,0.14);color:var(--gold);border:1px solid rgba(227,179,65,0.28);}
+.tr{background:rgba(248,81,73,0.12);color:var(--red);border:1px solid rgba(248,81,73,0.28);}
+.tgn{background:rgba(63,185,80,0.12);color:var(--green);border:1px solid rgba(63,185,80,0.28);}
+.ta{background:rgba(210,153,34,0.12);color:var(--amber);border:1px solid rgba(210,153,34,0.28);}
+.tb{background:rgba(88,166,255,0.12);color:var(--blue);border:1px solid rgba(88,166,255,0.28);}
+.tp{background:rgba(188,140,255,0.12);color:var(--purple);border:1px solid rgba(188,140,255,0.28);}
+
+/* ── SCRIPT / QUOTE ── */
+.script{
+  background:rgba(227,179,65,0.07);border:1px solid rgba(227,179,65,0.22);
+  border-left:3px solid var(--gold);border-radius:0 7px 7px 0;
+  padding:12px 16px;margin:10px 0;font-size:0.78rem;font-style:italic;
+  color:var(--gold2);line-height:1.7;
+}
+.script-lbl{font-style:normal;font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--gold);opacity:0.7;display:block;margin-bottom:5px;}
+
+/* ── OBJECTION ── */
+.obj{background:rgba(248,81,73,0.06);border:1px solid rgba(248,81,73,0.2);border-radius:7px;padding:12px 16px;margin:10px 0;}
+.obj-q{font-size:0.76rem;font-weight:700;color:var(--red);margin-bottom:5px;}
+.obj-a{font-size:0.76rem;color:#ffb3b0;line-height:1.65;}
+.obj-a strong{color:var(--red);}
+
+/* ── BULLET ── */
+ul.fa{list-style:none;margin:8px 0;}
+ul.fa li{padding:4px 0 4px 18px;position:relative;font-size:0.78rem;color:#8d97a5;line-height:1.6;}
+ul.fa li::before{content:'›';position:absolute;left:4px;color:var(--gold);font-weight:700;}
+ul.fa li strong{color:#bdc7d0;}
+
+/* ── ALERT ── */
+.al{border-radius:7px;padding:10px 14px;margin:10px 0;font-size:0.76rem;line-height:1.65;}
+.al-r{background:rgba(248,81,73,0.08);border:1px solid rgba(248,81,73,0.22);color:#ffb3b0;}
+.al-g{background:rgba(63,185,80,0.08);border:1px solid rgba(63,185,80,0.22);color:#9ae8a8;}
+.al-a{background:rgba(210,153,34,0.08);border:1px solid rgba(210,153,34,0.22);color:#f0d27a;}
+.al-b{background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.22);color:#b0d0ff;}
+.al strong{font-weight:800;}
+
+/* ── TABLE ── */
+.twrap{overflow-x:auto;border-radius:7px;border:1px solid var(--border);margin:12px 0;}
+table.t{width:100%;border-collapse:collapse;min-width:400px;}
+table.t th{background:var(--bg3);padding:9px 13px;text-align:left;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);}
+table.t td{padding:9px 13px;border-bottom:1px solid var(--border);font-size:0.76rem;color:#8d97a5;vertical-align:top;line-height:1.55;}
+table.t tr:last-child td{border-bottom:none;}
+table.t tr:hover td{background:rgba(255,255,255,0.02);}
+.td-g{color:var(--green);font-weight:600;}
+.td-a{color:var(--amber);font-weight:600;}
+.td-r{color:var(--red);font-weight:600;}
+
+/* ── MEETING FLOW ── */
+.flow{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;}
+.step{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+.step-num{font-size:1.3rem;font-weight:800;color:var(--gold);margin-bottom:4px;}
+.step-title{font-size:0.76rem;font-weight:700;color:var(--white);margin-bottom:3px;}
+.step-time{font-size:0.64rem;color:var(--muted);margin-bottom:7px;}
+.step-desc{font-size:0.72rem;color:var(--muted);line-height:1.55;}
+
+/* ── PRODUCT TABLE ── */
+.pt-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border);}
+.pt-row:last-child{border-bottom:none;}
+.pt-name{font-size:0.76rem;font-weight:700;color:var(--white);min-width:160px;}
+.pt-who{font-size:0.74rem;color:var(--muted);flex:1;}
+.pt-act{font-size:0.7rem;color:var(--gold);font-weight:700;white-space:nowrap;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:720px){.g2,.g3{grid-template-columns:1fr;} .flow{grid-template-columns:1fr 1fr;}}
+@media(max-width:440px){.flow{grid-template-columns:1fr;} .topnav a{padding:10px 9px;font-size:0.65rem;}}
+@media print{.int-banner,.topnav{display:none;} body{background:white;color:#111;}}
+</style>
+</head>
+<body>
+
+<div class="int-banner">⚠ INTERNAL — ADVISOR NOTES · NOT FOR CLIENT DISTRIBUTION ⚠</div>
+
+<nav class="topnav">
+  <span class="nav-brand">📋 FA Notes — Estate Planning</span>
+  <a href="#flow">Meeting Flow</a>
+  <a href="#s1">Opening</a>
+  <a href="#s2">ISA</a>
+  <a href="#s3">4 Risks</a>
+  <a href="#s4">Toolkit</a>
+  <a href="#s5">Gap</a>
+  <a href="#s6">Checklist</a>
+  <a href="#s7">Close</a>
+  <a href="#tech">Tech Ref</a>
+  <a href="#cases">Cases</a>
+  <a href="#obj">Objections</a>
+  <a href="#products">Products</a>
+</nav>
+
+<div class="page">
+
+<!-- ══ MEETING FLOW ══ -->
+<section class="sec" id="flow">
+  <div class="sec-title">🗺 Meeting Flow</div>
+  <div class="sec-sub">Target 60–90 min. Adjust depth based on how engaged the client is.</div>
+  <div class="flow">
+    <div class="step"><div class="step-num">1</div><div class="step-title">Warm Up</div><div class="step-time">5–8 min</div><div class="step-desc">Ask about family, work, recent changes. Listen for: dependants, major assets, obvious gaps (new baby, divorce, business). Don't rush this — rapport decides the rest.</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-title">The Question</div><div class="step-time">2–3 min</div><div class="step-desc">Ask the permanent holiday question out loud before showing the slide. Watch their reaction — discomfort or confidence both tell you where to go next.</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-title">ISA Table</div><div class="step-time">8–10 min</div><div class="step-desc">Point to their row. Ask: "Is this what you intended?" Highlight that CPF and insurance are separate. Let the gap sink in — don't rush to solutions yet.</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-title">4 Risks</div><div class="step-time">8–10 min</div><div class="step-desc">Tailor to client. Don't cover all four equally. If they have young kids, lead with frozen assets + incapacity. If blended family, lead with wrong heirs.</div></div>
+    <div class="step"><div class="step-num">5</div><div class="step-title">Toolkit</div><div class="step-time">15–20 min</div><div class="step-desc">Prioritise by profile. Mass market: CPF → LPA → Will. HNW/business owner: also cover trust and buy-sell. Don't spend equal time on all five.</div></div>
+    <div class="step"><div class="step-num">6</div><div class="step-title">Gap Calc</div><div class="step-time">10–15 min</div><div class="step-desc">Pull out the Discovery Workbook. Calculate total need vs available liquid. The gap number is the bridge to product discussion.</div></div>
+    <div class="step"><div class="step-num">7</div><div class="step-title">Checklist</div><div class="step-time">8–10 min</div><div class="step-desc">Walk through together. Each unchecked box = action point. Offer to log in to CPF Board right now — 5 minutes, immediate win, builds momentum.</div></div>
+    <div class="step"><div class="step-num">8</div><div class="step-title">Commit Next</div><div class="step-time">5 min</div><div class="step-desc">Never leave without booking the next session. Give them one specific action before you meet again. "I'll think about it" = they won't act.</div></div>
+  </div>
+</section>
+
+<!-- ══ S1: OPENING ══ -->
+<section class="sec" id="s1">
+  <div class="sec-title">💬 Section 1 — Opening & The Question</div>
+  <div class="sec-sub">Sets the emotional framing. Don't rush to the table — give this moment space.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">🎯 Talking Points</div>
+      <ul class="fa">
+        <li>Estate planning isn't about death — it's about protecting the people who depend on you</li>
+        <li>Most clients have good intentions but no plan — this conversation changes that</li>
+        <li>The goal isn't to be morbid; it's to be prepared, like any good financial decision</li>
+        <li>Frame it: "If you were hit by a bus tonight..." is too blunt. Use the permanent holiday framing — softer but equally effective</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd">🔀 Personalise the Opening</div>
+      <ul class="fa">
+        <li><strong>Young couple with kids:</strong> "Who looks after your children financially if something happens to both of you tonight?"</li>
+        <li><strong>Business owner:</strong> "What happens to your business shares the day after your funeral?"</li>
+        <li><strong>HNW / older client:</strong> "Have you thought about whether your estate will reach your intended beneficiaries — or get diluted by taxes, family conflict, or court delays?"</li>
+        <li><strong>Single adult:</strong> "Do you know who gets your savings if you die without a Will? It might not be who you'd expect."</li>
+      </ul>
+    </div>
+  </div>
+  <div class="script"><span class="script-lbl">Transition to ISA Table</span>Let me show you what the law actually says about who receives your estate if you don't have a Will — because it's probably not what most people expect.</div>
+</section>
+
+<!-- ══ S2: ISA TABLE ══ -->
+<section class="sec" id="s2">
+  <div class="sec-title">📜 Section 2 — ISA Table (Without a Will)</div>
+  <div class="sec-sub">This section creates the "aha" moment. Take your time.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">🎯 Key Talking Points</div>
+      <ul class="fa">
+        <li><strong>ISA applies to all non-Muslims in Singapore</strong> — common myth that it only applies to certain groups</li>
+        <li>ISA only governs the <strong>probate estate</strong> — CPF and nominated insurance are completely separate channels</li>
+        <li>If the client is Scenario 2 (Spouse + children): children's 50% goes under Public Trustee control. <strong>Spouse cannot access it without court approval for every single withdrawal.</strong></li>
+        <li>Scenario 4 (Spouse + parents): parents get half by law — even if they're estranged</li>
+        <li>Commorientes rule: if both spouses die together, the older is presumed to die first — assets cascade in that order</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd">📌 After Showing the Table</div>
+      <ul class="fa">
+        <li>Ask: <em>"Which row best describes your family situation right now?"</em> Then pause.</li>
+        <li>If they're in Scenario 2: the Public Trustee fact usually shocks parents — lean into it</li>
+        <li>Then clarify: <em>"Your CPF and nominated insurance aren't even in this table — they sit completely outside your estate and pay out through a totally different channel."</em></li>
+        <li>This is the setup for the toolkit section — problems first, then solutions</li>
+      </ul>
+    </div>
+  </div>
+  <div class="obj">
+    <div class="obj-q">"But my spouse will just take care of everything."</div>
+    <div class="obj-a">Your spouse can only access what the courts release to them. Your children's 50% goes under court control — your spouse can't withdraw a single dollar of it without court approval for each transaction. A Will fixes this instantly.</div>
+  </div>
+  <div class="obj">
+    <div class="obj-q">"We're not married — we've been together 12 years, surely she gets everything?"</div>
+    <div class="obj-a">Singapore does not recognise common-law marriages. Under ISA, an unmarried partner has <strong>zero</strong> legal claim to your estate. Without a Will specifically naming them, they receive nothing. Full stop.</div>
+  </div>
+  <div class="script"><span class="script-lbl">Transition to 4 Risks</span>Now that we see what the law says by default — let me show you four real-world ways this plays out badly for families, even when everyone had good intentions.</div>
+</section>
+
+<!-- ══ S3: 4 RISKS ══ -->
+<section class="sec" id="s3">
+  <div class="sec-title">⚠️ Section 3 — Four Risks</div>
+  <div class="sec-sub">Don't spend equal time on all four. Pick the one or two most relevant to this client and go deeper there.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">🔒 Risk 1 — Frozen Assets</div>
+      <ul class="fa">
+        <li>Sole-name accounts freeze at death — no exceptions, no emergency access</li>
+        <li>Even the surviving spouse cannot access the frozen accounts without a court order</li>
+        <li>Timeline: 6–12 months minimum for probate to complete</li>
+        <li><strong>Power question:</strong> "Who pays the mortgage for the next 9 months while the estate is being processed?"</li>
+      </ul>
+      <div class="obj">
+        <div class="obj-q">"My family will borrow from relatives if needed."</div>
+        <div class="obj-a">That's a plan — but it's a plan that requires begging for money during a funeral. Nominated insurance paying out in 10 days is a far better plan. The goal is dignity and speed.</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd">📜 Risk 2 — Wrong People Inherit</div>
+      <ul class="fa">
+        <li>Blended families, estranged parents, unmarried partners — all edge cases ISA handles badly</li>
+        <li>Especially powerful for Scenario 4 clients (spouse + in-laws split)</li>
+        <li>A Will is the only document that overrides ISA entirely</li>
+        <li><strong>Ask:</strong> "Is there anyone who you absolutely do NOT want to inherit from you?" — silence usually follows</li>
+      </ul>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">🧠 Risk 3 — Incapacity (LPA)</div>
+      <ul class="fa">
+        <li>Affects all ages — accidents don't discriminate</li>
+        <li>Without LPA: court Deputyship application = $3,000–$8,000 + 3–6 months. During that time, everything is frozen</li>
+        <li>LPA registration is free right now — won't always be</li>
+        <li><strong>Counter to "I'm too young":</strong> A 30-year-old in a car accident is just as exposed as a 75-year-old with dementia</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd">🎯 Risk 4 — Wrong Timing of Inheritance</div>
+      <ul class="fa">
+        <li>Best illustration: $300K inheritance to a 21-year-old with no financial experience</li>
+        <li>Or: beneficiary going through a divorce — inheritance potentially exposed to matrimonial asset split</li>
+        <li>Or: bankrupt beneficiary — creditors can claim the inheritance</li>
+        <li>A testamentary trust in the Will solves all three at no extra cost</li>
+        <li><strong>Ask:</strong> "If your child inherited $300,000 tomorrow at age 21, would you trust them to manage it wisely?" — powerful pause moment</li>
+      </ul>
+    </div>
+  </div>
+  <div class="script"><span class="script-lbl">Transition to Toolkit</span>The good news is that each of these four problems has a straightforward solution — and two of them cost absolutely nothing to put in place today. Let me walk you through your planning toolkit.</div>
+</section>
+
+<!-- ══ S4: TOOLKIT ══ -->
+<section class="sec" id="s4">
+  <div class="sec-title">🧰 Section 4 — Planning Toolkit</div>
+  <div class="sec-sub">Prioritise by client profile. Don't present all five instruments equally.</div>
+  <div class="al al-b" style="margin-bottom:16px;"><strong>Sequencing tip:</strong> For most clients: CPF nomination first (free, 5-min action = immediate win) → LPA (free, urgent) → Will → Trust if applicable. For HNW/business owners: also cover trust structure and buy-sell.</div>
+
+  <div class="card">
+    <div class="card-hd">✍️ Will</div>
+    <div class="g2" style="margin-top:8px;">
+      <div>
+        <div class="tag tg">Talking Points</div>
+        <ul class="fa">
+          <li>Only document that overrides ISA completely</li>
+          <li>Appoint executor — otherwise court appoints a stranger</li>
+          <li>Name a guardian for minor children (must be 21+)</li>
+          <li>Include testamentary trust at no extra cost for structured payout</li>
+          <li><strong>Marriage automatically revokes a Will</strong> — ask if they've married since last Will was drafted</li>
+          <li>Divorce: ex-spouse's gift lapses, but they may still be executor — check</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tag tr">Objections</div>
+        <div class="obj" style="margin-top:0;">
+          <div class="obj-q">"It's expensive."</div>
+          <div class="obj-a">A basic Will costs $700–$1,500 — roughly $2–4 a day for a year. The cost of dying without one: $5,000–$15,000 in legal fees plus 12 months of family stress.</div>
+        </div>
+        <div class="obj">
+          <div class="obj-q">"I'll do it later when I have more assets."</div>
+          <div class="obj-a">The things you're waiting for — buying a house, having kids — are exactly the events that make a Will urgent. Set it up now; update it at each milestone.</div>
+        </div>
+      </div>
+    </div>
+    <div class="script"><span class="script-lbl">Key transition line</span>Your Will only controls what's in your estate. CPF and insurance are separate — and that's actually a feature, not a bug. Let me explain why.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">🧠 LPA</div>
+    <div class="g2" style="margin-top:8px;">
+      <div>
+        <div class="tag tg">Talking Points</div>
+        <ul class="fa">
+          <li>Form 1 = broad standard powers. Right for most clients.</li>
+          <li>Form 2 = customised — can restrict (e.g. cannot sell family home) or specify dependants</li>
+          <li>Without LPA: Deputyship Order = $3–8K + 3–6 months + everything frozen</li>
+          <li>Currently free to register. Fee waiver is not permanent.</li>
+          <li>AMD = separate document, for end-of-life care decisions only</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tag tr">Objection</div>
+        <div class="obj" style="margin-top:0;">
+          <div class="obj-q">"I'm healthy, I don't need this yet."</div>
+          <div class="obj-a">You can only register an LPA while you have mental capacity. Once you've lost it, it's too late. The entire point is to set it up before you need it — just like insurance.</div>
+        </div>
+        <div class="script"><span class="script-lbl">Transition</span>The LPA protects your family while you're still alive. The Will protects them after you're gone. Together they cover both gaps.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">💚 CPF Nomination</div>
+    <div class="g2" style="margin-top:8px;">
+      <div>
+        <div class="tag tg">Talking Points</div>
+        <ul class="fa">
+          <li>CPF does NOT follow the Will — completely separate channel</li>
+          <li>Nominated = ~10 working days payout. Unnominated = goes into estate = probate delay</li>
+          <li><strong>Marriage cancels CPF nomination automatically</strong></li>
+          <li><strong>Divorce does NOT cancel CPF nomination</strong> — ex-spouse may still be listed</li>
+          <li>Offer to check their current nomination on the spot — cpf.gov.sg, 5 minutes</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tag tr">Shock Fact</div>
+        <div class="al al-r" style="margin-top:0;"><strong>Most clients don't know this:</strong> If you've never made a CPF nomination, your savings go through probate — even though CPF was specifically designed to bypass that process. The only protection is an explicit nomination.</div>
+        <div class="obj">
+          <div class="obj-q">"Surely my spouse gets it automatically — we're married."</div>
+          <div class="obj-a">Being married makes no difference for CPF without an explicit nomination. Without one, it goes into the estate and can take 6–12 months. A nomination takes 5 minutes to make.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">📋 Insurance Nomination</div>
+    <div class="g2" style="margin-top:8px;">
+      <div>
+        <div class="tag tg">Talking Points</div>
+        <ul class="fa">
+          <li>Nominated policy pays in 7–14 days. Unnominated = enters estate = months of delay</li>
+          <li>S.132 = revocable (change anytime). S.133 = trust nomination (irrevocable, creditor-protected, spouse/children only)</li>
+          <li><strong>Unlike CPF, marriage does NOT cancel insurance nomination</strong></li>
+          <li>Client may have policies from before marriage still nominated to parents</li>
+          <li>Always audit ALL active policies — including employer group insurance</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tag tr">The Marriage Trap</div>
+        <div class="al al-r" style="margin-top:0;"><strong>High-impact fact:</strong> A client married 10 years ago may have parents as their insurance nominee — from a policy taken out before marriage. Their spouse gets nothing from that policy. This audit moment alone is worth the entire meeting.</div>
+      </div>
+    </div>
+    <div class="script"><span class="script-lbl">Script — Insurance bridge</span>Think of nominated insurance as a financial parachute. While your estate is being settled over the next 6 to 12 months, your nominated policy pays out within two weeks. That's what keeps the mortgage going and school fees paid — it's the bridge.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd">🏛️ Trust Structures</div>
+    <div class="g2" style="margin-top:8px;">
+      <div>
+        <div class="tag tg">When to Recommend What</div>
+        <ul class="fa">
+          <li><strong>Testamentary trust (inside Will):</strong> Same cost as basic Will. Right for most clients with minor children, spendthrift concerns, or structured payout needs. Staggered: 25% at 21, 25% at 25, 50% at 30.</li>
+          <li><strong>Living trust:</strong> HNW only ($1M+ estate). $15–30K setup + $3–6K/year. Bypasses probate. Privacy. But: transferring property may trigger ABSD — always flag this.</li>
+          <li><strong>Trust nomination on insurance (S.133):</strong> For business owners with creditor risk. Payout is creditor-protected even in bankruptcy.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="tag tr">Key Warnings</div>
+        <div class="al al-r" style="margin-top:0;"><strong>ABSD trap:</strong> Transferring residential property into a living trust triggers ABSD. For foreigners: 65%. For Singapore Citizens: depends on property count. Always get a lawyer's advice first. Do not recommend lightly.</div>
+        <div class="obj">
+          <div class="obj-q">"Trusts sound complicated and expensive."</div>
+          <div class="obj-a">You don't need a standalone trust. A testamentary trust inside your Will gives you 90% of the same protection at no extra cost — it's just a set of instructions within the Will about how and when money gets paid out.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ S5: GAP ══ -->
+<section class="sec" id="s5">
+  <div class="sec-title">📊 Section 5 — Liquidity Gap</div>
+  <div class="sec-sub">This is the pivot point from education to needs analysis. Slow down here.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">🎯 Talking Points</div>
+      <ul class="fa">
+        <li>The question isn't "how much do you have?" — it's "how much can your family ACCESS in the first 30 days?"</li>
+        <li>Total need: monthly expenses × 12 months + outstanding loans + mortgage balance + funeral + legal fees. For most Singapore families: $300K–$600K</li>
+        <li>Available immediately: nominated CPF + nominated insurance only</li>
+        <li>Everything else — sole-name bank accounts, shares, property — is frozen during probate</li>
+        <li>The gap is what insurance is designed to fill</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd">🔢 Typical Numbers (Reference)</div>
+      <ul class="fa">
+        <li>Monthly expenses $5,000 × 12 = $60,000 runway</li>
+        <li>Outstanding home loan: typically $300K–$700K</li>
+        <li>Funeral + admin: $15,000–$25,000</li>
+        <li>Legal/executor fees: $5,000–$15,000</li>
+        <li>Total immediate need: typically <strong>$380K–$800K</strong></li>
+        <li>Available immediately (nominated CPF + insurance): varies — often $100K–$300K</li>
+        <li><strong>Common gap: $200K–$500K for a typical Singapore family</strong></li>
+      </ul>
+    </div>
+  </div>
+  <div class="script"><span class="script-lbl">Transition to Checklist</span>Let's make this personal. I want to walk through a quick checklist of what's already in place — because each item on this list either closes part of that gap, or it doesn't. And every unchecked box is something we can fix.</div>
+</section>
+
+<!-- ══ S6: CHECKLIST ══ -->
+<section class="sec" id="s6">
+  <div class="sec-title">☑️ Section 6 — Checklist</div>
+  <div class="sec-sub">Use as a live discovery tool. Each unchecked item is an action point and a conversation.</div>
+  <div class="card">
+    <div class="card-hd">🎯 How to Use This</div>
+    <ul class="fa">
+      <li>Walk through each item verbally. Don't just hand them the screen and let them self-assess.</li>
+      <li>For each unchecked box: "Tell me more about that — do you know why that hasn't been done?"</li>
+      <li><strong>CPF nomination:</strong> If unchecked, offer to log in to cpf.gov.sg right now. Takes 5 minutes. Creates immediate momentum and shows you're there to help, not just talk.</li>
+      <li><strong>Insurance nominations:</strong> Ask them to list every active policy. High chance of finding an outdated or missing nomination — this alone justifies the meeting.</li>
+      <li><strong>LPA:</strong> If unchecked, make this the #1 urgent action. Free, limited window, huge downside of not having it.</li>
+      <li><strong>Will:</strong> If they have one, ask when it was last reviewed and if they've married or had children since. Many existing Wills are void or outdated.</li>
+      <li>Take notes on every gap — these become your follow-up agenda.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══ S7: CLOSE ══ -->
+<section class="sec" id="s7">
+  <div class="sec-title">🎯 Section 7 — Closing & Next Steps</div>
+  <div class="sec-sub">Don't leave without a committed next action. "I'll think about it" = death of the sale.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">✅ Propose These Specific Next Steps</div>
+      <ul class="fa">
+        <li><strong>Right now:</strong> Log in to CPF Board together and verify current nomination</li>
+        <li><strong>This week:</strong> Client checks and updates all insurance nominations</li>
+        <li><strong>Book now:</strong> Follow-up session with full Discovery Workbook to calculate their exact gap number</li>
+        <li><strong>Referral:</strong> Introduce to a lawyer or Precept Trust for Will drafting — offer to make the introduction directly</li>
+        <li><strong>LPA:</strong> Register via Office of the Public Guardian (opg.gov.sg) — offer to walk them through the process</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd">💬 Closing Scripts</div>
+      <div class="script"><span class="script-lbl">Standard close</span>Based on what we've covered today, let me suggest three things before we leave: we check your CPF nomination right now, I'll book a 60-minute session to go through your full estate picture together, and I'll put you in touch with a solicitor to get your Will drafted. Does that work?</div>
+      <div class="script"><span class="script-lbl">If they want to "think about it"</span>That's completely fine — this is a big picture to take in. But there's one thing we can do in 5 minutes right now that costs nothing and protects your CPF. Want to just do that much today?</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ TECHNICAL REFERENCE ══ -->
+<section class="sec" id="tech">
+  <div class="sec-title">📚 Technical Reference</div>
+  <div class="sec-sub">Full technical notes. Use to prep before meetings or clarify client questions.</div>
+
+  <!-- ISA Deep Dive -->
+  <div class="tag ta" style="margin-top:8px;">ISA — Full Rules</div>
+  <div class="twrap">
+    <table class="t">
+      <thead><tr><th>Surviving Family</th><th>Distribution</th><th>Key Issues</th></tr></thead>
+      <tbody>
+        <tr><td>Spouse only</td><td class="td-g">100% spouse</td><td>Cleanest scenario. Still need Will for executor + guardianship.</td></tr>
+        <tr><td>Spouse + children</td><td class="td-a">50% spouse · 50% children equally</td><td>Minor children's share: Public Trustee holds it. Spouse needs court approval for every withdrawal.</td></tr>
+        <tr><td>Children only</td><td class="td-a">Equal shares</td><td>Special needs child = unprotected lump sum. Financially immature child gets full inheritance at 21.</td></tr>
+        <tr><td>Spouse + parents</td><td class="td-a">50% spouse · 50% parents</td><td>In-laws get half. Parents can legally demand their share — no exceptions.</td></tr>
+        <tr><td>Parents only</td><td class="td-g">100% parents</td><td>Unmarried partners or friends receive nothing by law.</td></tr>
+        <tr><td>Siblings only</td><td class="td-a">Equal shares</td><td>Half-siblings included. Estranged siblings inherit equally.</td></tr>
+        <tr><td>No family</td><td class="td-r">Government (bona vacantia)</td><td>Irreversible. Cannot be contested.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Commorientes -->
+  <div class="card" style="margin-top:12px;">
+    <div class="card-hd">⚖️ Commorientes Rule</div>
+    <p>When two people die in the same incident: <strong>older person is presumed to die first</strong>. Assets cascade from oldest to youngest. Example: Royston (45) and Jenny (40) die together. Royston's estate passes to Jenny briefly. Jenny's combined estate then passes to her heirs under her Will. End result: children receive everything — not just Jenny's original estate.</p>
+    <p>Ask couples: <em>"Does your Will account for a common disaster scenario?"</em></p>
+  </div>
+
+  <!-- CPF -->
+  <div class="tag tgn" style="margin-top:16px;">CPF — Technical</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">Nomination Rules</div>
+      <ul class="fa">
+        <li>Made via CPF Board (cpf.gov.sg). Must be 16+ to nominate.</li>
+        <li>Nominee must be 18+ to receive — Public Trustee holds for minors</li>
+        <li>Can split % among multiple nominees</li>
+        <li><strong>No nomination = funds enter estate = probate delay</strong></li>
+        <li>Marriage auto-revokes existing nomination</li>
+        <li>Divorce does NOT revoke — must update manually</li>
+        <li>Covers OA, SA, MA, RA — all four accounts</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd">Payout Speed</div>
+      <ul class="fa">
+        <li>Nominated: ~10 working days after death cert + claim form received</li>
+        <li>Unnominated: enters estate → probate → 6–12+ months</li>
+        <li>CPF is often the largest liquid asset a Singaporean has — if unnominated, it's frozen</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Insurance -->
+  <div class="tag tb" style="margin-top:16px;">Insurance Nomination — S.132 vs S.133</div>
+  <div class="twrap">
+    <table class="t">
+      <thead><tr><th>Feature</th><th>S.132 Revocable</th><th>S.133 Trust Nomination</th></tr></thead>
+      <tbody>
+        <tr><td>Can change?</td><td class="td-g">Yes, anytime</td><td class="td-r">No — irrevocable</td></tr>
+        <tr><td>Who can be nominated?</td><td>Anyone</td><td>Spouse and/or children only</td></tr>
+        <tr><td>Creditor protection?</td><td class="td-r">No</td><td class="td-g">Yes — protected even in bankruptcy</td></tr>
+        <tr><td>Marriage effect</td><td>No effect</td><td>No effect</td></tr>
+        <tr><td>Best for</td><td>Most clients — flexibility</td><td>Business owners, creditor risk, HNW</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="al al-r"><strong>Marriage trap:</strong> Marriage does NOT cancel insurance nomination. A client who nominated parents before marriage still has parents as nominee — even after 10 years of marriage. Audit ALL active policies.</div>
+
+  <!-- LPA -->
+  <div class="tag tp" style="margin-top:16px;">LPA — Form 1 vs Form 2</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd">Form 1 (Standard)</div>
+      <ul class="fa">
+        <li>Broad standard powers — personal welfare + property/affairs</li>
+        <li>Right for most clients</li>
+        <li>Currently free to register</li>
+        <li>Fastest to execute — standard form, less legal work needed</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd">Form 2 (Customised)</div>
+      <ul class="fa">
+        <li>Can restrict specific powers (e.g. cannot sell family home)</li>
+        <li>Can name specific dependants the donee can support</li>
+        <li>Can grant additional powers beyond standard</li>
+        <li>Requires lawyer certification</li>
+        <li>Use when client has specific concerns about donee's authority</li>
+      </ul>
+    </div>
+  </div>
+  <div class="al al-r"><strong>Without LPA:</strong> Family must apply for Deputyship Order. Cost: $3,000–$8,000. Timeline: 3–6 months. During that period: all assets frozen, no bill payments, no mortgage servicing possible.</div>
+
+  <!-- Will -->
+  <div class="tag tg" style="margin-top:16px;">Will — Execution Requirements</div>
+  <div class="card">
+    <ul class="fa">
+      <li>Must be in writing, signed by testator in presence of 2 independent witnesses</li>
+      <li><strong>Witnesses cannot be beneficiaries or spouses of beneficiaries</strong> — gift to them becomes void</li>
+      <li>Testator must be 21+ and of sound mind at signing</li>
+      <li><strong>Marriage automatically revokes any existing Will</strong></li>
+      <li>Divorce: ex-spouse's gift lapses; but they may still be named executor — check and update</li>
+      <li>Review trigger events: marriage, divorce, new child, death of beneficiary, major asset change</li>
+    </ul>
+  </div>
+
+  <!-- Trust -->
+  <div class="tag tp" style="margin-top:16px;">Trust — Testamentary vs Living</div>
+  <div class="twrap">
+    <table class="t">
+      <thead><tr><th>Feature</th><th>Testamentary Trust</th><th>Living / Standby Trust</th></tr></thead>
+      <tbody>
+        <tr><td>Created</td><td>Inside Will — activates after death</td><td>During lifetime — activates on trigger</td></tr>
+        <tr><td>Probate</td><td class="td-a">Required — goes through probate first</td><td class="td-g">Bypasses probate entirely</td></tr>
+        <tr><td>Setup cost</td><td class="td-g">Included in Will ($700–$1,500 total)</td><td class="td-r">$15,000–$30,000+</td></tr>
+        <tr><td>Annual fees</td><td>Minimal</td><td>$3,000–$6,000/year (trustee fees)</td></tr>
+        <tr><td>Privacy</td><td class="td-a">Will is public after probate</td><td class="td-g">Trust deed is private</td></tr>
+        <tr><td>Best for</td><td>Most clients with minor children or beneficiary concerns</td><td>HNW ($1M+), business owners, blended families</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="al al-r"><strong>ABSD warning:</strong> Transferring residential property into a living trust triggers ABSD. Foreigners: 65%. Always refer client to a lawyer before recommending property into trust. Do not advise on ABSD yourself.</div>
+
+  <!-- Probate vs Non-Probate -->
+  <div class="tag ta" style="margin-top:16px;">Probate vs Non-Probate Assets</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-hd" style="color:var(--red);">🔒 PROBATE (Frozen — 6–12+ months)</div>
+      <ul class="fa">
+        <li>Bank accounts in sole name</li>
+        <li>Investment accounts in sole name</li>
+        <li>Property held as Tenants in Common (deceased's share)</li>
+        <li>Business shares</li>
+        <li>Cash, jewellery, vehicles in sole ownership</li>
+        <li>Unnominated insurance</li>
+        <li>Unnominated CPF</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-hd" style="color:var(--green);">✅ NON-PROBATE (Available quickly)</div>
+      <ul class="fa">
+        <li><strong>Nominated CPF:</strong> ~10 working days</li>
+        <li><strong>Nominated insurance:</strong> 7–14 days</li>
+        <li><strong>Joint tenancy property:</strong> Right of survivorship — passes automatically</li>
+        <li><strong>Joint bank accounts:</strong> Surviving holder retains access</li>
+        <li><strong>Trust assets:</strong> Per trust deed</li>
+      </ul>
+    </div>
+  </div>
+  <div class="al al-b"><strong>Joint tenancy vs Tenants in Common:</strong> Joint tenancy = right of survivorship, no probate. Tenants in common = each owner's fixed share goes through estate. Most HDB couples hold as joint tenants — confirm before assuming.</div>
+</section>
+
+<!-- ══ CASE STUDIES ══ -->
+<section class="sec" id="cases">
+  <div class="sec-title">📖 Case Studies</div>
+  <div class="sec-sub">Use in conversation or for AEPP exam prep.</div>
+
+  <div class="card">
+    <div class="card-hd"><span class="tag ta">Commorientes</span> Royston & Jenny — Common Disaster</div>
+    <p>Royston (45) and Jenny (40), married with two children. Each Will leaves everything to the other, children as backup. They die together in an accident.</p>
+    <p><strong>Result:</strong> Royston (older) presumed to die first. Jenny briefly inherits everything. Jenny's combined estate passes to children under her Will. <strong>Children receive the full combined estate.</strong></p>
+    <div class="al al-a">Ask couples: "Does your Will specify what happens if you both die at the same time?"</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><span class="tag tp">Trust / Creditor</span> Mrs. Ng — Bankrupt Husband</div>
+    <p>Mrs. Ng wants assets to reach her children — not her husband whose business debts may expose any inheritance to creditors.</p>
+    <p><strong>Solution:</strong> S.133 trust nomination on insurance (payout creditor-protected) + testamentary trust in Will directing children's share away from husband entirely. Or living trust naming children directly.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><span class="tag tr">Blended Family</span> Aloysius — Life Interest Trust</div>
+    <p>Children from first marriage. Current wife. Wants wife provided for during her lifetime, assets to revert to his children after.</p>
+    <p><strong>Solution:</strong> Life interest trust in Will. Wife receives income from estate during lifetime. On her death, capital passes to his children from first marriage. Requires professional trustee to manage the life interest period.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><span class="tag tb">Full Plan</span> Kelvin — Mass Affluent, 45, Two Minor Children</div>
+    <p>Assets: HDB flat ($600K), investment property ($1.2M), CPF ($300K), AIA policy ($500K unnominated), bank savings ($400K). Wife. Children aged 8 and 11.</p>
+    <div class="al al-g"><strong>Priority order:</strong> (1) Nominate CPF immediately — free, 10 min. (2) Nominate AIA policy — consider S.133 trust nomination for creditor protection. (3) Draft Will with testamentary trust: staggered payout, name guardian for children. (4) Register LPA Form 1 — free now. (5) Review investment property ownership structure — joint tenancy or tenants in common? (6) Calculate liquidity gap: HDB + investment property frozen. Only CPF ($300K, nominated) + AIA ($500K, once nominated) available immediately = $800K. Family expenses + mortgage = roughly $500K need. Gap is manageable once nominations are in place.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-hd"><span class="tag tg">Cross-Border</span> Edward — Singapore Will + Malaysia Property</div>
+    <p>Singapore Citizen with a local condo and a second property in Malaysia. Asks: "Does my Singapore Will cover my Malaysian property?"</p>
+    <p><strong>Answer: No.</strong> Each country's succession law governs assets situated there. The Malaysian property requires a separate application under Malaysian law. Recommend a Malaysian solicitor for the property specifically. His Singapore Will should reference foreign assets but cannot control their distribution independently.</p>
+  </div>
+</section>
+
+<!-- ══ OBJECTION BANK ══ -->
+<section class="sec" id="obj">
+  <div class="sec-title">💬 Full Objection Bank</div>
+  <div class="sec-sub">Quick reference — memorise the logic, not the words.</div>
+
+  <div class="obj"><div class="obj-q">"I'm too young to think about this."</div><div class="obj-a">Incapacity from accidents affects all ages. And the LPA is free right now. The cost of not having it: $5,000+ in court fees and months of frozen assets. There's no logical reason to wait.</div></div>
+  <div class="obj"><div class="obj-q">"My spouse will handle everything."</div><div class="obj-a">Your spouse can only access what the courts release. Sole-name accounts are frozen. Children's inheritance goes to the Public Trustee. Your spouse cannot touch either without court approval.</div></div>
+  <div class="obj"><div class="obj-q">"I don't have enough assets to bother."</div><div class="obj-a">Estate planning isn't about the size of your estate. It's about making sure what you have reaches the right people. CPF nomination and LPA cost nothing and protect everything.</div></div>
+  <div class="obj"><div class="obj-q">"My Will covers my CPF, right?"</div><div class="obj-a">No — CPF has zero connection to your Will. It follows a completely separate nomination system. Without an explicit CPF nomination, it enters your estate and can take 6–12 months to be released.</div></div>
+  <div class="obj"><div class="obj-q">"I'll do it later / when things settle down."</div><div class="obj-a">The things you're waiting for — a new house, a new child — are exactly the events that make this urgent. Set up now and update at each milestone. The risk of delay is that your family is unprotected in the meantime.</div></div>
+  <div class="obj"><div class="obj-q">"This sounds expensive."</div><div class="obj-a">Three of the five instruments cost nothing: CPF nomination, insurance nomination, LPA. A Will is $700–$1,500. The alternative: $5,000–$15,000 in legal fees plus 12 months of family stress.</div></div>
+  <div class="obj"><div class="obj-q">"I don't trust trusts — too complicated."</div><div class="obj-a">You don't need a standalone trust. A testamentary trust inside your Will gives you the same protection — it's just a set of instructions about how and when money gets paid out. Same cost as a basic Will.</div></div>
+</section>
+
+<!-- ══ PRODUCT MATRIX ══ -->
+<section class="sec" id="products">
+  <div class="sec-title">🧰 Product Recommendation Matrix</div>
+  <div class="sec-sub">Match instrument to client profile. Don't over-complicate for mass market clients.</div>
+  <div class="card">
+    <div class="pt-row"><div class="pt-name">CPF Nomination</div><div class="pt-who">Every client with CPF. No exceptions. Free. 10 minutes. Do it during the meeting.</div><div class="pt-act">Do it now</div></div>
+    <div class="pt-row"><div class="pt-name">Insurance Nomination</div><div class="pt-who">Every client with any active policy — life, H&amp;S, ILP, group employer. Audit all.</div><div class="pt-act">Do it now</div></div>
+    <div class="pt-row"><div class="pt-name">LPA Form 1</div><div class="pt-who">Every client aged 21+. Free. Non-negotiable recommendation. Currently waived.</div><div class="pt-act">opg.gov.sg</div></div>
+    <div class="pt-row"><div class="pt-name">Basic Will</div><div class="pt-who">Any client with sole-name assets, minor children, blended family, or specific distribution wishes.</div><div class="pt-act">Refer: lawyer / Precept</div></div>
+    <div class="pt-row"><div class="pt-name">Will + Testamentary Trust</div><div class="pt-who">Minor children, special needs dependants, spendthrift concerns, blended family. Same cost as basic Will.</div><div class="pt-act">Refer: lawyer / Precept</div></div>
+    <div class="pt-row"><div class="pt-name">S.133 Trust Nomination</div><div class="pt-who">Business owners, creditor risk, HNW wanting creditor-protected payout for spouse/children.</div><div class="pt-act">Update policy nomination</div></div>
+    <div class="pt-row"><div class="pt-name">Living / Standby Trust</div><div class="pt-who">HNW ($1M+ estate), blended family needing life interest, business owners, privacy/probate bypass needs.</div><div class="pt-act">Refer: Precept Trust Co.</div></div>
+    <div class="pt-row" style="border-bottom:none;"><div class="pt-name">Buy-Sell Agreement</div><div class="pt-who">Business owners with partners. Prevents shares passing to heirs who can't run the business.</div><div class="pt-act">Keyman policy + lawyer</div></div>
+  </div>
+
+  <div class="al al-b" style="margin-top:12px;"><strong>Referral partner:</strong> Precept Trust Company (MAS Licensed) — Will drafting, trust structures, professional executor services. Use for clients needing Will drafting, living trust, or complex estate structures.</div>
+
+  <div class="al al-r" style="margin-top:8px;">
+    <strong>Cross-border tax — quick ref:</strong>
+    US assets: 40% federal estate tax above USD $60K for non-US persons. UK: IHT 40% above £325K. Malaysia: RPGT 30% within 3 years of sale (foreigners). Australia: CGT ~15% on inherited assets when sold. Singapore: no estate duty since 2008.
+  </div>
+</section>
+
+</div><!-- /page -->
 </body>
 </html></template>
 
