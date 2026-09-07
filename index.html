@@ -291,13 +291,17 @@
   #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a2332; color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,.25);}
   #toast.show{opacity:1;}
 
-  /* ============ PRINT: client-facing insurance & investment summary (landscape) ============ */
+  /* ============ PRINT: client-facing portfolio summary (landscape) ============
+     Hides the app chrome by removing it from layout (display:none), rather than the old
+     visibility:hidden-on-everything trick — that left #main's full (very tall) height in the
+     document flow even though invisible, so the browser paginated blank pages for all of it.
+     display:none collapses the height to zero, so print only produces pages for #printDoc's
+     actual content. */
   #printDoc{display:none;}
   @media print{
     @page{size:landscape; margin:8mm;}
-    body *{visibility:hidden;}
-    #printDoc, #printDoc *{visibility:visible;}
-    #printDoc{display:block; position:absolute; top:0; left:0; width:100%; background:#fff; color:#1a2332; font-size:12px; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    body>header.app, body>main, body>footer.app, .modal-back{display:none !important;}
+    #printDoc{display:block; background:#fff; color:#1a2332; font-size:12px; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
     #printDoc .pcs-band{height:6px; background:#0f4c81; border-radius:3px; margin-bottom:14px;}
     #printDoc .pcs-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;}
     #printDoc h1{font-size:26px; color:#0f4c81; margin:0 0 3px;}
@@ -314,10 +318,19 @@
     #printDoc td.r, #printDoc th.r{text-align:right; white-space:nowrap;}
     #printDoc .pcs-empty{color:#777; margin-top:20px; font-size:13px;}
     #printDoc .pcs-footer{margin-top:26px; padding-top:10px; border-top:2px solid #0f4c81; font-size:10.5px; color:#555;}
+    /* net cashflow summary band */
+    #printDoc .pcs-cf{margin-top:18px; border:2px solid #0f4c81; border-radius:6px; padding:12px 16px; background:#f5f8fb;}
+    #printDoc .pcs-cf-title{font-size:13px; font-weight:700; color:#0f4c81; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px;}
+    #printDoc .pcs-cf-rows{display:grid; grid-template-columns:repeat(3,1fr); gap:4px 24px;}
+    #printDoc .pcs-cf-row{display:flex; justify-content:space-between; font-size:12px; padding:2px 0;}
+    #printDoc .pcs-cf-row .amt.neg{color:#b03030;}
+    #printDoc .pcs-cf-total{display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; padding-top:8px; border-top:1px solid #c3d3e3;}
+    #printDoc .pcs-cf-total .l{font-size:13px; font-weight:700; color:#0f4c81;}
+    #printDoc .pcs-cf-total .n{font-size:22px; font-weight:700; color:#0f4c81;}
+    #printDoc .pcs-cf-total .n.neg{color:#b03030;}
 
     /* ---- proposal presentation deck, printed exactly as it looks on screen: one slide per
            landscape A4 page, same navy/cream/gold branding, no visible chrome/controls ---- */
-    #proposalLayer.open, #proposalLayer.open *{visibility:visible;}
     #proposalLayer.open{position:static !important; display:block !important;}
     #proposalLayer.open .pp-progress, #proposalLayer.open .pp-count, #proposalLayer.open .pp-close,
     #proposalLayer.open .pp-fs, #proposalLayer.open .pp-chrome{display:none !important;}
@@ -2718,12 +2731,31 @@ const App = {
     const expenseTable=`<h3>Monthly Expenses</h3><table><thead><tr><th>Item</th><th class="r">Amount /mth</th></tr></thead><tbody>
       ${expenses.length?expenses.map(x=>`<tr><td>${esc(x.label)}</td><td class="r">${money(x.amt)}</td></tr>`).join(''):'<tr><td colspan="2" style="color:#888;">No expenses recorded</td></tr>'}</tbody>
       <tr class="tot"><td>Total</td><td class="r">${fmt(c.expTotal)}</td></tr></table>`;
+    // net cashflow band — same rows/labels as the on-screen "Net cashflow" card (netCashflowCard),
+    // so the printed figure always matches what Ben and the client already discussed on screen.
+    const cfRows=[];
+    cfRows.push(['Take-home income', c.takeHome]);
+    if(c.other) cfRows.push(['Other income', c.other]);
+    if(c.expTotal) cfRows.push(['Monthly expenses', -c.expTotal]);
+    if(c.invTotal) cfRows.push(['Investment premiums', -c.invTotal]);
+    if(c.insTotal) cfRows.push(['Insurance premiums', -c.insTotal]);
+    if(c.sav) cfRows.push(['Savings set aside', -c.sav]);
+    const cfRowsHtml=cfRows.map(([l,v],idx)=>{
+      const sign = v>=0 ? (idx===0?'':'+ ') : '− ';
+      return `<div class="pcs-cf-row"><span>${esc(l)}</span><span class="amt ${v>=0?'pos':'neg'}">${sign}${money(Math.abs(v))}</span></div>`;
+    }).join('');
+    const cashflowBand=`<div class="pcs-cf">
+      <div class="pcs-cf-title">Net Monthly Cashflow</div>
+      <div class="pcs-cf-rows">${cfRowsHtml}</div>
+      <div class="pcs-cf-total"><span class="l">Net cashflow /mth</span><span class="n ${c.netCashflow>=0?'':'neg'}">${fmt(c.netCashflow)}</span></div>
+    </div>`;
     let h=`<div class="pcs-band"></div>
     <div class="pcs-head">
       <div><h1>${esc(p.name)}</h1><div class="pcs-sub">Portfolio Summary &middot; ${today}</div></div>
       <div class="pcs-adv"><b>${esc(s.advisorName||'Your Advisor')}</b><br>${esc(s.advisorTitle||'')}${s.advisorTitle?'<br>':''}${esc(s.advisorPhone||'')}${s.advisorEmail?' &middot; '+esc(s.advisorEmail):''}</div>
     </div>`;
     h+=`<div class="pcs-cols">${incomeTable}${expenseTable}</div>`;
+    h+=cashflowBand;
     if(insurance.length) h+=planTable('Insurance Plans', insurance, insTotalMth, insTotalYr);
     if(investments.length) h+=planTable('Investment Plans', investments, invTotalMth, invTotalYr);
     if(!insurance.length && !investments.length) h+=`<div class="pcs-empty">No insurance or investment plans recorded yet.</div>`;
