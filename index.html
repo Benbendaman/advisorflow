@@ -464,6 +464,11 @@
 #proposalLayer .pp-cov td.pp-ben{font-family:var(--pp-serif);font-size:1.25rem;color:var(--pp-ink)}
 #proposalLayer .pp-cov td.pp-amt{font-family:var(--pp-serif);font-size:1.3rem;color:var(--pp-pine)}
 #proposalLayer .pp-pill{display:inline-block;padding:.32rem .8rem;border-radius:20px;background:var(--pp-cream2);color:#5c564c;font-size:.82rem;font-weight:500}
+#proposalLayer .pp-opt-tabs{display:flex;gap:.6rem;flex-wrap:wrap;margin:.2rem 0 1.6rem}
+#proposalLayer .pp-opt-tab{padding:.55rem 1.3rem;border-radius:24px;border:1.5px solid var(--pp-line);background:transparent;color:var(--pp-muted);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:var(--pp-sans)}
+#proposalLayer .pp-opt-tab:hover{border-color:var(--pp-terra-soft);color:var(--pp-ink)}
+#proposalLayer .pp-opt-tab.active{background:var(--pp-terra);border-color:var(--pp-terra);color:#fff}
+#proposalLayer .pp-opt-panel .pp-prem{margin-top:2.2rem}
 
 /* ---- premium ---- */
 #proposalLayer .pp-prem{display:grid;grid-template-columns:1fr;gap:2rem}
@@ -990,21 +995,31 @@
     </div>
 
     <div class="card">
-      <h2>Summary of coverage</h2>
+      <h2>Options — coverage &amp; premium</h2>
+      <div class="cardhint">Present 2–3 options side by side. Add an option, key in its own coverage and premium, then tap between them live on one page during the presentation.</div>
+      <div id="propOptTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"></div>
+      <div class="form-row">
+        <div><label>Option name</label><input type="text" id="propOptLabel" placeholder="e.g. Option 1, Budget, Comprehensive" oninput="App.propRenameOption(this.value)"></div>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn small" onclick="App.propAddOption()">+ Add option</button>
+          <button class="btn small" id="propOptDelBtn" onclick="App.propDelOption()">Delete this option</button>
+        </div>
+      </div>
+
+      <div style="font-weight:700;font-size:13px;margin:20px 0 8px;color:var(--ink)">Summary of coverage</div>
       <div id="propCoverageRows"></div>
       <button class="btn small" onclick="App.propAddRow('coverage')">+ Add row</button>
-    </div>
 
-    <div class="card">
-      <h2>Your premiums</h2>
+      <div style="font-weight:700;font-size:13px;margin:22px 0 8px;color:var(--ink)">Premium</div>
       <div class="cardhint">Pulls straight from what you keyed into the policy pages above — no retyping. Re-run it any time you change a premium there.</div>
       <div id="propPremiumRows"></div>
       <button class="btn small" onclick="App.propAddRow('premium')">+ Add row</button>
       <button class="btn small primary" onclick="App.syncPremiumFromPolicies()">↻ Sync from policy pages</button>
-      <div class="form-row" style="margin-top:10px">
-        <div style="grid-column:1/-1"><label>Payment note</label><textarea rows="2" id="propPremiumNote" placeholder="MediShield Life is fully payable via MediSave. The additional private premium is MediSave-payable up to the Additional Withdrawal Limit; riders are paid by cash." oninput="App.propScalar('premiumNote',this.value)"></textarea></div>
-      </div>
       <div class="calcnote" id="propPremiumTotals"></div>
+
+      <div class="form-row" style="margin-top:16px">
+        <div style="grid-column:1/-1"><label>Payment note (shown once, applies to whichever option is on screen)</label><textarea rows="2" id="propPremiumNote" placeholder="MediShield Life is fully payable via MediSave. The additional private premium is MediSave-payable up to the Additional Withdrawal Limit; riders are paid by cash." oninput="App.propScalar('premiumNote',this.value)"></textarea></div>
+      </div>
     </div>
 
     <div class="card">
@@ -1490,7 +1505,7 @@ function applySettingsRow(d, row){
 /* ---------- app ---------- */
 const App = {
   data: null,
-  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client', socialMonth:'', editingSocialId:null, cloudLoadOk:false, socialPillarFilter:'', socialStatusFilter:'' },
+  state: { page:'today', currentPersonId:null, cameFrom:'pipeline', editingId:null, editingNote:null, modalMode:'prospect', presenting:false, showAllDue:false, pipeSpecial:'', pipeExpanded:{}, srOnly:false, hnwOnly:false, online:true, syncing:false, dirty:false, noteFilter:'', meetingNotesCollapsed:false, cashflowBreakdownOpen:false, presPlan:null, presView:'client', socialMonth:'', editingSocialId:null, cloudLoadOk:false, socialPillarFilter:'', socialStatusFilter:'', propOptIdx:0 },
 
   init(){
     // nav
@@ -3195,10 +3210,12 @@ const App = {
   },
 
   /* ---------- proposal: editor (methods live on the App object) ---------- */
-  currentProposal(){ const p=this.person(); if(!p) return null; if(!p.proposal) p.proposal=blankProposal(); return p.proposal; },
+  currentProposal(){ const p=this.person(); if(!p) return null; if(!p.proposal) p.proposal=blankProposal(); return ensureProposalOptions(p.proposal); },
   openProposal(){
     const p=this.person(); if(!p) return;
     if(!p.proposal){ p.proposal=blankProposal(); this.save(); }
+    ensureProposalOptions(p.proposal);
+    this.state.propOptIdx=0;
     this.showPage('proposal');
     this.renderProposalEditor();
   },
@@ -3240,8 +3257,7 @@ const App = {
     this.renderProposalPlans();
     this.renderProposalNeedsPreview();
     this.renderProposalPolicies();
-    this.renderProposalCoverage();
-    this.renderProposalPremium();
+    this.renderProposalOptions(); // also renders coverage + premium for the selected option
     this.renderProposalSteps();
   },
   renderProposalNeedsPreview(){
@@ -3285,39 +3301,88 @@ const App = {
     pl.type=cats.join(' · ');
     this.save();
   },
-  /* -- coverage -- */
+  /* -- options (each option carries its own coverage + premium rows) -- */
+  activeOption(){
+    const pr=this.currentProposal(); if(!pr) return null;
+    if(this.state.propOptIdx>=pr.options.length) this.state.propOptIdx=0;
+    return pr.options[this.state.propOptIdx];
+  },
+  renderProposalOptions(){
+    const pr=this.currentProposal(); if(!pr) return;
+    const idx=this.state.propOptIdx;
+    $('#propOptTabs').innerHTML=pr.options.map((o,i)=>
+      `<button class="btn small${i===idx?' primary':''}" onclick="App.propSelectOption(${i})">${esc(o.label||('Option '+(i+1)))}</button>`
+    ).join('');
+    const opt=this.activeOption();
+    $('#propOptLabel').value=opt?opt.label:'';
+    $('#propOptDelBtn').style.display = pr.options.length>1 ? '' : 'none';
+    this.renderProposalCoverage();
+    this.renderProposalPremium();
+  },
+  propSelectOption(i){
+    this.state.propOptIdx=i;
+    this.renderProposalOptions();
+  },
+  propAddOption(){
+    const pr=this.currentProposal(); if(!pr) return;
+    pr.options.push(blankProposalOption('Option '+(pr.options.length+1)));
+    this.state.propOptIdx=pr.options.length-1;
+    this.save();
+    this.renderProposalOptions();
+  },
+  propRenameOption(val){
+    const opt=this.activeOption(); if(!opt) return;
+    opt.label=val;
+    this.save();
+    // just the tab label needs to refresh, not the whole editor (would steal input focus)
+    const pr=this.currentProposal(); const idx=this.state.propOptIdx;
+    $('#propOptTabs').innerHTML=pr.options.map((o,i)=>
+      `<button class="btn small${i===idx?' primary':''}" onclick="App.propSelectOption(${i})">${esc(o.label||('Option '+(i+1)))}</button>`
+    ).join('');
+  },
+  propDelOption(){
+    const pr=this.currentProposal(); if(!pr||pr.options.length<=1) return;
+    if(!confirm('Delete "'+(this.activeOption().label||'this option')+'"? Its coverage and premium rows go with it.')) return;
+    pr.options.splice(this.state.propOptIdx,1);
+    this.state.propOptIdx=Math.max(0,this.state.propOptIdx-1);
+    this.save();
+    this.renderProposalOptions();
+  },
+  /* -- coverage (rows on the currently selected option) -- */
   renderProposalCoverage(){
-    const pr=this.currentProposal();
-    $('#propCoverageRows').innerHTML=(pr.coverage||[]).map((c,i)=>`
+    const opt=this.activeOption(); if(!opt) return;
+    $('#propCoverageRows').innerHTML=(opt.coverage||[]).map((c,i)=>`
       <div class="prow-flat">
         <input type="text" placeholder="e.g. Premature Death & Total Permanent Disability" value="${esc(c.benefit)}" oninput="App.propRow('coverage',${i},'benefit',this.value)">
         <input type="text" placeholder="e.g. S$ 250,000" value="${esc(c.amount)}" oninput="App.propRow('coverage',${i},'amount',this.value)">
         <input type="text" list="dlPropPlans" placeholder="e.g. AIA Guaranteed Protect Plus + Ultimate Critical Cover" value="${esc(c.plan)}" oninput="App.propRow('coverage',${i},'plan',this.value)">
         <button class="del" onclick="App.propDelRow('coverage',${i})">&times;</button>
-      </div>`).join('') || '<div class="cardhint">No coverage rows yet.</div>';
+      </div>`).join('') || '<div class="cardhint">No coverage rows yet for this option.</div>';
   },
-  /* -- premium -- */
+  /* -- premium (rows on the currently selected option) -- */
   renderProposalPremium(){
-    const pr=this.currentProposal();
-    $('#propPremiumRows').innerHTML=(pr.premium||[]).map((r,i)=>`
+    const opt=this.activeOption(); if(!opt) return;
+    $('#propPremiumRows').innerHTML=(opt.premium||[]).map((r,i)=>`
       <div class="prow-flat">
         <input type="text" list="dlPropPlans" placeholder="e.g. AIA Ultimate Critical Cover" value="${esc(r.plan)}" oninput="App.propRow('premium',${i},'plan',this.value)" style="flex:2 1 220px">
         <input type="text" inputmode="decimal" class="money" placeholder="e.g. 300.00" value="${fmt2(r.medisave)}" oninput="App.propRow('premium',${i},'medisave',this.value)">
         <input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(r.cash)}" oninput="App.propRow('premium',${i},'cash',this.value)">
         <button class="del" onclick="App.propDelRow('premium',${i})">&times;</button>
-      </div>`).join('') || '<div class="cardhint">No premium rows yet.</div>';
+      </div>`).join('') || '<div class="cardhint">No premium rows yet for this option.</div>';
     this.renderProposalPremiumTotals();
   },
   renderProposalPremiumTotals(){
-    const pr=this.currentProposal(); const t=ppPremiumTotals(pr);
+    const opt=this.activeOption(); if(!opt) return;
+    const t=ppPremiumTotals(opt.premium);
     $('#propPremiumTotals').innerHTML=`Totals (auto-summed from the rows above): MediSave <b>${fmt(t.medisave)}</b>/yr &middot; Cash <b>${fmt(t.cash)}</b>/yr &middot; <b>${fmt(t.monthly)}</b>/month`;
   },
   /* -- pull premium rows straight from the policy pages, so nothing gets typed twice -- */
   syncPremiumFromPolicies(){
     const pr=this.currentProposal(); if(!pr) return;
+    const opt=this.activeOption(); if(!opt) return;
     if(!pr.policies || !pr.policies.length){ toast('Add policy pages first — nothing to pull from yet.'); return; }
-    if((pr.premium||[]).length && !confirm('This replaces your current premium rows with values pulled from the policy pages. Continue?')) return;
-    pr.premium = pr.policies.map(pol=>{
+    if((opt.premium||[]).length && !confirm('This replaces the premium rows for "'+(opt.label||'this option')+'" with values pulled from the policy pages. Continue?')) return;
+    opt.premium = pr.policies.map(pol=>{
       if(pol.kind==='hospital'){ const t=ppHospitalTotals(pol); return { plan: (pol.name||'')+(pol.riderName?' + '+pol.riderName:''), medisave: t.totalMedisave, cash: t.totalCash }; }
       if(pol.kind==='accident') return { plan: pol.name||'', medisave: 0, cash: ppAccidentTotal(pol) };
       // wholelife, term, ci all keep a single annual cash premium field
@@ -3325,7 +3390,19 @@ const App = {
     });
     this.save();
     this.renderProposalPremium();
-    toast('Premium rows synced from policy pages.');
+    toast('Premium rows for "'+(opt.label||'this option')+'" synced from policy pages.');
+  },
+  /* -- live deck: switch which option's coverage+premium panel is showing, called from the
+     tab buttons rendered by ppOptionsHtml() on the "Your options" page -- */
+  ppSwitchOption(i){
+    const deck=document.getElementById('ppDeck'); if(!deck) return;
+    const section=deck.querySelector('.pp-opts'); if(!section) return;
+    section.querySelectorAll('.pp-opt-tab').forEach(el=>el.classList.toggle('active', Number(el.dataset.opt)===i));
+    section.querySelectorAll('.pp-opt-panel').forEach(el=>{
+      const active=Number(el.dataset.opt)===i;
+      el.style.display=active?'':'none';
+      if(active && App.Proposal && App.Proposal.countUp) App.Proposal.countUp(el);
+    });
   },
   /* -- steps -- */
   renderProposalSteps(){
@@ -3337,19 +3414,23 @@ const App = {
         <button class="del" onclick="App.propDelRow('steps',${i})">&times;</button>
       </div>`).join('') || '<div class="cardhint">No steps yet.</div>';
   },
-  /* -- generic row helpers for the flat sections above -- */
+  /* -- generic row helpers. 'coverage' and 'premium' live on the currently selected option;
+     everything else (objectives, plans, steps) stays a flat array on the proposal itself. -- */
+  propRowTarget(section){
+    return (section==='coverage'||section==='premium') ? this.activeOption() : this.currentProposal();
+  },
   propRow(section,i,key,val){
-    const pr=this.currentProposal(); if(!pr||!pr[section]||!pr[section][i]) return;
+    const t=this.propRowTarget(section); if(!t||!t[section]||!t[section][i]) return;
     const numericKeys=['medisave','cash'];
-    pr[section][i][key]= numericKeys.includes(key) ? num(val) : val;
+    t[section][i][key]= numericKeys.includes(key) ? num(val) : val;
     this.save();
     if(section==='premium') this.renderProposalPremiumTotals();
   },
   propAddRow(section){
-    const pr=this.currentProposal(); if(!pr) return;
-    if(!pr[section]) pr[section]=[];
+    const t=this.propRowTarget(section); if(!t) return;
+    if(!t[section]) t[section]=[];
     const blanks={ objectives:{title:'',desc:''}, plans:{name:'',type:''}, coverage:{benefit:'',amount:'',plan:''}, premium:{plan:'',medisave:0,cash:0}, steps:{t:'',d:''} };
-    pr[section].push(Object.assign({}, blanks[section]||{}));
+    t[section].push(Object.assign({}, blanks[section]||{}));
     this.save();
     if(section==='objectives') this.renderProposalObjectives();
     else if(section==='plans') this.renderProposalPlans();
@@ -3358,8 +3439,8 @@ const App = {
     else if(section==='steps') this.renderProposalSteps();
   },
   propDelRow(section,i){
-    const pr=this.currentProposal(); if(!pr||!pr[section]) return;
-    pr[section].splice(i,1);
+    const t=this.propRowTarget(section); if(!t||!t[section]) return;
+    t[section].splice(i,1);
     this.save();
     if(section==='objectives') this.renderProposalObjectives();
     else if(section==='plans') this.renderProposalPlans();
@@ -3602,8 +3683,11 @@ function blankProposal(){
     income: '',
     hospWard: 'Private',
     paText: 'Based on recommendation',
-    coverage: [],
-    premium: [],
+    // multiple presentable options (e.g. "Budget" vs "Comprehensive"), each carrying its own
+    // Summary of Coverage + Premium rows. Older proposals predate this and only have flat
+    // pr.coverage/pr.premium arrays — ensureProposalOptions() migrates those into a single
+    // "Option 1" the first time they're touched, so nothing breaks for existing clients.
+    options: [ blankProposalOption('Option 1') ],
     premiumNote: 'MediShield Life is fully payable via MediSave. The additional private premium is MediSave-payable up to the Additional Withdrawal Limit; riders are paid by cash.',
     steps: [
       {t:'Review together', d:'We walk through this plan and confirm what fits your goals and budget.'},
@@ -3613,6 +3697,18 @@ function blankProposal(){
     ],
     policies: []
   };
+}
+function blankProposalOption(label){
+  return { id: uid(), label: label||'Option 1', coverage: [], premium: [] };
+}
+// migrates a proposal in place so pr.options always exists — either its own already, or built
+// from the legacy flat pr.coverage/pr.premium arrays a pre-options proposal still has.
+function ensureProposalOptions(pr){
+  if(!pr) return pr;
+  if(!pr.options || !pr.options.length){
+    pr.options=[{ id: uid(), label:'Option 1', coverage: pr.coverage||[], premium: pr.premium||[] }];
+  }
+  return pr;
 }
 const PROPOSAL_HOSP_WARDS = ['Private','Public Class A Ward','Public Class B Ward','Public Class C Ward'];
 const PROPOSAL_WARD_PCT = {'Private':100,'Public Class A Ward':78,'Public Class B Ward':52,'Public Class C Ward':32};
@@ -4036,44 +4132,52 @@ function ppPolicySection(pol, person){
   if(pol.kind==='accident') return ppSolitairePaSection(pol);
   return ppBenefitSection(pol, person); // hospital
 }
-function ppCoverageHtml(pr){
-  const rows=(pr.coverage||[]).map((c,i)=>{
-    const numeric=/^[\d,\. ]+$/.test(String(c.amount||''));
-    return `<tr class="pp-reveal" style="--i:${i+3}"><td class="pp-ben">${esc(c.benefit)}</td><td class="pp-amt c">${numeric?'S$ '+esc(c.amount):esc(c.amount)}</td><td class="r"><span class="pp-pill">${esc(c.plan)}</span></td></tr>`;
-  }).join('');
-  return `<section class="pp-slide pp-cov">
-    <div class="pp-pad" style="width:100%;display:flex;flex-direction:column;justify-content:center">
-      <div class="pp-kicker pp-reveal" style="--i:0">Summary of coverage</div>
-      <h2 class="pp-reveal" style="--i:1;font-size:clamp(2.2rem,3.6vw,3.4rem);margin:.6rem 0 1.6rem">Where you'll be protected</h2>
-      <table><thead><tr class="pp-reveal" style="--i:2"><th>Benefit</th><th class="c">Coverage</th><th class="r">Plan</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-    </div>${ppPolicyFoot()}
-  </section>`;
-}
-function ppPremiumTotals(pr){
+// takes a premium ROW ARRAY directly (an option's .premium, not the whole proposal) — options
+// each carry their own premium rows now, so totals are always computed per-option.
+function ppPremiumTotals(premiumRows){
   let medisave=0, cash=0;
-  (pr.premium||[]).forEach(r=>{ medisave+=num(r.medisave); cash+=num(r.cash); });
+  (premiumRows||[]).forEach(r=>{ medisave+=num(r.medisave); cash+=num(r.cash); });
   return { medisave, cash, monthly: Math.round((medisave+cash)/12) };
 }
-function ppPremiumHtml(pr){
-  const tot=ppPremiumTotals(pr);
-  const rows=(pr.premium||[]).map(pr2=>{
-    const rowTotal=num(pr2.medisave)+num(pr2.cash);
-    return `<tr><td class="pp-pl">${esc(pr2.plan)}</td><td class="c">${num(pr2.medisave)?fmt(num(pr2.medisave)):'—'}</td><td class="r">${fmt(num(pr2.cash))}</td><td class="r pp-tot">${fmt(rowTotal)}</td></tr>`;
-  }).join('');
-  return `<section class="pp-slide pp-prem-wrap">
-    <div class="pp-pad pp-prem" style="width:100%;justify-content:center">
-      <div><div class="pp-kicker pp-reveal" style="--i:0">Your premiums</div>
-      <h2 class="pp-reveal" style="--i:1;font-size:clamp(2.2rem,3.6vw,3.4rem);margin:.5rem 0 0">What it costs, clearly.</h2></div>
-      <div class="pp-stats">
-        <div class="pp-stat a pp-reveal" style="--i:2"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.medisave}">0</span></div><div class="pp-cap">MediSave / year</div></div>
-        <div class="pp-stat b pp-reveal" style="--i:3"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.cash}">0</span></div><div class="pp-cap">Cash / year</div></div>
-        <div class="pp-stat c pp-reveal" style="--i:4"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.monthly}">0</span></div><div class="pp-cap">per month</div></div>
+// combined Summary of Coverage + Premiums page. When a proposal has more than one option, a
+// tab bar lets Ben tap between them live during the meeting — both the coverage table and the
+// premium numbers for that option update together, on the same page, per Ben's request.
+function ppOptionsHtml(pr){
+  const opts=(pr.options&&pr.options.length)?pr.options:[blankProposalOption('Option 1')];
+  const multi=opts.length>1;
+  const tabsHtml=multi?`<div class="pp-opt-tabs pp-reveal" style="--i:2">${opts.map((o,i)=>
+    `<button type="button" class="pp-opt-tab${i===0?' active':''}" data-opt="${i}" onclick="App.ppSwitchOption(${i})">${esc(o.label||('Option '+(i+1)))}</button>`
+  ).join('')}</div>`:'';
+  const panels=opts.map((o,i)=>{
+    const covRows=(o.coverage||[]).map(c=>{
+      const numeric=/^[\d,\. ]+$/.test(String(c.amount||''));
+      return `<tr><td class="pp-ben">${esc(c.benefit)}</td><td class="pp-amt c">${numeric?'S$ '+esc(c.amount):esc(c.amount)}</td><td class="r"><span class="pp-pill">${esc(c.plan)}</span></td></tr>`;
+    }).join('');
+    const tot=ppPremiumTotals(o.premium);
+    const premRows=(o.premium||[]).map(r=>{
+      const rowTotal=num(r.medisave)+num(r.cash);
+      return `<tr><td class="pp-pl">${esc(r.plan)}</td><td class="c">${num(r.medisave)?fmt(num(r.medisave)):'—'}</td><td class="r">${fmt(num(r.cash))}</td><td class="r pp-tot">${fmt(rowTotal)}</td></tr>`;
+    }).join('');
+    return `<div class="pp-opt-panel" data-opt="${i}"${i===0?'':' style="display:none"'}>
+      <div class="pp-cov"><table><thead><tr><th>Benefit</th><th class="c">Coverage</th><th class="r">Plan</th></tr></thead><tbody>${covRows}</tbody></table></div>
+      <div class="pp-prem">
+        <div class="pp-stats">
+          <div class="pp-stat a"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.medisave}">0</span></div><div class="pp-cap">MediSave / year</div></div>
+          <div class="pp-stat b"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.cash}">0</span></div><div class="pp-cap">Cash / year</div></div>
+          <div class="pp-stat c"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.monthly}">0</span></div><div class="pp-cap">per month</div></div>
+        </div>
+        <table><thead><tr><th>Plan</th><th class="c">MediSave</th><th class="r">Cash</th><th class="r">Total / year</th></tr></thead><tbody>${premRows}</tbody></table>
       </div>
-      <table class="pp-reveal" style="--i:5"><thead><tr><th>Plan</th><th class="c">MediSave</th><th class="r">Cash</th><th class="r">Total / year</th></tr></thead>
-      <tbody>${rows}</tbody></table>
-      <div class="pp-pnote pp-reveal" style="--i:6"><b>Payment note.</b> ${esc(pr.premiumNote||'')}</div>
-    </div>
+    </div>`;
+  }).join('');
+  return `<section class="pp-slide pp-cov pp-prem-wrap pp-opts">
+    <div class="pp-pad" style="width:100%;display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;max-height:100%">
+      <div class="pp-kicker pp-reveal" style="--i:0">${multi?'Your options':'Summary of coverage & premiums'}</div>
+      <h2 class="pp-reveal" style="--i:1;font-size:clamp(2rem,3.2vw,3rem);margin:.6rem 0 1.2rem">Where you'll be protected, and what it costs.</h2>
+      ${tabsHtml}
+      ${panels}
+      <div class="pp-pnote pp-reveal" style="--i:3;margin-top:1.4rem"><b>Payment note.</b> ${esc(pr.premiumNote||'')}</div>
+    </div>${ppPolicyFoot()}
   </section>`;
 }
 function ppTalkHtml(pr, adv){
@@ -4103,10 +4207,11 @@ App.Proposal = {
   open(personId){
     const p=App.data.people.find(x=>x.id===personId); if(!p) return;
     if(!p.proposal) p.proposal=blankProposal();
+    ensureProposalOptions(p.proposal);
     const adv={ advisorName:App.data.settings.advisorName, advisorTitle:App.data.settings.advisorTitle, advisorMeta:App.data.settings.advisorMeta||'MDRT® · IBFQ® · CAWA®', advisorPhone:App.data.settings.advisorPhone, advisorEmail:App.data.settings.advisorEmail };
     const pr=p.proposal;
     const policyHtml=(pr.policies||[]).map(pol=>ppPolicySection(pol,p)).join('');
-    const deckHtml = ppCoverHtml(p,adv) + ppObjectivesHtml(pr) + ppNeedsHtml(pr) + ppPlansHtml(pr) + policyHtml + ppCoverageHtml(pr) + ppPremiumHtml(pr) + ppTalkHtml(pr,adv);
+    const deckHtml = ppCoverHtml(p,adv) + ppObjectivesHtml(pr) + ppNeedsHtml(pr) + ppPlansHtml(pr) + policyHtml + ppOptionsHtml(pr) + ppTalkHtml(pr,adv);
     const layer=$('#proposalLayer');
     layer.innerHTML = `
       <div class="pp-progress" id="ppProg"></div>
