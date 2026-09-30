@@ -570,6 +570,16 @@
 #proposalLayer .pp-cireset-arrow{color:var(--pp-terra-soft);font-size:1.2rem}
 #proposalLayer .pp-cireset-reset{background:var(--pp-terra);color:#fff;border-radius:20px;padding:.4rem .85rem;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 #proposalLayer .pp-cireset-tag{margin-top:1.2rem;font-size:.86rem;color:var(--pp-muted);line-height:1.55;max-width:52ch}
+/* headline cap badge — the 500% total / 100% per-claim mechanic Ben wants front and centre */
+#proposalLayer .pp-cicap{display:inline-block;background:var(--pp-terra);color:#fff;border-radius:10px;padding:.5rem .95rem;font-size:.82rem;font-weight:600;margin-bottom:1rem}
+#proposalLayer .pp-cicap b{font-family:var(--pp-serif);font-size:1.02rem}
+/* Ultimate Relapse Benefit — fixed product terms (5 named Major CI conditions, no remission clause,
+   50% IA cap, 2-year wait), baked in rather than editable per client since these are plan facts, not
+   client-specific figures. */
+#proposalLayer .pp-cirelapse{margin-top:1.2rem;background:#FBF7EF;border:1px solid var(--pp-line);border-radius:12px;padding:.95rem 1.15rem}
+#proposalLayer .pp-cirelapse-head{font-weight:700;color:var(--pp-ink);font-size:.86rem;margin-bottom:.4rem}
+#proposalLayer .pp-cirelapse-body{font-size:.76rem;color:var(--pp-muted);line-height:1.55}
+#proposalLayer .pp-cirelapse-body b{color:var(--pp-text)}
 #proposalLayer .pp-cichips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.4rem}
 #proposalLayer .pp-cichip{padding:.35rem .85rem;border:1px solid var(--pp-line);border-radius:20px;font-size:.78rem;color:#5c564c;background:#FBF7EF}
 
@@ -3602,7 +3612,7 @@ const App = {
         const facts=(pol.facts||[]).map((f,j)=>`
           <div class="prow-flat"><input type="text" placeholder="e.g. Major Critical Illness Benefit" value="${esc(f.label)}" oninput="App.propPolicySubField(${i},'facts',${j},'label',this.value)"><input type="text" placeholder="e.g. Unlimited" value="${esc(f.value)}" oninput="App.propPolicySubField(${i},'facts',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'facts',${j})">&times;</button></div>`).join('');
         const stages=(pol.stages||[]).map((s,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. 1st Critical Illness" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stages',${j},'label',this.value)"><input type="text" placeholder="e.g. Up to 100% IA" value="${esc(s.val)}" oninput="App.propPolicySubField(${i},'stages',${j},'val',this.value)"><input type="text" placeholder="e.g. Full payout on diagnosis" value="${esc(s.note)}" oninput="App.propPolicySubField(${i},'stages',${j},'note',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'stages',${j})">&times;</button></div>`).join('');
+          <div class="prow-flat"><input type="text" placeholder="e.g. Early & Intermediate CI" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stages',${j},'label',this.value)"><input type="text" placeholder="e.g. Up to 5 claims" value="${esc(s.val)}" oninput="App.propPolicySubField(${i},'stages',${j},'val',this.value)"><input type="text" placeholder="e.g. 100% of IA per claim" value="${esc(s.note)}" oninput="App.propPolicySubField(${i},'stages',${j},'note',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'stages',${j})">&times;</button></div>`).join('');
         body=`
           <div class="form-row">
             <div><label>Type / label</label><input type="text" placeholder="Critical Illness" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
@@ -3611,8 +3621,9 @@ const App = {
           <div class="form-row"><div><label>Premium / year (monthly shown automatically on the deck)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div></div>
           <div class="pp-editor-sub">Facts</div>${facts}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'facts')">+ Add fact</button>
-          <div class="pp-editor-sub">Claim journey (reset benefit story — a "Cover resets" link is drawn between each claim automatically)</div>${stages}
-          <button class="btn small" onclick="App.propPolicySubAdd(${i},'stages')">+ Add claim</button>
+          <div class="pp-editor-sub">Claim journey (Reset Benefit: up to 500% of Sum Insured total, 100% of IA per claim — a "Cover resets" link is drawn between each row automatically)</div>${stages}
+          <button class="btn small" onclick="App.propPolicySubAdd(${i},'stages')">+ Add claim category</button>
+          <div class="cardhint">The Ultimate Relapse Benefit callout (Major Cancer/Stroke/Heart Attack/Major Organ Transplant/Heart Valve Surgery, no remission clause, 50% of IA, 2-year wait) is fixed product wording and shown automatically below — no need to add it here.</div>
           <div class="pp-editor-sub">Feature chips (comma separated)</div>
           <input type="text" placeholder="e.g. 150 Medical Conditions, Ultimate Reset Benefit, Death Benefit, Catastrophic CI Benefit, Ultimate Relapse Benefit" value="${esc((pol.features||[]).join(', '))}" oninput="App.propPolicyFeatures(${i},this.value)">
         `;
@@ -3868,10 +3879,12 @@ function blankPolicy(kind){
   // rather than the old Early/Intermediate/Major severity bar chart — Ben found that version
   // didn't communicate what actually makes this plan different (unlimited resets for life).
   if(kind==='ci') return { kind, type:'Critical Illness', name:'AIA Ultimate Critical Cover', facts:[],
+    // Reset Benefit mechanics, per Ben: total payout is capped at 500% of Sum Insured, but every
+    // individual claim pays out at 100% of IA. Early & Intermediate CI claims are capped at 5 (5 x
+    // 100% = the 500% ceiling); Major CI claims are unlimited (cover resets each time, no claim cap).
     stages:[
-      {label:'1st Critical Illness', pct:100, val:'Up to 100% IA', note:'Full payout on diagnosis'},
-      {label:'2nd Critical Illness', pct:100, val:'Up to 100% IA', note:'Cover resets automatically'},
-      {label:'3rd Critical Illness & beyond', pct:100, val:'Up to 100% IA', note:'Unlimited resets, for life'}
+      {label:'Early & Intermediate CI', pct:100, val:'Up to 5 claims', note:'100% of IA per claim'},
+      {label:'Major CI', pct:100, val:'Unlimited claims', note:'100% of IA per claim, cover resets'}
     ],
     // pulled straight from Ben's AIA UCC feature infographic (IMG_2761)
     features:['150 Medical Conditions','Ultimate Reset Benefit','Death Benefit','Catastrophic CI Benefit','Ultimate Relapse Benefit'],
@@ -4093,8 +4106,13 @@ function ppCiSection(c){
       <div class="pp-prem-line pp-reveal" style="--i:3">${premLine}</div>
     </div>
     <div class="pp-reveal" style="--i:2">
+      <div class="pp-cicap">Up to <b>500%</b> of Sum Insured total &nbsp;&middot;&nbsp; 100% of IA paid per claim</div>
       <div class="pp-cireset">${journey}</div>
       <div class="pp-cireset-tag">Most Critical Illness plans pay out once, then stop. This one resets &mdash; so you're still covered for what comes next.</div>
+      <div class="pp-cirelapse">
+        <div class="pp-cirelapse-head">&#8635; Ultimate Relapse Benefit</div>
+        <div class="pp-cirelapse-body">A relapse of the <b>same</b> Major Critical Illness is covered too &mdash; Major Cancer, Stroke, Heart Attack, Major Organ Transplant, or Heart Valve Surgery. <b>No remission clause</b> required, subject to <b>50% of IA</b> per claim and a <b>2-year waiting period</b> from the original diagnosis.</div>
+      </div>
       <div class="pp-cichips">${chips}</div>
     </div>
   </div>${ppPolicyFoot()}</section>`;
