@@ -146,8 +146,16 @@
   .note-log .entry{padding:8px 0; border-bottom:1px solid var(--line);}
   .note-log .d{font-size:11.5px; color:var(--ink-faint); display:flex; align-items:center; gap:8px;}
   .note-log .txt{white-space:pre-wrap;}
+  /* long notes collapse to ~4 lines by default (CSS line-clamp), with a fade + "Show more" toggle
+     so a long meeting note doesn't blow out the page — click to reveal the rest. */
+  .note-log .txt.clamped{max-height:5.6em; overflow:hidden; position:relative; -webkit-line-clamp:4; -webkit-box-orient:vertical; display:-webkit-box;}
+  .note-log .txt.clamped::after{content:''; position:absolute; left:0; right:0; bottom:0; height:1.6em; background:linear-gradient(to bottom, transparent, var(--card));}
+  .note-log .toggle{border:none; background:none; color:var(--accent); font-size:11.5px; font-weight:600; padding:0; margin-top:5px; text-decoration:underline; cursor:pointer; display:inline-block;}
   .note-log .d button{border:none; background:none; color:var(--ink-faint); font-size:11px; padding:0; text-decoration:underline;}
   .note-log .d button:hover{color:var(--accent);}
+  /* single-line preview truncation for note snippets shown inline in lists/strips (pipeline row,
+     contact strip, fact-find table) — these link through to the full record, so no expand button. */
+  .note-snip{cursor:default;}
 
   footer.app{max-width:1180px; margin:0 auto; padding:10px 20px 30px; color:var(--ink-faint); font-size:12px;}
 
@@ -1329,6 +1337,20 @@ function num(v){ const n=parseFloat(String(v).replace(/,/g,'')); return isNaN(n)
 function fmt2(n){ n=num(n); return n ? n.toLocaleString('en-SG',{minimumFractionDigits:2, maximumFractionDigits:2}) : ''; }
 function fmt(n){ if(n===null||n===undefined||isNaN(n)) return '—'; const opts = Math.abs(n%1)>0.004 ? {minimumFractionDigits:2,maximumFractionDigits:2} : {maximumFractionDigits:0}; return 'S$' + n.toLocaleString('en-SG', opts); }
 function esc(s){ return String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// short inline preview of a longer note — used anywhere a note is shown as a one-line snippet inside
+// a list/strip (pipeline row, contact strip, fact-find table) rather than its own standalone block.
+function truncateText(t, n){
+  t = (t||'').trim();
+  return t.length > n ? t.slice(0, n).trim() + '…' : t;
+}
+// full note text rendered as its own block (meeting notes log): long notes clamp to ~4 lines with a
+// "Show more" toggle rather than stretching the page; short notes render plainly, no toggle needed.
+function noteTextHtml(text){
+  const t = text || '';
+  const long = t.length > 240 || (t.match(/\n/g)||[]).length >= 3;
+  if(!long) return `<div class="txt">${esc(t)}</div>`;
+  return `<div class="txt clamped">${esc(t)}</div><button class="toggle" onclick="App.toggleNoteEntry(this)">Show more</button>`;
+}
 function stageObj(id){ return STAGES.find(s=>s.id===id) || STAGES[0]; }
 function avatar(p, lg){
   let h=0; for(const ch of p.name) h=(h*31+ch.charCodeAt(0))>>>0;
@@ -1372,7 +1394,7 @@ function pipeRow(p){
   const lastNote=isCase ? (p.activeCase.label||'New case') : ((p.log&&p.log.length)?p.log[0].text:'');
   return `<div class="care-item">
     <div style="flex:1"><b class="plink" onclick="App.openPerson('${p.id}','${isCase?'clients':'pipeline'}')">${esc(p.name)}</b>${hnwPill(p)}${p.nickname?` <span class="nick">${esc(p.nickname)}</span>`:''} ${stagePill(effStage(p))}${p.askReferral?' <span class="pill ref">🤝</span>':''}
-    <div class="when">${duePill(p.nextFollowUp)} · ${esc(lastNote||'—')}</div></div>
+    <div class="when">${duePill(p.nextFollowUp)} · <span class="note-snip">${esc(truncateText(lastNote,70)||'—')}</span></div></div>
     <button class="btn small" onclick="App.openPerson('${p.id}','${isCase?'clients':'pipeline'}')">Open</button>
   </div>`;
 }
@@ -2300,7 +2322,7 @@ const App = {
     if(p.email) bits.push('✉️ '+esc(p.email));
     if(p.source) bits.push('Source: '+esc(p.source));
     if(p.dob) bits.push('DOB: '+fmtDate(p.dob)+' (age '+ageFrom(p.dob)+')');
-    if(p.notes) bits.push(esc(p.notes));
+    if(p.notes) bits.push(`<span class="note-snip">${esc(truncateText(p.notes,100))}</span>`);
     $('#pContact').innerHTML=bits.join(' &nbsp;·&nbsp; ')||'No contact details yet — Edit details to add.';
     // notes
     this.renderNoteLog(p);
@@ -2442,7 +2464,7 @@ const App = {
         <select id="noteEditMeeting" style="width:150px; margin:6px 0">${meetingOptionsHtml(p, e.meeting||'')}</select>
         <textarea id="noteEdit" rows="4">${esc(e.text)}</textarea>
         <div style="display:flex; gap:8px; margin-top:6px"><button class="btn small primary" onclick="App.saveNote(${i})">Save</button><button class="btn small" onclick="App.cancelNote()">Cancel</button></div></div>`;
-      return `<div class="entry"><div class="d">${fmtDate(e.date)}${meetingBadge(e.meeting)}<button onclick="App.editNote(${i})">edit</button><button onclick="App.deleteNote(${i})">delete</button></div><div class="txt">${esc(e.text)}</div></div>`;
+      return `<div class="entry"><div class="d">${fmtDate(e.date)}${meetingBadge(e.meeting)}<button onclick="App.editNote(${i})">edit</button><button onclick="App.deleteNote(${i})">delete</button></div>${noteTextHtml(e.text)}</div>`;
     }).join('')||`<div class="empty">${filter?'No notes for this meeting.':'No notes yet.'}</div>`;
   },
   setNoteFilter(v){ this.state.noteFilter=v; this.rerenderNotePage(); },
@@ -2462,6 +2484,13 @@ const App = {
     this.save(); this.rerenderNotePage();
   },
   editNote(i){ this.state.editingNote=i; this.rerenderNotePage(); setTimeout(()=>{const t=$('#noteEdit'); if(t){t.focus(); t.selectionStart=t.value.length;}},50); },
+  // pure DOM toggle (no rerender) so expanding a long note doesn't reset scroll position or
+  // collapse any other note entry that's mid-edit
+  toggleNoteEntry(btn){
+    const txt=btn.previousElementSibling; if(!txt) return;
+    const stillClamped=txt.classList.toggle('clamped');
+    btn.textContent = stillClamped ? 'Show more' : 'Show less';
+  },
   cancelNote(){ this.state.editingNote=null; this.rerenderNotePage(); },
   saveNote(i){
     const p=this.person(); if(!p||!p.log||!p.log[i]) return;
@@ -2753,7 +2782,7 @@ const App = {
     const insTotalMth=insurance.reduce((a,x)=>a+num(x.mth),0), insTotalYr=insurance.reduce((a,x)=>a+num(x.yr),0);
     const invTotalMth=investments.reduce((a,x)=>a+num(x.mth),0), invTotalYr=investments.reduce((a,x)=>a+num(x.yr),0);
     const planTable=(title,list,totalMth,totalYr)=>`<h3>${title}</h3><table><thead><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr></thead><tbody>
-      ${list.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td>${esc(x.notes)}</td></tr>`).join('')}</tbody>
+      ${list.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td><span class="note-snip">${esc(truncateText(x.notes,60))}</span></td></tr>`).join('')}</tbody>
       <tr class="tot"><td>Total</td><td class="r">${fmt(totalMth)}</td><td class="r">${fmt(totalYr)}</td><td></td></tr></table>`;
     const incomeTable=`<h3>Monthly Income</h3><table><thead><tr><th>Item</th><th class="r">Amount /mth</th></tr></thead><tbody>
       <tr><td>Gross income</td><td class="r">${money(c.gross)}</td></tr>
