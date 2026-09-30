@@ -468,7 +468,21 @@
 #proposalLayer .pp-opt-tab{padding:.55rem 1.3rem;border-radius:24px;border:1.5px solid var(--pp-line);background:transparent;color:var(--pp-muted);font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:var(--pp-sans)}
 #proposalLayer .pp-opt-tab:hover{border-color:var(--pp-terra-soft);color:var(--pp-ink)}
 #proposalLayer .pp-opt-tab.active{background:var(--pp-terra);border-color:var(--pp-terra);color:#fff}
-#proposalLayer .pp-opt-panel .pp-prem{margin-top:2.2rem}
+/* two-column, no-scroll layout: coverage on the left, premium stats+table on the right, sized
+   to fit one screen so Ben never has to scroll mid-presentation to show both halves of an option */
+#proposalLayer .pp-opt-panel{display:grid;grid-template-columns:1.05fr 1fr;gap:2.2rem;align-items:start}
+#proposalLayer .pp-opt-panel .pp-prem{margin-top:0;display:grid;gap:1rem}
+#proposalLayer .pp-opt-panel .pp-stats{grid-template-columns:repeat(2,1fr);gap:.7rem}
+#proposalLayer .pp-opt-panel .pp-stat{padding:1.1rem 1.2rem}
+#proposalLayer .pp-opt-panel .pp-stat .pp-num{font-size:clamp(1.3rem,2vw,1.7rem)}
+#proposalLayer .pp-opt-panel .pp-stat .pp-cap{font-size:.68rem}
+#proposalLayer .pp-opt-panel .pp-cov table,#proposalLayer .pp-opt-panel .pp-prem table{width:100%}
+#proposalLayer .pp-opt-panel .pp-cov td,#proposalLayer .pp-opt-panel .pp-prem td{padding:.6rem 0;font-size:.86rem}
+#proposalLayer .pp-opt-panel .pp-cov td.pp-ben{font-size:.96rem}
+#proposalLayer .pp-opt-panel .pp-cov td.pp-amt{font-size:.98rem}
+#proposalLayer .pp-opt-panel .pp-cov th,#proposalLayer .pp-opt-panel .pp-prem th{padding-bottom:.5rem}
+#proposalLayer .pp-opts .pp-pnote{margin-top:1.1rem;padding:.8rem 1.1rem;font-size:.78rem}
+#proposalLayer .pp-opts .pp-pad{padding-top:clamp(1.6rem,3.6vw,3.2rem);padding-bottom:clamp(1.2rem,2.4vw,2rem)}
 
 /* ---- premium ---- */
 #proposalLayer .pp-prem{display:grid;grid-template-columns:1fr;gap:2rem}
@@ -537,13 +551,17 @@
 
 /* ---- policy: critical illness ---- */
 #proposalLayer .pp-cigrid{display:grid;grid-template-columns:.92fr 1.08fr;gap:2.4rem;align-items:center;width:100%}
-#proposalLayer .pp-cistages{display:flex;gap:1.1rem;align-items:stretch;height:300px}
-#proposalLayer .pp-cistage{flex:1;display:flex;flex-direction:column;justify-content:flex-end;text-align:center}
-#proposalLayer .pp-cival{font-family:var(--pp-serif);color:var(--pp-pine);font-size:1rem;margin-bottom:.4rem}
-#proposalLayer .pp-cibar{width:100%;border-radius:12px 12px 0 0;background:linear-gradient(180deg,var(--pp-terra),var(--pp-terra-soft));height:0;transition:height 1s var(--pp-ease)}
-#proposalLayer .pp-slide.on .pp-cibar{height:var(--h)}
-#proposalLayer .pp-cistage .pp-cl{margin-top:.6rem;font-weight:600;color:var(--pp-ink)}
-#proposalLayer .pp-cistage .pp-cnote{font-size:.74rem;color:var(--pp-muted)}
+/* reset-benefit "claim journey" diagram — replaces the old Early/Intermediate/Major bar chart */
+#proposalLayer .pp-cireset{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem}
+#proposalLayer .pp-cireset-node{flex:1 1 150px;background:#fff;border:1.5px solid var(--pp-line);border-radius:14px;padding:1.2rem 1.1rem;text-align:center}
+#proposalLayer .pp-cireset-node .rn-ico{font-size:1.6rem;margin-bottom:.35rem}
+#proposalLayer .pp-cireset-node .rn-label{font-weight:700;color:var(--pp-ink);font-size:.9rem}
+#proposalLayer .pp-cireset-node .rn-val{font-family:var(--pp-serif);color:var(--pp-terra);font-size:1.08rem;margin-top:.35rem}
+#proposalLayer .pp-cireset-node .rn-note{font-size:.7rem;color:var(--pp-muted);margin-top:.2rem}
+#proposalLayer .pp-cireset-link{display:flex;align-items:center;gap:.4rem;flex-shrink:0}
+#proposalLayer .pp-cireset-arrow{color:var(--pp-terra-soft);font-size:1.2rem}
+#proposalLayer .pp-cireset-reset{background:var(--pp-terra);color:#fff;border-radius:20px;padding:.4rem .85rem;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+#proposalLayer .pp-cireset-tag{margin-top:1.2rem;font-size:.86rem;color:var(--pp-muted);line-height:1.55;max-width:52ch}
 #proposalLayer .pp-cichips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.4rem}
 #proposalLayer .pp-cichip{padding:.35rem .85rem;border:1px solid var(--pp-line);border-radius:20px;font-size:.78rem;color:#5c564c;background:#FBF7EF}
 
@@ -3518,6 +3536,9 @@ const App = {
     $('#propPolicyBlocks').innerHTML=(pr.policies||[]).map((pol,i)=>{
       let body='';
       if(pol.kind==='wholelife'){
+        // Covered-to age is fixed at 100 for this product — normalise any older/legacy value
+        // (the editor no longer offers a way to change it) rather than leave it stale.
+        if(pol.ages) pol.ages.coverEnds='100';
         const facts=(pol.facts||[]).map((f,j)=>`
           <div class="prow-flat"><input type="text" placeholder="e.g. Coverage Period" value="${esc(f.label)}" oninput="App.propPolicySubField(${i},'facts',${j},'label',this.value)"><input type="text" placeholder="e.g. Till Age 65" value="${esc(f.value)}" oninput="App.propPolicySubField(${i},'facts',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'facts',${j})">&times;</button></div>`).join('');
         const surr=(pol.surrender||[]).map((s,j)=>`
@@ -3535,13 +3556,14 @@ const App = {
           <div class="form-row">
             <div><label>Start age</label><input type="number" placeholder="e.g. 35" value="${esc(pol.ages&&pol.ages.start)}" oninput="App.propPolicyAge(${i},'start',this.value)"></div>
             <div><label>Premiums paid-up age</label><input type="number" placeholder="e.g. 65" value="${esc(pol.ages&&pol.ages.paidUp)}" oninput="App.propPolicyAge(${i},'paidUp',this.value)"></div>
-            <div><label>Multiplier ends age</label><input type="number" placeholder="e.g. 75" value="${esc(pol.ages&&pol.ages.multiplierEnds)}" oninput="App.propPolicyAge(${i},'multiplierEnds',this.value)"></div>
-            <div><label>Covered-to age</label><input type="number" placeholder="e.g. 99" value="${esc(pol.ages&&pol.ages.coverEnds)}" oninput="App.propPolicyAge(${i},'coverEnds',this.value)"></div>
+            <div><label>Multiplier ends age</label><select onchange="App.propPolicyAge(${i},'multiplierEnds',this.value)"><option value="65" ${(pol.ages&&pol.ages.multiplierEnds)==='65'?'selected':''}>65</option><option value="75" ${(pol.ages&&pol.ages.multiplierEnds)!=='65'?'selected':''}>75</option></select></div>
+            <div><label>Covered-to age</label><div style="padding:11px 12px;color:var(--ink-soft);font-size:14px">100 <span style="font-size:11px">(fixed for this plan)</span></div></div>
           </div>
           <div class="form-row">
             <div><label>Premium / year (monthly shown automatically on the deck)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div>
-            <div><label>Term (e.g. "20-year term")</label><input type="text" placeholder="e.g. 20-year term" value="${esc(pol.term)}" oninput="App.propPolicyField(${i},'term',this.value)"></div>
+            <div><label>Term</label><select onchange="App.propPolicyField(${i},'term',this.value)">${['15','20','25'].map(t=>`<option value="${t}" ${pol.term===t?'selected':''}>${t}-year term</option>`).join('')}</select></div>
           </div>
+          <div class="cardhint">"Total premiums paid" is added to Facts automatically (premium × term) — no need to type it in below.</div>
           <div class="pp-editor-sub">Facts (left column on the deck)</div>${facts}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'facts')">+ Add fact</button>
           <div class="pp-editor-sub">Projected surrender value (optional)</div>${surr}
@@ -3551,7 +3573,7 @@ const App = {
         const facts=(pol.facts||[]).map((f,j)=>`
           <div class="prow-flat"><input type="text" placeholder="e.g. Major Critical Illness Benefit" value="${esc(f.label)}" oninput="App.propPolicySubField(${i},'facts',${j},'label',this.value)"><input type="text" placeholder="e.g. Unlimited" value="${esc(f.value)}" oninput="App.propPolicySubField(${i},'facts',${j},'value',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'facts',${j})">&times;</button></div>`).join('');
         const stages=(pol.stages||[]).map((s,j)=>`
-          <div class="prow-flat"><input type="text" placeholder="e.g. Early" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stages',${j},'label',this.value)"><input type="number" placeholder="e.g. 50" value="${esc(s.pct)}" style="max-width:90px" oninput="App.propPolicySubField(${i},'stages',${j},'pct',this.value)"><input type="text" placeholder="e.g. 5 x S$150,000" value="${esc(s.val)}" oninput="App.propPolicySubField(${i},'stages',${j},'val',this.value)"><input type="text" placeholder="e.g. per claim" value="${esc(s.note)}" oninput="App.propPolicySubField(${i},'stages',${j},'note',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'stages',${j})">&times;</button></div>`).join('');
+          <div class="prow-flat"><input type="text" placeholder="e.g. 1st Critical Illness" value="${esc(s.label)}" oninput="App.propPolicySubField(${i},'stages',${j},'label',this.value)"><input type="text" placeholder="e.g. Up to 100% IA" value="${esc(s.val)}" oninput="App.propPolicySubField(${i},'stages',${j},'val',this.value)"><input type="text" placeholder="e.g. Full payout on diagnosis" value="${esc(s.note)}" oninput="App.propPolicySubField(${i},'stages',${j},'note',this.value)"><button class="del" onclick="App.propPolicySubDel(${i},'stages',${j})">&times;</button></div>`).join('');
         body=`
           <div class="form-row">
             <div><label>Type / label</label><input type="text" placeholder="Critical Illness" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
@@ -3560,8 +3582,8 @@ const App = {
           <div class="form-row"><div><label>Premium / year (monthly shown automatically on the deck)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,375.13" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div></div>
           <div class="pp-editor-sub">Facts</div>${facts}
           <button class="btn small" onclick="App.propPolicySubAdd(${i},'facts')">+ Add fact</button>
-          <div class="pp-editor-sub">Stages (Early / Intermediate / Major bar chart)</div>${stages}
-          <button class="btn small" onclick="App.propPolicySubAdd(${i},'stages')">+ Add stage</button>
+          <div class="pp-editor-sub">Claim journey (reset benefit story — a "Cover resets" link is drawn between each claim automatically)</div>${stages}
+          <button class="btn small" onclick="App.propPolicySubAdd(${i},'stages')">+ Add claim</button>
           <div class="pp-editor-sub">Feature chips (comma separated)</div>
           <input type="text" placeholder="e.g. 150 Medical Conditions, Ultimate Reset Benefit, Death Benefit, Catastrophic CI Benefit, Ultimate Relapse Benefit" value="${esc((pol.features||[]).join(', '))}" oninput="App.propPolicyFeatures(${i},this.value)">
         `;
@@ -3675,9 +3697,12 @@ function blankProposal(){
   return {
     objectivesKicker: "What we're setting out to do",
     objectivesTitle: "Your objectives",
+    // Ben's standard opening pair — still fully editable per client, this is just the starting
+    // point so a new proposal never opens blank. NOTE: the exact desc wording below is Claude's
+    // best reconstruction of Ben's screenshot (the input boxes cut the text off) — check/edit it.
     objectives: [
-      {title:'Insurance Plans', desc:'To settle your insurance premiums of S$XXX,XXX,XXX and secure comprehensive protection for you and your family'},
-      {title:'Investment Plans', desc:'To settle your investment plans with S$XXX,XXX and build long-term wealth accumulation'}
+      {title:'Life Insurance', desc:'Get a lump sum payout to cover loss of income and ensure your lifestyle will not be compromised'},
+      {title:'Hospital and Accident', desc:'Make sure Hospital and Accident bills are covered for you and your family'}
     ],
     plans: [],
     income: '',
@@ -3805,11 +3830,23 @@ const HOSPITAL_TABLE = {
   ],
 };
 function blankPolicy(kind){
+  // Multiplier ends age is always 65 or 75, Covered-to age is fixed at 100 for this product, and
+  // Term is always a 15/20/25-year premium-payment term — all three are dropdowns/locked in the
+  // editor now rather than free text, per Ben.
   if(kind==='wholelife') return { kind, type:'Whole Life · Death / TPD / Critical Illness', name:'AIA Guaranteed Protect Plus', base:'', boosted:'', multiplier:'',
-    ages:{start:'',paidUp:'',multiplierEnds:'',coverEnds:''}, facts:[], premium:'', term:'', surrender:[] };
+    ages:{start:'',paidUp:'',multiplierEnds:'75',coverEnds:'100'}, facts:[], premium:'', term:'20', surrender:[] };
+  // stages now tell the "reset benefit" story (1st/2nd/3rd+ CI claim, cover resets in between)
+  // rather than the old Early/Intermediate/Major severity bar chart — Ben found that version
+  // didn't communicate what actually makes this plan different (unlimited resets for life).
   if(kind==='ci') return { kind, type:'Critical Illness', name:'AIA Ultimate Critical Cover', facts:[],
-    stages:[{label:'Early',pct:50,val:'Up to 100% IA',note:'per claim'},{label:'Intermediate',pct:75,val:'Up to 100% IA',note:'per claim'},{label:'Major',pct:100,val:'100% IA',note:'lump sum'}],
-    features:[], premium:'' };
+    stages:[
+      {label:'1st Critical Illness', pct:100, val:'Up to 100% IA', note:'Full payout on diagnosis'},
+      {label:'2nd Critical Illness', pct:100, val:'Up to 100% IA', note:'Cover resets automatically'},
+      {label:'3rd Critical Illness & beyond', pct:100, val:'Up to 100% IA', note:'Unlimited resets, for life'}
+    ],
+    // pulled straight from Ben's AIA UCC feature infographic (IMG_2761)
+    features:['150 Medical Conditions','Ultimate Reset Benefit','Death Benefit','Catastrophic CI Benefit','Ultimate Relapse Benefit'],
+    premium:'' };
   if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', term:'30', startAge:'', premium:'' };
   if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
   // hospital — Integrated Shield Plan. tier drives plan name + rider name automatically; the
@@ -3942,14 +3979,21 @@ function ppPlansHtml(pr){
   </section>`;
 }
 function ppWholeLifeSection(c){
-  const facts=(c.facts||[]).map(f=>`<div class="pp-fact"><div class="pp-fl">${esc(f.label)}</div><div class="pp-fv">${esc(f.value)}</div></div>`).join('');
+  // "Total premiums paid" is always shown, computed (premium/year × term), not something Ben
+  // has to remember to type in — appended after whatever facts he's added manually.
+  const factsList=(c.facts||[]).slice();
+  if(num(c.premium) && num(c.term)){
+    factsList.push({label:'Total premiums paid', value:fmt(num(c.premium)*num(c.term))+' (over '+esc(c.term)+' years)'});
+  }
+  const facts=factsList.map(f=>`<div class="pp-fact"><div class="pp-fl">${esc(f.label)}</div><div class="pp-fv">${esc(f.value)}</div></div>`).join('');
   const surr=(c.surrender&&c.surrender.length)?('Projected surrender value — '+c.surrender.map(s=>`<b>Age ${esc(s.age)}:</b> S$ ${esc(s.value)}`).join(' &nbsp;·&nbsp; ')):'';
+  const termLabel=c.term?esc(c.term)+'-year term':'';
   return `<section class="pp-slide pp-policy"><div class="pp-pad pp-polylayout">
     <div class="pp-pcol">
       <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
       <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(c.name)}</h2>
       <div class="pp-facts pp-reveal" style="--i:2">${facts}</div>
-      <div class="pp-prem-line pp-reveal" style="--i:3">${num(c.premium)?`Premium <b>${fmt(num(c.premium))}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(c.premium))} / month)</span>`:''}${c.term?' · '+esc(c.term):''}</div>
+      <div class="pp-prem-line pp-reveal" style="--i:3">${num(c.premium)?`Premium <b>${fmt(num(c.premium))}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(c.premium))} / month)</span>`:''}${termLabel?' · '+termLabel:''}</div>
       <div class="pp-scap pp-reveal" style="--i:4">${surr}</div>
     </div>
     <div class="pp-pchart pp-reveal" style="--i:2">${ppGppChart(c)}</div>
@@ -4002,17 +4046,28 @@ function ppBenefitSection(c, person){
 }
 function ppCiSection(c){
   const facts=(c.facts||[]).map(f=>`<div class="pp-fact"><div class="pp-fl">${esc(f.label)}</div><div class="pp-fv">${esc(f.value)}</div></div>`).join('');
-  const stages=(c.stages||[]).map((s,i)=>`<div class="pp-cistage"><div class="pp-cival">${esc(s.val)}</div><div class="pp-cibar" style="--h:${num(s.pct)}%;transition-delay:${0.45+i*0.15}s"></div><div class="pp-cl">${esc(s.label)}</div><div class="pp-cnote">${esc(s.note)}</div></div>`).join('');
+  // "reset journey" — communicates the actual differentiator (claim again for a later, separate
+  // CI, cover resets in between) instead of the old Early/Intermediate/Major severity bar chart,
+  // which clients found hard to connect to "why is this plan better." A reset chip is inserted
+  // between each pair of claim nodes automatically — Ben only edits the claim nodes themselves.
+  const nodes=(c.stages||[]).map(s=>`<div class="pp-cireset-node"><div class="rn-ico">🏥</div><div class="rn-label">${esc(s.label)}</div><div class="rn-val">${esc(s.val)}</div><div class="rn-note">${esc(s.note)}</div></div>`);
+  const resetPill=`<div class="pp-cireset-link"><span class="pp-cireset-arrow">&rarr;</span><span class="pp-cireset-reset">Cover resets</span><span class="pp-cireset-arrow">&rarr;</span></div>`;
+  const journey=nodes.join(resetPill);
   const chips=(c.features||[]).map(f=>`<span class="pp-cichip">${esc(f)}</span>`).join('');
   const premLine = num(c.premium) ? `Premium <b>${fmt(num(c.premium))}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(c.premium))} / month)</span>` : '';
   return `<section class="pp-slide pp-policy"><div class="pp-pad pp-cigrid">
     <div class="pp-pcol">
       <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
       <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(c.name)}</h2>
+      <div class="pp-lead pp-reveal" style="--i:2;margin-top:.2rem">A comprehensive, standalone Critical Illness term plan &mdash; built to protect against more than one diagnosis.</div>
       <div class="pp-facts pp-reveal" style="--i:2">${facts}</div>
       <div class="pp-prem-line pp-reveal" style="--i:3">${premLine}</div>
     </div>
-    <div class="pp-reveal" style="--i:2"><div class="pp-cistages">${stages}</div><div class="pp-cichips">${chips}</div></div>
+    <div class="pp-reveal" style="--i:2">
+      <div class="pp-cireset">${journey}</div>
+      <div class="pp-cireset-tag">Most Critical Illness plans pay out once, then stop. This one resets &mdash; so you're still covered for what comes next.</div>
+      <div class="pp-cichips">${chips}</div>
+    </div>
   </div>${ppPolicyFoot()}</section>`;
 }
 // ported verbatim (structure/parametrisation) from Odyssey Proposal (Web).html, pp- namespaced
@@ -4137,7 +4192,9 @@ function ppPolicySection(pol, person){
 function ppPremiumTotals(premiumRows){
   let medisave=0, cash=0;
   (premiumRows||[]).forEach(r=>{ medisave+=num(r.medisave); cash+=num(r.cash); });
-  return { medisave, cash, monthly: Math.round((medisave+cash)/12) };
+  // monthly = ALL premiums (MediSave + cash) combined; cashMonthly = cash only, the number that
+  // actually matters for the client's real monthly out-of-pocket since MediSave isn't take-home cash.
+  return { medisave, cash, monthly: Math.round((medisave+cash)/12), cashMonthly: Math.round(cash/12) };
 }
 // combined Summary of Coverage + Premiums page. When a proposal has more than one option, a
 // tab bar lets Ben tap between them live during the meeting — both the coverage table and the
@@ -4164,19 +4221,20 @@ function ppOptionsHtml(pr){
         <div class="pp-stats">
           <div class="pp-stat a"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.medisave}">0</span></div><div class="pp-cap">MediSave / year</div></div>
           <div class="pp-stat b"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.cash}">0</span></div><div class="pp-cap">Cash / year</div></div>
-          <div class="pp-stat c"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.monthly}">0</span></div><div class="pp-cap">per month</div></div>
+          <div class="pp-stat c"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.monthly}">0</span></div><div class="pp-cap">Total premiums / mth</div></div>
+          <div class="pp-stat b"><div class="pp-num">S$ <span class="pp-cnt" data-to="${tot.cashMonthly}">0</span></div><div class="pp-cap">Cash premiums / mth</div></div>
         </div>
         <table><thead><tr><th>Plan</th><th class="c">MediSave</th><th class="r">Cash</th><th class="r">Total / year</th></tr></thead><tbody>${premRows}</tbody></table>
       </div>
     </div>`;
   }).join('');
   return `<section class="pp-slide pp-cov pp-prem-wrap pp-opts">
-    <div class="pp-pad" style="width:100%;display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;max-height:100%">
+    <div class="pp-pad" style="width:100%;display:flex;flex-direction:column;justify-content:flex-start">
       <div class="pp-kicker pp-reveal" style="--i:0">${multi?'Your options':'Summary of coverage & premiums'}</div>
-      <h2 class="pp-reveal" style="--i:1;font-size:clamp(2rem,3.2vw,3rem);margin:.6rem 0 1.2rem">Where you'll be protected, and what it costs.</h2>
+      <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.7rem,2.6vw,2.4rem);margin:.4rem 0 1rem">Where you'll be protected, and what it costs.</h2>
       ${tabsHtml}
       ${panels}
-      <div class="pp-pnote pp-reveal" style="--i:3;margin-top:1.4rem"><b>Payment note.</b> ${esc(pr.premiumNote||'')}</div>
+      <div class="pp-pnote pp-reveal" style="--i:3">${pr.premiumNote?`<b>Payment note.</b> ${esc(pr.premiumNote)}`:''}</div>
     </div>${ppPolicyFoot()}
   </section>`;
 }
