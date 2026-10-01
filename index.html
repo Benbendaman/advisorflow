@@ -3787,7 +3787,20 @@ function blankProposal(){
   };
 }
 function blankProposalOption(label){
-  return { id: uid(), label: label||'Option 1', coverage: [], premium: [] };
+  return { id: uid(), label: label||'Option 1', coverage: ppDefaultCoverageRows(), premium: [] };
+}
+// Ben's standard 5 benefit categories for Summary of coverage, pre-filled with whichever AIA plan
+// normally provides each one (matches the fixed product defaults used throughout the rest of the
+// proposal editor) — so a new option starts with the rows already there and he only has to key in
+// the amount per client, not retype Death/TPD/CI/Hospitalisation/Accident every time.
+function ppDefaultCoverageRows(){
+  return [
+    {benefit:'Death', amount:'', plan:'AIA Guaranteed Protect Plus'},
+    {benefit:'Total Permanent Disability (TPD)', amount:'', plan:'AIA Guaranteed Protect Plus'},
+    {benefit:'Early-Late Stage Critical Illness', amount:'', plan:'AIA Ultimate Critical Cover'},
+    {benefit:'Hospitalisation', amount:'', plan:'AIA HealthShield Gold Max'},
+    {benefit:'Accident', amount:'', plan:'AIA Solitaire Personal Accident'}
+  ];
 }
 // migrates a proposal in place so pr.options always exists — either its own already, or built
 // from the legacy flat pr.coverage/pr.premium arrays a pre-options proposal still has.
