@@ -535,6 +535,16 @@
 #proposalLayer .pp-pchart svg{width:100%;height:auto;display:block}
 #proposalLayer .pp-scap{margin-top:.6rem;font-size:.8rem;color:var(--pp-muted)}
 #proposalLayer .pp-scap b{color:var(--pp-pine)}
+/* Pros/cons callout — fixed plan mechanics (GPP), auto-filled rather than typed per client */
+#proposalLayer .pp-proscons{display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-top:1.3rem}
+#proposalLayer .pp-pc-col{border-radius:12px;padding:.9rem 1.05rem;background:#fff;border:1.5px solid var(--pp-line)}
+#proposalLayer .pp-pc-head{font-weight:700;font-size:.76rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.55rem}
+#proposalLayer .pp-pc-pro{border-left:3px solid var(--pp-pine)}
+#proposalLayer .pp-pc-pro .pp-pc-head{color:var(--pp-pine)}
+#proposalLayer .pp-pc-con{border-left:3px solid var(--pp-terra)}
+#proposalLayer .pp-pc-con .pp-pc-head{color:var(--pp-terra)}
+#proposalLayer .pp-pc-col ul{margin:0;padding-left:1.05rem;display:flex;flex-direction:column;gap:.45rem}
+#proposalLayer .pp-pc-col li{font-size:.74rem;color:var(--pp-text);line-height:1.45}
 #proposalLayer .pp-chartsvg .pp-arrowg{transform:scaleY(.03);transform-box:fill-box;transform-origin:bottom;transition:transform 1s var(--pp-ease) .45s}
 #proposalLayer .pp-slide.on .pp-chartsvg .pp-arrowg{transform:scaleY(1)}
 #proposalLayer .pp-chartsvg .pp-curve{stroke-dasharray:1200;stroke-dashoffset:1200;transition:stroke-dashoffset 1.5s var(--pp-ease) .7s}
@@ -4036,6 +4046,28 @@ function ppWholeLifeSection(c){
   const facts=factsList.map(f=>`<div class="pp-fact"><div class="pp-fl">${esc(f.label)}</div><div class="pp-fv">${esc(f.value)}</div></div>`).join('');
   const surr=(c.surrender&&c.surrender.length)?('Projected surrender value — '+c.surrender.map(s=>`<b>Age ${esc(s.age)}:</b> S$ ${esc(s.value)}`).join(' &nbsp;·&nbsp; ')):'';
   const termLabel=c.term?esc(c.term)+'-year term':'';
+  // Pros/cons callout — fixed, auto-filled plan mechanics (not client-specific, so not editable per
+  // client, same treatment as the UCC Relapse Benefit box). The "coverage drops" con reads off
+  // whichever Multiplier ends age (65/75) is actually selected for this client, rather than a
+  // hardcoded number, so it stays correct either way.
+  const multEnds = (c.ages && c.ages.multiplierEnds) ? c.ages.multiplierEnds : '65';
+  const proscons = `<div class="pp-proscons pp-reveal" style="--i:3">
+    <div class="pp-pc-col pp-pc-pro">
+      <div class="pp-pc-head">Pros</div>
+      <ul>
+        <li>Limited premium term &mdash; pay for a set number of years, covered for life</li>
+        <li>Protected either way: no claims and you still get back a surrender value; a claim, and you get the payout</li>
+        <li>Lifetime coverage up to age 100</li>
+      </ul>
+    </div>
+    <div class="pp-pc-col pp-pc-con">
+      <div class="pp-pc-head">Cons</div>
+      <ul>
+        <li>A single payout ends the plan &mdash; once a claim is paid, cover stops</li>
+        <li>Coverage amount drops after age ${esc(multEnds)}</li>
+      </ul>
+    </div>
+  </div>`;
   return `<section class="pp-slide pp-policy"><div class="pp-pad pp-polylayout">
     <div class="pp-pcol">
       <div class="pp-kicker pp-reveal" style="--i:0">${esc(c.type)}</div>
@@ -4044,7 +4076,10 @@ function ppWholeLifeSection(c){
       <div class="pp-prem-line pp-reveal" style="--i:3">${num(c.premium)?`Premium <b>${fmt(num(c.premium))}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(c.premium))} / month)</span>`:''}${termLabel?' · '+termLabel:''}</div>
       <div class="pp-scap pp-reveal" style="--i:4">${surr}</div>
     </div>
-    <div class="pp-pchart pp-reveal" style="--i:2">${ppGppChart(c)}</div>
+    <div class="pp-reveal" style="--i:2">
+      <div class="pp-pchart">${ppGppChart(c)}</div>
+      ${proscons}
+    </div>
   </div>${ppPolicyFoot()}</section>`;
 }
 function ppBenefitSection(c, person){
