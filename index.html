@@ -290,10 +290,10 @@
   .sc-title{font-weight:700; font-size:14px; margin-bottom:6px;}
   .sc-meta{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .sc-format{font-size:12px; color:var(--ink-soft);}
-  .pill.pillar-person{background:var(--good-soft); color:var(--good);}
-  .pill.pillar-value{background:var(--accent-soft); color:var(--accent);}
-  .pill.pillar-proof{background:var(--warn-soft); color:var(--warn);}
-  .pill.pillar-blend{background:#eee8f8; color:#5b3a9e;}
+  .pill.pillar-fa_career{background:var(--accent-soft); color:var(--accent);}
+  .pill.pillar-personal_human{background:var(--good-soft); color:var(--good);}
+  .pill.pillar-otg_adventure{background:var(--warn-soft); color:var(--warn);}
+  .pill.pillar-fa_otg_blend{background:#eee8f8; color:#5b3a9e;}
 
   /* toast */
   #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#1a2332; color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .25s; z-index:200; pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,.25);}
@@ -1257,16 +1257,12 @@ const CASE_STAGES = ['contacted','appointment','factfind','proposal'];
 /* ---------- social media: content-planning only, no posting/API integration ---------- */
 const SOCIAL_PLATFORMS = ['Instagram Post','Instagram Reel','Story'];
 const SOCIAL_FORMATS = ['Carousel','Single Image','Reel','Text-only'];
-// Melvin's four content pillars (target mix: Person 25, Value 30, Proof 25, Blend 20). Replaced the old topic split on 30 Sep 2026.
 const SOCIAL_PILLARS = [
-  {id:'person', label:'Person'},
-  {id:'value',  label:'Value'},
-  {id:'proof',  label:'Proof'},
-  {id:'blend',  label:'FA × Freedom Blend'},
+  {id:'fa_career',      label:'FA / Career'},
+  {id:'personal_human', label:'Personal / Human'},
+  {id:'otg_adventure',  label:'OTG / Adventure'},
+  {id:'fa_otg_blend',   label:'FA × OTG Blend'},
 ];
-// Old topic-split ids, mapped to the nearest new pillar so stale caches or older rows still display and save cleanly.
-const LEGACY_PILLARS = { fa_career:'value', personal_human:'person', otg_adventure:'person', fa_otg_blend:'blend' };
-function normPillar(id){ return LEGACY_PILLARS[id] || id || ''; }
 function pillarLabel(id){ const p=SOCIAL_PILLARS.find(x=>x.id===id); return p?p.label:''; }
 function formatIcon(f){ return f==='Carousel'?'🖼️':f==='Reel'?'🎬':f==='Text-only'?'📝':f==='Single Image'?'📷':'📄'; }
 function blankSocialPost(date){
@@ -1511,7 +1507,7 @@ function socialPostToRow(x){
     date: x.date || null,
     platform: x.platform || 'Instagram Post',
     format: x.format || 'Carousel',
-    pillar: normPillar(x.pillar) || null,
+    pillar: x.pillar || null,
     status: x.status || 'idea',
     hook: x.hook || null,
     caption: x.caption || null,
@@ -1533,7 +1529,7 @@ function rowToSocialPost(row){
     date: row.date || '',
     platform: row.platform || 'Instagram Post',
     format: row.format || 'Carousel',
-    pillar: normPillar(row.pillar),
+    pillar: row.pillar || '',
     status: row.status || 'idea',
     hook: row.hook || '',
     caption: row.caption || '',
@@ -1704,8 +1700,6 @@ const App = {
     if(!this.data.socialPosts) this.data.socialPosts=[]; // older local caches predate the Social Media tab
     if(!this.data.pendingDeletes) this.data.pendingDeletes={ people:[], socialPosts:[] }; // older local caches predate the pending-delete queue
     let changed=false;
-    // pillar rename (30 Sep 2026): convert any old topic-split ids left in a local cache
-    this.data.socialPosts.forEach(sp=>{ const n=normPillar(sp.pillar); if(n!==(sp.pillar||'')){ sp.pillar=n; changed=true; } });
     // one-time upgrade: promote "HNW" markers stashed in notes (from the AdvisorQuest migration) to a real flag
     if(!this.data.hnwMigrated){
       (this.data.people||[]).forEach(p=>{
