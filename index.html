@@ -489,6 +489,13 @@
 #proposalLayer .pp-opt-panel .pp-cov td.pp-ben{font-size:.96rem}
 #proposalLayer .pp-opt-panel .pp-cov td.pp-amt{font-size:.98rem}
 #proposalLayer .pp-opt-panel .pp-cov th,#proposalLayer .pp-opt-panel .pp-prem th{padding-bottom:.5rem}
+/* the narrower options-panel tables have no horizontal cell padding by default, so adjacent
+   right/centre-aligned columns (e.g. Cash and Total / year) sit flush against each other with no
+   gutter — add a left gap to those columns only, the first (label) column stays flush-left */
+#proposalLayer .pp-opt-panel .pp-cov th.c,#proposalLayer .pp-opt-panel .pp-cov td.c,
+#proposalLayer .pp-opt-panel .pp-cov th.r,#proposalLayer .pp-opt-panel .pp-cov td.r,
+#proposalLayer .pp-opt-panel .pp-prem th.c,#proposalLayer .pp-opt-panel .pp-prem td.c,
+#proposalLayer .pp-opt-panel .pp-prem th.r,#proposalLayer .pp-opt-panel .pp-prem td.r{padding-left:1.1rem}
 #proposalLayer .pp-opts .pp-pnote{margin-top:1.1rem;padding:.8rem 1.1rem;font-size:.78rem}
 #proposalLayer .pp-opts .pp-pad{padding-top:clamp(1.6rem,3.6vw,3.2rem);padding-bottom:clamp(1.2rem,2.4vw,2rem)}
 
