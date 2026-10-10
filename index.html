@@ -156,6 +156,11 @@
   /* single-line preview truncation for note snippets shown inline in lists/strips (pipeline row,
      contact strip, fact-find table) — these link through to the full record, so no expand button. */
   .note-snip{cursor:default;}
+  /* Paid up / single-pay plans: premium is settled, so the premium inputs grey out */
+  .minitable td.paidcell{text-align:center;}
+  .minitable td.paidcell input{width:auto;transform:scale(1.2);cursor:pointer;}
+  .minitable tr.paidrow input.money:not(.keep){opacity:.45;text-decoration:line-through;}
+  .minitable tr.paidrow td.namecol::after{content:'Paid up';display:inline-block;margin-top:4px;font-size:10.5px;font-weight:700;color:var(--good,#2f7d5a);background:var(--good-soft,#e4f2ea);border-radius:10px;padding:1px 8px;}
 
   footer.app{max-width:1180px; margin:0 auto; padding:10px 20px 30px; color:var(--ink-faint); font-size:12px;}
 
@@ -596,6 +601,29 @@
 #proposalLayer .pp-cirelapse{margin-top:1.2rem;background:#FBF7EF;border:1px solid var(--pp-line);border-radius:12px;padding:.95rem 1.15rem}
 #proposalLayer .pp-cirelapse-head{font-weight:700;color:var(--pp-ink);font-size:.86rem;margin-bottom:.4rem}
 #proposalLayer .pp-cirelapse-body{font-size:.76rem;color:var(--pp-muted);line-height:1.55}
+#proposalLayer .pp-p3{display:grid;grid-template-columns:.9fr 1.1fr;gap:2.6rem;align-items:center;width:100%}
+#proposalLayer .pp-p3 .pp-stages{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:1.1rem}
+#proposalLayer .pp-p3 .pp-stagechip{padding:.32rem .8rem;border:1px solid var(--pp-line);border-radius:20px;font-size:.74rem;color:#5c564c;background:#FBF7EF}
+#proposalLayer .pp-p3 .pp-stagechip b{color:var(--pp-terra)}
+#proposalLayer .pp-p3 .pp-bigtrio{display:flex;gap:.6rem;margin-top:1.1rem}
+#proposalLayer .pp-p3 .pp-bigtrio div{flex:1;background:#fff;border:1.5px solid var(--pp-line);border-radius:12px;padding:.7rem .5rem;text-align:center;font-size:.72rem;color:var(--pp-muted);letter-spacing:.04em}
+#proposalLayer .pp-p3 .pp-bigtrio div b{display:block;font-family:var(--pp-serif);font-size:1.02rem;color:var(--pp-ink);font-weight:500;letter-spacing:0;margin-bottom:.1rem}
+#proposalLayer .pp-p3 .pp-bigtrio span.ic{font-size:1.25rem;display:block;margin-bottom:.2rem}
+#proposalLayer .pp-p3tl{background:#fff;border:1.5px solid var(--pp-line);border-radius:18px;padding:1.3rem 1.5rem 1.2rem}
+#proposalLayer .pp-p3tl-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem}
+#proposalLayer .pp-p3tl-head h3{font-size:1.15rem}
+#proposalLayer .pp-p3tabs{display:flex;gap:.4rem}
+#proposalLayer .pp-p3tab{padding:.4rem .95rem;border-radius:20px;border:1.5px solid var(--pp-line);background:transparent;color:var(--pp-muted);font-size:.74rem;font-weight:600;cursor:pointer;font-family:var(--pp-sans);transition:all .2s}
+#proposalLayer .pp-p3tab:hover{border-color:var(--pp-terra-soft);color:var(--pp-ink)}
+#proposalLayer .pp-p3tab.active{background:var(--pp-terra);border-color:var(--pp-terra);color:#fff}
+#proposalLayer .pp-p3scn{display:none}
+#proposalLayer .pp-p3scn.active{display:block}
+#proposalLayer .pp-p3nodes{position:relative;padding-left:2.1rem}
+#proposalLayer .pp-p3nodes:before{content:"";position:absolute;left:.62rem;top:.5rem;bottom:.5rem;width:2px;background:var(--pp-line)}
+#proposalLayer .pp-p3node{position:relative;padding:.1rem 0 .85rem;opacity:0;transform:translateY(8px)}
+#proposalLayer .pp-p3scn.active .pp-p3node{animation:ppP3In .5s var(--pp-ease) forwards;animation-delay:calc(var(--n,0)*140ms)}
+@keyframes ppP3In{to{opacity:1;transform:none}}
+@media(max-width:900px){#proposalLayer .pp-p3{grid-template-columns:1fr;gap:1.4rem}}
 #proposalLayer .pp-cirelapse-body b{color:var(--pp-text)}
 #proposalLayer .pp-cichips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.4rem}
 #proposalLayer .pp-cichip{padding:.35rem .85rem;border:1px solid var(--pp-line);border-radius:20px;font-size:.78rem;color:#5c564c;background:#FBF7EF}
@@ -966,7 +994,7 @@
     <div class="card">
       <h2>Investment / Savings Plans</h2>
       <table class="minitable" id="invTable">
-        <thead><tr><th>Plan name</th><th style="width:130px">Premium /mth</th><th style="width:130px">Premium /yr</th><th>Fund value / notes</th><th style="width:36px"></th></tr></thead>
+        <thead><tr><th>Plan name</th><th style="width:130px">Premium /mth</th><th style="width:130px">Premium /yr</th><th style="width:64px" title="Single pay or fully paid up: premium is settled, so it no longer counts toward monthly cashflow">Paid up</th><th>Fund value / notes</th><th style="width:36px"></th></tr></thead>
         <tbody></tbody>
       </table>
       <button class="btn small addrow" onclick="App.ffAddRow('investments')">+ Add plan</button>
@@ -976,13 +1004,13 @@
     <div class="card">
       <h2>Insurance Plans</h2>
       <table class="minitable" id="insTable">
-        <thead><tr><th>Plan name</th><th style="width:110px">Prem /mth</th><th style="width:110px">Prem /yr</th><th>Coverage / notes</th><th style="width:100px">Death</th><th style="width:100px">TPD</th><th style="width:100px">Early/Int CI</th><th style="width:100px">Late CI</th><th style="width:36px"></th></tr></thead>
+        <thead><tr><th>Plan name</th><th style="width:110px">Prem /mth</th><th style="width:110px">Prem /yr</th><th style="width:64px" title="Single pay or fully paid up: premium is settled, so it no longer counts toward monthly cashflow">Paid up</th><th>Coverage / notes</th><th style="width:100px">Death</th><th style="width:100px">TPD</th><th style="width:100px">Early/Int CI</th><th style="width:100px">Late CI</th><th style="width:36px"></th></tr></thead>
         <tbody></tbody>
       </table>
       <button class="btn small addrow" onclick="App.ffAddRow('insurance')">+ Add plan</button>
       <div class="ff-computed"><span>Total insurance premiums (cash /mth)</span><b id="c_ins">—</b></div>
       <div class="cov-grid" id="c_cov"></div>
-      <div class="calcnote">Tip: monthly and yearly premiums fill each other in automatically. For MediSave-paid premiums (e.g. Integrated Shield base): enter the yearly amount, then clear /mth back to 0 so it doesn't hit cash flow, and put "MediSave" in notes.</div>
+      <div class="calcnote">Tip: monthly and yearly premiums fill each other in automatically. For MediSave-paid premiums (e.g. Integrated Shield base): enter the yearly amount, then clear /mth back to 0 so it doesn't hit cash flow, and put "MediSave" in notes.<br>Single-pay or fully paid-up plan? Tick <b>Paid up</b>: it drops out of monthly cashflow and shows as "Paid up" on the printed summary.</div>
     </div>
   </section>
 
@@ -1032,6 +1060,7 @@
         <button class="btn small" onclick="App.propAddPolicy('wholelife','AIA Guaranteed Protect Plus')">+ Guaranteed Protect Plus</button>
         <button class="btn small" onclick="App.propAddPolicy('term','AIA Secure Flexi Term')">+ Secure Flexi Term</button>
         <button class="btn small" onclick="App.propAddPolicy('ci','AIA Ultimate Critical Cover')">+ Ultimate Critical Cover</button>
+        <button class="btn small" onclick="App.propAddPolicy('protect3','AIA Protect 3')">+ AIA Protect 3</button>
         <button class="btn small" onclick="App.propAddPolicy('accident','AIA Solitaire Personal Accident')">+ Solitaire Personal Accident</button>
         <button class="btn small" onclick="App.propAddPolicy('hospital','A')">+ HealthShield Gold Max A</button>
         <button class="btn small" onclick="App.propAddPolicy('hospital','B')">+ HealthShield Gold Max B</button>
@@ -2615,8 +2644,8 @@ const App = {
     const expTotal=(ff.expenses||[]).reduce((a,x)=>a+num(x.amt),0);
     const bankTotal=(ff.bank||[]).reduce((a,x)=>a+num(x.amt),0);
     const cpfBal=num(ff.cpf.OA)+num(ff.cpf.SA)+num(ff.cpf.MA)+num(ff.cpf.RA);
-    const invTotal=(ff.investments||[]).reduce((a,x)=>a+num(x.mth),0);
-    const insTotal=(ff.insurance||[]).reduce((a,x)=>a+num(x.mth),0);
+    const invTotal=(ff.investments||[]).reduce((a,x)=>a+(x.paid?0:num(x.mth)),0); // paid-up / single-pay plans no longer hit monthly cashflow
+    const insTotal=(ff.insurance||[]).reduce((a,x)=>a+(x.paid?0:num(x.mth)),0);
     const covDeath=(ff.insurance||[]).reduce((a,x)=>a+num(x.death),0);
     const covTpd=(ff.insurance||[]).reduce((a,x)=>a+num(x.tpd),0);
     const covEci=(ff.insurance||[]).reduce((a,x)=>a+num(x.eci),0);
@@ -2647,16 +2676,18 @@ const App = {
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(ff.cpf[k])}" oninput="App.ffCpf('${k}',this.value)"></td></tr>`).join('');
     // investments
     $('#invTable tbody').innerHTML=(ff.investments||[]).map((x,i)=>`
-      <tr><td class="namecol"><textarea rows="1" class="planname" placeholder="Plan name" oninput="App.ffName('investments',${i},this)" onfocus="App.ffName('investments',${i},this)" onblur="App.hideSugg(this)">${esc(x.name)}</textarea><div class="sugg" style="display:none"></div></td>
+      <tr class="${x.paid?'paidrow':''}"><td class="namecol"><textarea rows="1" class="planname" placeholder="Plan name" oninput="App.ffName('investments',${i},this)" onfocus="App.ffName('investments',${i},this)" onblur="App.hideSugg(this)">${esc(x.name)}</textarea><div class="sugg" style="display:none"></div></td>
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.mth)}" oninput="App.ffRow('investments',${i},'mth',this.value); App.ffAutoYr('investments',${i})"></td>
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.yr)}" oninput="App.ffRow('investments',${i},'yr',this.value); App.ffAutoMth('investments',${i})"></td>
+      <td class="paidcell"><input type="checkbox" title="Mark premium as settled (single pay / paid up)" ${x.paid?'checked':''} onchange="App.ffPaid('investments',${i},this.checked)"></td>
       <td><textarea rows="1" placeholder="Fund value, fund name..." oninput="App.ffRow('investments',${i},'notes',this.value); autoGrowTa(this)">${esc(x.notes)}</textarea></td>
       <td><button class="del" onclick="App.ffDelRow('investments',${i})">&times;</button></td></tr>`).join('');
     // insurance
     $('#insTable tbody').innerHTML=(ff.insurance||[]).map((x,i)=>`
-      <tr><td class="namecol"><textarea rows="1" class="planname" placeholder="Plan name" oninput="App.ffName('insurance',${i},this)" onfocus="App.ffName('insurance',${i},this)" onblur="App.hideSugg(this)">${esc(x.name)}</textarea><div class="sugg" style="display:none"></div></td>
+      <tr class="${x.paid?'paidrow':''}"><td class="namecol"><textarea rows="1" class="planname" placeholder="Plan name" oninput="App.ffName('insurance',${i},this)" onfocus="App.ffName('insurance',${i},this)" onblur="App.hideSugg(this)">${esc(x.name)}</textarea><div class="sugg" style="display:none"></div></td>
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.mth)}" oninput="App.ffRow('insurance',${i},'mth',this.value); App.ffAutoYr('insurance',${i})"></td>
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.yr)}" oninput="App.ffRow('insurance',${i},'yr',this.value); App.ffAutoMth('insurance',${i})"></td>
+      <td class="paidcell"><input type="checkbox" title="Mark premium as settled (single pay / paid up)" ${x.paid?'checked':''} onchange="App.ffPaid('insurance',${i},this.checked)"></td>
       <td><textarea rows="1" placeholder="Coverage details" oninput="App.ffRow('insurance',${i},'notes',this.value); autoGrowTa(this)">${esc(x.notes)}</textarea></td>
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.death)}" oninput="App.ffRow('insurance',${i},'death',this.value)"></td>
       <td><input type="text" inputmode="decimal" class="money" value="${fmt2(x.tpd)}" oninput="App.ffRow('insurance',${i},'tpd',this.value)"></td>
@@ -2721,6 +2752,16 @@ const App = {
     setTimeout(()=>{ const box=el.parentElement && el.parentElement.querySelector('.sugg'); if(box) box.style.display='none'; },150);
   },
   ffCpf(k,v){ const ff=this.currentFF(); ff.cpf[k]=num(v); this.save(); this.ffCalc(); },
+  // Mark a plan's premium as settled (single pay / fully paid up). Values stay on the row for the
+  // record, but a paid plan drops out of the monthly cashflow totals and shows "Paid up" in print.
+  ffPaid(section,i,checked){
+    const ff=this.currentFF(); if(!ff||!ff[section]||!ff[section][i]) return;
+    ff[section][i].paid=!!checked;
+    this.save();
+    const tr=document.querySelectorAll('#'+(section==='investments'?'invTable':'insTable')+' tbody tr')[i];
+    if(tr) tr.classList.toggle('paidrow',!!checked);
+    this.ffCalc();
+  },
   ffAddRow(section){
     const ff=this.currentFF(); if(!ff) return;
     if(section==='expenses') ff.expenses.push({label:'',amt:0});
@@ -2806,10 +2847,10 @@ const App = {
     const insurance=(ff.insurance||[]).filter(x=>x.name||num(x.mth)||num(x.yr));
     const investments=(ff.investments||[]).filter(x=>x.name||num(x.mth)||num(x.yr));
     const expenses=(ff.expenses||[]).filter(x=>x.label||num(x.amt));
-    const insTotalMth=insurance.reduce((a,x)=>a+num(x.mth),0), insTotalYr=insurance.reduce((a,x)=>a+num(x.yr),0);
-    const invTotalMth=investments.reduce((a,x)=>a+num(x.mth),0), invTotalYr=investments.reduce((a,x)=>a+num(x.yr),0);
+    const insTotalMth=insurance.reduce((a,x)=>a+(x.paid?0:num(x.mth)),0), insTotalYr=insurance.reduce((a,x)=>a+(x.paid?0:num(x.yr)),0);
+    const invTotalMth=investments.reduce((a,x)=>a+(x.paid?0:num(x.mth)),0), invTotalYr=investments.reduce((a,x)=>a+(x.paid?0:num(x.yr)),0);
     const planTable=(title,list,totalMth,totalYr)=>`<h3>${title}</h3><table><thead><tr><th>Plan</th><th class="r">Premium /mth</th><th class="r">Premium /yr</th><th>Notes</th></tr></thead><tbody>
-      ${list.map(x=>`<tr><td>${esc(x.name)}</td><td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td><td><span class="note-snip">${esc(truncateText(x.notes,60))}</span></td></tr>`).join('')}</tbody>
+      ${list.map(x=>`<tr><td>${esc(x.name)}</td>${x.paid?'<td class="r" colspan="2"><b>Paid up</b> (premium settled)</td>':`<td class="r">${money(x.mth)}</td><td class="r">${money(x.yr)}</td>`}<td><span class="note-snip">${esc(truncateText(x.notes,60))}</span></td></tr>`).join('')}</tbody>
       <tr class="tot"><td>Total</td><td class="r">${fmt(totalMth)}</td><td class="r">${fmt(totalYr)}</td><td></td></tr></table>`;
     const incomeTable=`<h3>Monthly Income</h3><table><thead><tr><th>Item</th><th class="r">Amount /mth</th></tr></thead><tbody>
       <tr><td>Gross income</td><td class="r">${money(c.gross)}</td></tr>
@@ -3533,7 +3574,7 @@ const App = {
     } else if(name){
       pol.name=name;
     }
-    if(kind==='term'){
+    if(kind==='term' || kind==='protect3'){
       const p=this.person();
       if(p && p.dob){ const a=ageFrom(p.dob); if(a!=null) pol.startAge=String(a); }
     }
@@ -3588,7 +3629,7 @@ const App = {
   },
   renderProposalPolicies(){
     const pr=this.currentProposal();
-    const kindLabel={wholelife:'Whole Life',hospital:'Hospital & Surgical',accident:'Personal Accident',ci:'Critical Illness',term:'Term Life'};
+    const kindLabel={wholelife:'Whole Life',hospital:'Hospital & Surgical',accident:'Personal Accident',ci:'Critical Illness',term:'Term Life',protect3:'Critical Illness (Protect 3)'};
     $('#propPolicyBlocks').innerHTML=(pr.policies||[]).map((pol,i)=>{
       let body='';
       if(pol.kind==='wholelife'){
@@ -3643,6 +3684,22 @@ const App = {
           <div class="cardhint">The Ultimate Relapse Benefit callout (Major Cancer/Stroke/Heart Attack/Major Organ Transplant/Heart Valve Surgery, no remission clause, 50% of IA, 2-year wait) is fixed product wording and shown automatically below — no need to add it here.</div>
           <div class="pp-editor-sub">Feature chips (comma separated)</div>
           <input type="text" placeholder="e.g. 150 Medical Conditions, Ultimate Reset Benefit, Death Benefit, Catastrophic CI Benefit, Ultimate Relapse Benefit" value="${esc((pol.features||[]).join(', '))}" oninput="App.propPolicyFeatures(${i},this.value)">
+        `;
+      } else if(pol.kind==='protect3'){
+        body=`
+          <div class="form-row">
+            <div><label>Type / label</label><input type="text" placeholder="Critical Illness" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="AIA Protect 3" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Plan size</label><select onchange="App.propPolicyField(${i},'planTier',this.value)">${[['1','Plan 1 · S$100,000'],['2','Plan 2 · S$200,000'],['3','Plan 3 · S$300,000']].map(o=>`<option value="${o[0]}" ${String(pol.planTier)===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
+            <div><label>Renewal option</label><select onchange="App.propPolicyField(${i},'renewal',this.value)"><option value="yearly" ${pol.renewal!=='level'?'selected':''}>Yearly increasing premium</option><option value="level" ${pol.renewal==='level'?'selected':''}>Fixed premium from age 70</option></select></div>
+          </div>
+          <div class="form-row">
+            <div><label>Start age (auto-filled from DOB, edit if needed)</label><input type="number" placeholder="e.g. 35" value="${esc(pol.startAge)}" oninput="App.propPolicyField(${i},'startAge',this.value)"></div>
+            <div><label>Premium / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 1,250.00" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div>
+          </div>
+          <div class="cardhint">Cashback, gender cancer top-up and the payout timeline draw themselves from plan size and start age. Last entry age is 65. Not Medisave approved. Check premium against the AIA rate table.</div>
         `;
       } else if(pol.kind==='term'){
         body=`
@@ -3899,6 +3956,84 @@ const HOSPITAL_TABLE = {
     ]],
   ],
 };
+
+// ---------- AIA Protect 3 : one-page policy slide ----------
+const PROTECT3_TIERS = {
+  1:{ci:100000, gender:15000, cashback:25000},
+  2:{ci:200000, gender:30000, cashback:50000},
+  3:{ci:300000, gender:45000, cashback:75000}
+};
+function ppProtect3Ages(pol){
+  const start = Math.max(0, Math.min(65, num(pol.startAge)||35));
+  // cashback: policy anniversary on/after 65th birthday, or 15 years from policy start, whichever is LATER
+  const cashAge = Math.max(65, start+15);
+  const claimAge = Math.min(84, cashAge+7);       // illustrative claim, mirrors AIA's own Gilbert example (65 -> 72)
+  return {start, cashAge, claimAge};
+}
+function ppProtect3Toggle(btn, which){
+  const root = btn.closest('.pp-p3tl');
+  root.querySelectorAll('.pp-p3tab').forEach(b=>b.classList.toggle('active', b===btn));
+  root.querySelectorAll('.pp-p3scn').forEach(s=>s.classList.toggle('active', s.dataset.scn===which));
+}
+function ppProtect3Section(pol){
+  const T = PROTECT3_TIERS[num(pol.planTier)] || PROTECT3_TIERS[3];
+  const A = ppProtect3Ages(pol);
+  const level = pol.renewal === 'level';
+  const total = T.cashback + T.ci + T.gender;
+  const premLine = num(pol.premium)
+    ? `Premium <b>${fmt(num(pol.premium))}</b> / year <span style="color:var(--pp-muted)">(${fmt(ppMonthly(pol.premium))} / month)</span>`
+    : '';
+  const node = (n,age,text,amt,cls)=>`<div class="pp-p3node ${cls||''}" style="--n:${n}"><div class="pp-p3age">${age}</div><div class="t">${text}</div>${amt?`<div class="amt">${amt}</div>`:''}</div>`;
+
+  // Scenario A: stays claim-free
+  let a=0, scnFree = node(a++,`Age ${A.start} &middot; You start`,`Cover begins: <b>${fmt(T.ci)}</b> for early, intermediate and major stage cancer, heart attack and stroke.`,'');
+  scnFree += node(a++,`Age ${A.cashAge} &middot; Claim-free`,`No claim made, so <b>25%</b> of your cover comes back to you. Your cover carries on.`,`${fmt(T.cashback)} cashback`,'good');
+  if(A.cashAge < 70) scnFree += node(a++,`Age 70 &middot; Your choice`,level?`You lock in <b>fixed premiums</b>, so what you pay stays the same until 85.`:`You can switch to <b>fixed premiums</b> so what you pay stays the same until 85.`,'');
+  scnFree += node(a++,`Up to age 85`,`Cover continues for the years you are most likely to need it.`,'','good');
+
+  // Scenario B: claims at a major stage (AIA's own worked example, adapted to this client)
+  let b=0, scnClaim = node(b++,`Age ${A.start} &middot; You start`,`Cover begins: <b>${fmt(T.ci)}</b>.`,'');
+  scnClaim += node(b++,`Age ${A.cashAge} &middot; Claim-free`,`<b>25%</b> of your cover comes back to you.`,`${fmt(T.cashback)} cashback`,'good');
+  scnClaim += node(b++,`Age ${A.claimAge} &middot; Major stage cancer`,`Diagnosed with a major stage cancer, for example lung cancer. You receive the full cover, plus the <b>15% gender cancer top-up</b>.`,`${fmt(T.ci)} + ${fmt(T.gender)} = ${fmt(T.ci+T.gender)}`,'hit');
+  scnClaim += node(b++,`After the payout`,`The plan ends once the critical illness benefit is paid.`,'');
+
+  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-p3">
+    <div class="pp-pcol">
+      <div class="pp-kicker pp-reveal" style="--i:0">Critical Illness &middot; Cancer, Heart Attack, Stroke</div>
+      <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(pol.name)}</h2>
+      <div class="pp-lead pp-reveal" style="--i:2;margin-top:.2rem">Stronger cover for the 3 illnesses behind about 90% of critical illness claims, with 25% of your cover back if you stay claim-free.</div>
+      <div class="pp-bigtrio pp-reveal" style="--i:3">
+        <div><span class="ic">&#127895;&#65039;</span><b>Cancer</b>3 stages</div>
+        <div><span class="ic">&#10084;&#65039;</span><b>Heart attack</b>3 stages</div>
+        <div><span class="ic">&#129504;</span><b>Stroke</b>3 stages</div>
+      </div>
+      <div class="pp-facts pp-reveal" style="--i:3">
+        <div class="pp-fact"><div class="pp-fl">Coverage amount</div><div class="pp-fv">${fmt(T.ci)}</div></div>
+        <div class="pp-fact"><div class="pp-fl">Covered up to</div><div class="pp-fv">Age 85</div></div>
+        <div class="pp-fact"><div class="pp-fl">Cashback if claim-free</div><div class="pp-fv">${fmt(T.cashback)} <span style="font-size:.8rem;color:var(--pp-muted)">(25%) at age ${A.cashAge}</span></div></div>
+        <div class="pp-fact"><div class="pp-fl">Gender cancer top-up (once, from year 3)</div><div class="pp-fv">+${fmt(T.gender)} <span style="font-size:.8rem;color:var(--pp-muted)">(15%)</span></div></div>
+      </div>
+      <div class="pp-prem-line pp-reveal" style="--i:4">${premLine}</div>
+    </div>
+    <div class="pp-reveal" style="--i:2">
+      <div class="pp-p3tl">
+        <div class="pp-p3tl-head"><h3>How it could play out</h3>
+          <div class="pp-p3tabs"><button class="pp-p3tab active" onclick="ppProtect3Toggle(this,'free')">Stay claim-free</button><button class="pp-p3tab" onclick="ppProtect3Toggle(this,'claim')">Claim at major stage</button></div>
+        </div>
+        <div class="pp-p3scn active" data-scn="free">
+          <div class="pp-p3nodes">${scnFree}</div>
+          <div class="pp-p3total"><span>Cashback back in your hands</span><b>${fmt(T.cashback)}</b></div>
+        </div>
+        <div class="pp-p3scn" data-scn="claim">
+          <div class="pp-p3nodes">${scnClaim}</div>
+          <div class="pp-p3total"><span>Total received over the plan</span><b>${fmt(total)}</b></div>
+        </div>
+        <div class="pp-p3fine">Illustration based on AIA's own example. Premiums are not guaranteed and rise with age${level?'; this quote uses fixed premiums from age 70':''}. Cashback is paid once, on the policy anniversary on or after age 65 or 15 years from the policy date, whichever is later. The plan ends after the critical illness benefit is paid. Subject to underwriting, waiting and survival periods and exclusions. Refer to the product summary.</div>
+      </div>
+    </div>
+  </div>${ppPolicyFoot()}</section>`;
+}
+
 function blankPolicy(kind){
   // Multiplier ends age is always 65 or 75, Covered-to age is fixed at 100 for this product, and
   // Term is always a 15/20/25-year premium-payment term — all three are dropdowns/locked in the
@@ -3919,6 +4054,7 @@ function blankPolicy(kind){
     // pulled straight from Ben's AIA UCC feature infographic (IMG_2761)
     features:['150 Medical Conditions','Ultimate Reset Benefit','Death Benefit','Catastrophic CI Benefit','Ultimate Relapse Benefit'],
     premium:'' };
+  if(kind==='protect3') return { kind, type:'Critical Illness · Cancer, Heart Attack, Stroke', name:'AIA Protect 3', planTier:'3', startAge:'', renewal:'yearly', premium:'' };
   if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', term:'30', startAge:'', premium:'' };
   if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
   // hospital — Integrated Shield Plan. tier drives plan name + rider name automatically; the
@@ -4286,6 +4422,7 @@ function ppPolicySection(pol, person){
   if(pol.kind==='wholelife') return ppWholeLifeSection(pol);
   if(pol.kind==='ci') return ppCiSection(pol);
   if(pol.kind==='term') return ppTermSection(pol);
+  if(pol.kind==='protect3') return ppProtect3Section(pol);
   if(pol.kind==='accident') return ppSolitairePaSection(pol);
   return ppBenefitSection(pol, person); // hospital
 }
@@ -5048,6 +5185,34 @@ App.init();
     margin-top:3px;
   }
 
+
+  /* ---- Bonus breakdown (draft): welcome, special 5%, special 8% ---- */
+  .bonus-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;margin-bottom:22px;}
+  .bonus-card h5{margin:0 0 2px;font-size:14px;color:var(--navy);}
+  .bonus-card .bonus-sub{font-size:12px;color:var(--muted);margin:0 0 12px;}
+  .bonus-stack{display:flex;height:12px;border-radius:7px;overflow:hidden;background:#efe9df;margin-bottom:14px;}
+  .bonus-stack span{display:block;height:100%;transition:width .35s ease;}
+  .bonus-stack .seg-w{background:var(--navy);}
+  .bonus-stack .seg-s5{background:var(--bronze-light);}
+  .bonus-stack .seg-s8{background:var(--teal);}
+  .bonus-row{display:grid;grid-template-columns:12px 1fr auto;column-gap:12px;align-items:start;padding:10px 0;border-top:1px solid var(--line);}
+  .bonus-row:first-of-type{border-top:none;}
+  .bonus-dot{width:10px;height:10px;border-radius:50%;margin-top:6px;}
+  .bonus-row.w .bonus-dot{background:var(--navy);}
+  .bonus-row.s5 .bonus-dot{background:var(--bronze-light);}
+  .bonus-row.s8 .bonus-dot{background:var(--teal);}
+  .bonus-row .b-title{font-size:13.5px;font-weight:600;color:var(--navy);}
+  .bonus-row .b-title em{font-style:normal;font-weight:500;color:var(--muted);margin-left:6px;font-size:12px;}
+  .bonus-row .b-note{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45;}
+  .bonus-row .b-val{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--navy);text-align:right;white-space:nowrap;}
+  .bonus-row.s5 .b-val{color:var(--bronze);}
+  .bonus-row.s8 .b-val{color:var(--teal);}
+  .bonus-row.off{opacity:.45;}
+  .bonus-total{display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px solid var(--navy);margin-top:4px;padding-top:10px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:var(--navy);}
+  .bonus-total b{font-family:var(--serif);font-size:20px;letter-spacing:0;text-transform:none;color:var(--bronze);}
+  .legend-chip .swatch.band{height:10px;width:14px;opacity:.55;}
+  .chart-tooltip .tt-bonus{margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.18);color:var(--bronze-light);}
+
   .chart-card{
     background:var(--paper);
     border:1px solid var(--line);
@@ -5361,7 +5526,7 @@ App.init();
             <div class="assumption-block">
               <div class="row"><span>Your assumption</span><strong id="capGainValue">6.0%</strong></div>
               <input type="range" id="capGainSlider" min="0" max="15" step="0.5" value="6">
-              <p class="mini-note">This drives the fund's projected growth. Set it to whatever you and your client want to explore, it's not tied to any fixed illustration rate.</p>
+              <p class="mini-note">This drives the fund's projected growth, compounded monthly. Enter it net of fund fees if you want fees reflected. It's not tied to any fixed illustration rate.</p>
             </div>
 
             <p class="field-label">After your 10-year IIP ends</p>
@@ -5380,10 +5545,47 @@ App.init();
                 <div class="sub">Your annualised premium &times; 10 years, marking the end of the IIP</div>
               </div>
               <div class="stat-mini">
-                <div class="label">Welcome + Special Bonuses</div>
+                <div class="label">Total Bonuses by Yr 40</div>
                 <div class="value bronze" id="statBonuses">S$0</div>
-                <div class="sub">Fixed by your premium tier and years paid, not fund performance</div>
+                <div class="sub" id="statBonusesSub">Fixed by your premium tier and years paid, not fund performance</div>
               </div>
+            </div>
+
+            <div class="bonus-card" id="bonusCard">
+              <h5>Where the bonuses come from</h5>
+              <p class="bonus-sub">Three bonus stages, each tied to how long you stay in the plan. None of these depend on fund performance.</p>
+              <div class="bonus-stack" id="bonusStack">
+                <span class="seg-w" id="segW"></span><span class="seg-s5" id="segS5"></span><span class="seg-s8" id="segS8"></span>
+              </div>
+
+              <div class="bonus-row w" id="rowW">
+                <span class="bonus-dot"></span>
+                <div>
+                  <div class="b-title">Welcome Bonus<em>Yrs 1 to 3</em></div>
+                  <div class="b-note" id="noteW"></div>
+                </div>
+                <div class="b-val" id="valW">S$0</div>
+              </div>
+
+              <div class="bonus-row s5" id="rowS5">
+                <span class="bonus-dot"></span>
+                <div>
+                  <div class="b-title">Special Bonus at 5%<em>Yrs 10 to 20</em></div>
+                  <div class="b-note" id="noteS5"></div>
+                </div>
+                <div class="b-val" id="valS5">S$0</div>
+              </div>
+
+              <div class="bonus-row s8" id="rowS8">
+                <span class="bonus-dot"></span>
+                <div>
+                  <div class="b-title">Special Bonus at 8%<em>Yr 21 onward</em></div>
+                  <div class="b-note" id="noteS8"></div>
+                </div>
+                <div class="b-val" id="valS8">S$0</div>
+              </div>
+
+              <div class="bonus-total"><span>Total bonuses over 40 years</span><b id="valBonusTotal">S$0</b></div>
             </div>
 
             <div class="chart-card">
@@ -5391,16 +5593,19 @@ App.init();
               <p class="chart-sub">Move your cursor (or finger) over the chart to see the projected policy value at any year.</p>
               <div class="chart-legend">
                 <span class="legend-chip"><span class="swatch" style="background:var(--bronze);"></span>Projected policy value</span>
+                <span class="legend-chip"><span class="swatch band" style="background:var(--bronze-light);"></span>5% Special Bonus years</span>
+                <span class="legend-chip"><span class="swatch band" style="background:var(--teal);"></span>8% Special Bonus years</span>
               </div>
               <div class="chart-plot-wrap" id="chartPlotWrap">
                 <svg class="chart" id="chartSvg" viewBox="0 0 640 280" preserveAspectRatio="none"></svg>
                 <div class="chart-tooltip" id="chartTooltip"></div>
               </div>
               <p class="chart-hint">Hover or tap anywhere on the line to explore a specific policy year.</p>
+              <p class="chart-hint" style="margin-top:4px;">Shown after the Supplementary Charge, before insurance charges and fund fees. This is policy value, not surrender value.</p>
             </div>
 
             <div class="calc-disclaimer">
-              This is a simplified illustration for discussion purposes only, not a formal Benefit Illustration. It assumes every premium is paid every year through year 10 with no Premium Holiday or Premium Pass used, applies the Supplementary Charge annually rather than monthly for the first 10 policy years only, and excludes the monthly insurance (Benefit Charge), Premium Reduction Charge, and any surrender or partial withdrawal charge. The capital gain figure above is an assumption you set for discussion purposes, not the standard 4% p.a. / 8% p.a. rates mandated for a formal Benefit Illustration, prepare that separately using AIA's own tools before your client signs anything. Your actual policy value will differ from this illustration.
+              This is a simplified illustration for discussion purposes only, not a formal Benefit Illustration. It assumes every premium is paid every year through year 10 with no Premium Holiday or Premium Pass used, applies the 3.90% p.a. Supplementary Charge monthly for the first 10 policy years only, and excludes the monthly insurance (Benefit Charge), Premium Reduction Charge, and any surrender or partial withdrawal charge. The capital gain figure above is an assumption you set for discussion purposes, not the standard 4% p.a. / 8% p.a. rates mandated for a formal Benefit Illustration, prepare that separately using AIA's own tools before your client signs anything. Bonus totals are summed across the 40-year chart horizon and only accrue in years a premium is actually paid. Your actual policy value will differ from this illustration.
             </div>
           </div>
 
@@ -5504,6 +5709,9 @@ App.init();
   var tierLabel = { tierA:"Tier A", tierB:"Tier B", tierC:"Tier C", tierD:"Tier D" };
 
   var HORIZON = 40;
+  // Special Bonus schedule (matches the deck's timeline above): 5% from the 10th annual
+  // premium through year 20, then 8% from year 21 onward. Change here if AIA's schedule differs.
+  var SPECIAL_START = 10, SPECIAL_MID_END = 20;
 
   var state = {
     freq: "monthly",
@@ -5532,52 +5740,59 @@ App.init();
   // keep paying (contributions continue, Special Bonus keeps building) or stop
   // premiums entirely, which this calculator treats like a fee-free withdrawal
   // point, no new contributions, no new Special Bonus, but the existing policy
-  // value still compounds at the assumed capital gain rate. The Welcome Bonus is
-  // front-loaded (years 1-3, tier-based); the Special Bonus is back-loaded and
-  // open-ended (5% of that year's premium from year 10, 8% from year 21 on) and
-  // only accrues in years premiums are actually paid.
-  function simulate(annual, capitalGain, continueAfterIip, years){
+  // value still compounds at the assumed capital gain rate.
+  //
+  // MONTHLY model: steps one policy month at a time so timing matches the real product.
+  //  - premiums land in the months the client actually pays (every month / 3 / 6 / 12 months),
+  //    each payment carrying its own share of the Welcome / Special Bonus
+  //  - Supplementary Charge is 3.90% p.a. taken monthly (3.90%/12 of the running balance)
+  //    for policy months 1 to 120, then stops
+  //  - capital gain is an annual rate, converted to its monthly equivalent (1+g)^(1/12)-1
+  // Not modelled: monthly insurance (Benefit Charge), Premium Reduction Charge, surrender /
+  // withdrawal charges, fund-level fees (enter capital gain net of fees).
+  function simulate(annual, capitalGain, continueAfterIip, years, perYear){
     var tier = getTier(annual);
     var wr = welcomeRates[tier];
+    var count = perYear || 12;
+    var gap = 12 / count;
+    var pay = annual / count;
+    var gm = Math.pow(1 + capitalGain, 1 / 12) - 1;
     var value = 0;
-    var cumW = 0, cumS = 0, cumPrem = 0;
+    var cumW = 0, cumS = 0, cumS5 = 0, cumS8 = 0, yrs5 = 0, yrs8 = 0, cumPrem = 0, cumBonus = 0;
     var rows = [];
     for (var year = 1; year <= years; year++){
-      var contribution = (year <= 10) ? annual : (continueAfterIip ? annual : 0);
-      value += contribution;
-      cumPrem += contribution;
-
-      var w = 0;
-      if (year <= 3 && wr[year - 1] > 0){
-        w = wr[year - 1] * annual;
-        value += w;
-        cumW += w;
-      }
-
-      var special = 0;
-      if (contribution > 0){
-        if (year >= 10 && year <= 20){
-          special = 0.05 * annual;
-        } else if (year >= 21){
-          special = 0.08 * annual;
+      var paying = (year <= 10) || continueAfterIip;
+      var yW = 0, yS = 0, yRate = 0;
+      for (var m = 1; m <= 12; m++){
+        if (paying && ((m - 1) % gap === 0)){
+          value += pay;
+          cumPrem += pay;
+          if (year <= 3 && wr[year - 1] > 0){
+            var w = wr[year - 1] * pay;
+            value += w; yW += w; cumW += w;
+          }
+          var sRate = 0;
+          if (year >= SPECIAL_START && year <= SPECIAL_MID_END) sRate = 0.05;
+          else if (year > SPECIAL_MID_END) sRate = 0.08;
+          if (sRate > 0){
+            var s = sRate * pay;
+            value += s; yS += s; cumS += s; yRate = sRate;
+            if (sRate === 0.05) cumS5 += s; else cumS8 += s;
+          }
         }
+        // Supplementary Charge: monthly, policy months 1-120 only
+        if (year <= 10){
+          value -= value * 0.0390 / 12;
+        }
+        value += value * gm;
+        if (value < 0) value = 0;
       }
-      if (special > 0){
-        value += special;
-        cumS += special;
-      }
-
-      // Supplementary Charge applies through policy year 10, then stops.
-      if (year <= 10){
-        value -= 0.0390 * value;
-      }
-
-      value += value * capitalGain;
-      if (value < 0) value = 0;
-
-      rows.push({ year: year, value: value, cumPrem: cumPrem });
+      if (yRate === 0.05) yrs5++;
+      else if (yRate === 0.08) yrs8++;
+      cumBonus += yW + yS;
+      rows.push({ year: year, value: value, cumPrem: cumPrem, bonusW: yW, bonusS: yS, specialRate: yRate, cumBonus: cumBonus });
     }
-    return { rows: rows, cumW: cumW, cumS: cumS, tier: tier };
+    return { rows: rows, cumW: cumW, cumS: cumS, cumS5: cumS5, cumS8: cumS8, yrs5: yrs5, yrs8: yrs8, tier: tier, wr: wr };
   }
 
   // ---- DOM refs ----
@@ -5722,8 +5937,22 @@ App.init();
         '<text x="' + mx10.toFixed(1) + '" y="' + (padT - 4) + '" font-size="9" fill="#a3763f" text-anchor="middle" font-family="Inter, sans-serif">' + iipLabel + '</text>';
     }
 
+    // shaded bands for the two Special Bonus stages (only when premiums continue past the IIP)
+    var bands = "";
+    if (continueAfterIip && n > SPECIAL_START){
+      var b5s = xFor(SPECIAL_START - 1), b5e = xFor(Math.min(SPECIAL_MID_END, n) - 1);
+      bands += '<rect x="' + b5s.toFixed(1) + '" y="' + padT + '" width="' + (b5e - b5s).toFixed(1) + '" height="' + innerH + '" fill="#c99a5f" opacity="0.12" />' +
+        '<text x="' + ((b5s + b5e) / 2).toFixed(1) + '" y="' + (padT + 14) + '" font-size="9.5" font-weight="600" fill="#a3763f" text-anchor="middle" font-family="Inter, sans-serif">5% Special Bonus</text>';
+      if (n > SPECIAL_MID_END){
+        var b8s = b5e, b8e = xFor(n - 1);
+        bands += '<rect x="' + b8s.toFixed(1) + '" y="' + padT + '" width="' + (b8e - b8s).toFixed(1) + '" height="' + innerH + '" fill="#4d7a68" opacity="0.12" />' +
+          '<text x="' + ((b8s + b8e) / 2).toFixed(1) + '" y="' + (padT + 14) + '" font-size="9.5" font-weight="600" fill="#3f6656" text-anchor="middle" font-family="Inter, sans-serif">8% Special Bonus</text>';
+      }
+    }
+
     var svgContent =
       gridLines +
+      bands +
       markers +
       '<path d="' + d + '" fill="none" stroke="#a3763f" stroke-width="2.75" />' +
       gridLabels +
@@ -5774,6 +6003,13 @@ App.init();
     var html = '<span class="tt-year">Policy Year ' + r.year + '</span>' +
       '<div class="tt-row"><span class="tt-dot" style="background:var(--bronze);"></span>Policy value: ' + fmtMoney(r.value) + '</div>';
 
+    var bonusThisYear = r.bonusW + r.bonusS;
+    if (bonusThisYear > 0 || r.cumBonus > 0){
+      var tag = r.bonusW > 0 ? "Welcome Bonus" : (r.specialRate ? (Math.round(r.specialRate * 100) + "% Special Bonus") : "");
+      html += '<div class="tt-bonus">' +
+        (bonusThisYear > 0 ? 'Bonus credited this year: ' + fmtMoney(bonusThisYear) + (tag ? ' (' + tag + ')' : '') + '<br>' : '') +
+        'Total bonuses to date: ' + fmtMoney(r.cumBonus) + '</div>';
+    }
     chartTooltip.innerHTML = html;
     chartTooltip.classList.add("visible");
 
@@ -5815,9 +6051,36 @@ App.init();
     tierBadge.textContent = tierLabel[tier];
     statTotalPremiums.textContent = fmtMoney(annual * 10);
 
-    var sim = simulate(annual, state.capitalGain, state.continueAfterIip, HORIZON);
+    var sim = simulate(annual, state.capitalGain, state.continueAfterIip, HORIZON, cfg.count);
 
-    statBonuses.textContent = fmtMoney(sim.cumW + sim.cumS);
+    var totalBonus = sim.cumW + sim.cumS;
+    statBonuses.textContent = fmtMoney(totalBonus);
+
+    // ---- bonus breakdown ----
+    var wr = sim.wr, pct = function(x){ return Math.round(x * 100) + "%"; };
+    var wParts = [];
+    for (var k = 0; k < 3; k++){ if (wr[k] > 0) wParts.push("Yr " + (k + 1) + ": " + pct(wr[k])); }
+    document.getElementById("noteW").textContent = tierLabel[sim.tier] + " rates on each premium paid. " + wParts.join(", ") + ".";
+    document.getElementById("valW").textContent = fmtMoney(sim.cumW);
+
+    document.getElementById("noteS5").textContent = sim.yrs5 > 0
+      ? "5% of your annual premium (" + fmtMoney(annual * 0.05) + ") credited each year, for " + sim.yrs5 + (sim.yrs5 === 1 ? " year." : " years.")
+      : "Not credited, premiums have stopped.";
+    document.getElementById("valS5").textContent = fmtMoney(sim.cumS5);
+    document.getElementById("rowS5").classList.toggle("off", sim.yrs5 === 0);
+
+    document.getElementById("noteS8").textContent = sim.yrs8 > 0
+      ? "8% of your annual premium (" + fmtMoney(annual * 0.08) + ") credited each year, for " + sim.yrs8 + " years to Yr " + HORIZON + ", and it keeps going."
+      : "Not credited, premiums have stopped.";
+    document.getElementById("valS8").textContent = fmtMoney(sim.cumS8);
+    document.getElementById("rowS8").classList.toggle("off", sim.yrs8 === 0);
+
+    document.getElementById("valBonusTotal").textContent = fmtMoney(totalBonus);
+    var tb = totalBonus > 0 ? totalBonus : 1;
+    document.getElementById("segW").style.width = (sim.cumW / tb * 100) + "%";
+    document.getElementById("segS5").style.width = (sim.cumS5 / tb * 100) + "%";
+    document.getElementById("segS8").style.width = (sim.cumS8 / tb * 100) + "%";
+    document.getElementById("statBonusesSub").textContent = "That is " + (annual > 0 ? (totalBonus / (annual * (state.continueAfterIip ? HORIZON : 10)) * 100).toFixed(0) : 0) + "% on top of the premiums you paid in";
 
     buildChart(sim.rows, state.continueAfterIip);
     hideTooltip();
@@ -6477,8 +6740,8 @@ App.init();
         <li><strong>Contributions, years 11&ndash;40:</strong> depends on the "Keep Investing" / "Withdraw &amp; Stop Premiums" pill. Keep Investing = annualised premium continues every year. Withdraw &amp; Stop Premiums = $0 contribution from year 11 on, but the accumulated policy value is not removed from the chart, it's left in and continues to compound, modelling a client who stops paying but leaves the money invested rather than fully cashing out.</li>
         <li><strong>Capital gain (p.a.), client-editable, default 6%:</strong> the underlying funds' assumed capital appreciation, compounds every year of the horizon regardless of the contribution toggle. Not the MAS-mandated 4%/8% Illustrated Investment Rate of Return, prepare the formal Benefit Illustration separately with AIA's own tools.</li>
         <li><strong>Welcome Bonus dollar figures:</strong> calculated directly from the contractual IIP10 rate table in Section 3.3 (current, flipped lettering), tier-matched to the annualised premium entered, fixed regardless of fund performance, only accrues years 1&ndash;3.</li>
-        <li><strong>Special Bonus dollar figures:</strong> 5% of that year's premium for years 10&ndash;20, 8% from year 21 onward, computed directly from Section 3.4. Only accrues in years where a contribution is actually being paid, so choosing "Withdraw &amp; Stop Premiums" also stops new Special Bonus accrual from year 11 on, that's a real product rule, not a calculator simplification. Combined with Welcome Bonus into the single "Welcome + Special Bonuses" stat shown.</li>
-        <li><strong>Supplementary Charge (3.90% p.a.):</strong> applied once per simulated year for policy years 1 through 10 only, then stops, matching the actual policy terms (ceases after the 11th annual premium).</li>
+        <li><strong>Special Bonus dollar figures:</strong> 5% of that year's premium for years 10&ndash;20, 8% from year 21 onward, computed directly from Section 3.4. Only accrues in years where a contribution is actually being paid, so choosing "Withdraw &amp; Stop Premiums" also stops new Special Bonus accrual from year 11 on, that's a real product rule, not a calculator simplification. The calculator now breaks bonuses into three rows (Welcome yrs 1&ndash;3, Special 5% yrs 10&ndash;20, Special 8% yr 21 onward) with a total over the 40-year chart horizon, and the chart shades the 5% and 8% years. The projected value line is after the Supplementary Charge but before the monthly insurance (Benefit Charge), Premium Reduction Charge, surrender charges and fund fees, and it is policy value, not surrender value.</li>
+        <li><strong>Supplementary Charge (3.90% p.a.):</strong> now modelled monthly (3.90%/12 of the running balance) for policy months 1 through 120, then stops, matching the actual policy terms (ceases after the 11th annual premium). The whole projection steps month by month: premiums land in the months the client actually pays (monthly, quarterly, semi-annual or annual), each carrying its own share of the bonus, and the capital gain slider is treated as an annual rate converted to its monthly equivalent. Compared with the earlier once-a-year shortcut this trims the projected value by roughly 1 to 2.5% by year 40 (more at higher growth rates).</li>
         <li><strong>Deliberately excluded from the calculator:</strong> the monthly Benefit Charge (cost of insurance, age- and gender-based), Premium Reduction Charge, Premium Pass mechanics, the Full Surrender Charge, and any dividend/income-fund mechanics. All are real (dividends included, see Section 6) but are left out to match this plan's growth-only positioning and to keep the tool focused on a quick, live "what if" conversation. Say so if asked, "the full picture, including any income-fund option you might choose later, is what goes into your formal Benefit Illustration, which I'll prepare separately."</li>
       </ul>
     </div>
