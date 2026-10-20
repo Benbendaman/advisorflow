@@ -686,6 +686,13 @@
 .pp-editor-sub{font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.05em; margin:14px 0 6px; font-weight:600}
 .policy-block{border:1px solid var(--line); border-radius:10px; padding:12px; margin-bottom:12px; background:var(--bg-soft, transparent)}
 .policy-block .form-row{margin-bottom:8px}
+.policy-block.is-hidden{opacity:.55}
+.slide-toggles{display:flex;flex-wrap:wrap;gap:8px}
+.slide-tog{display:flex;align-items:center;gap:7px;padding:6px 11px;border:1px solid var(--line);border-radius:20px;font-size:13px;cursor:pointer;background:var(--card);user-select:none}
+.slide-tog input{margin:0}
+.slide-tog .n{font-size:11px;color:var(--ink-faint);min-width:12px}
+.slide-tog.off{color:var(--ink-faint);text-decoration:line-through;background:transparent}
+.hid-pill{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:10px;background:var(--accent-soft);color:var(--accent);margin-left:6px}
 
 </style>
 </head>
@@ -1039,6 +1046,12 @@
       <div class="spacer"></div>
       <button class="btn small primary" onclick="App.presentProposal()">&#9654; Present</button>
       <button class="btn small" onclick="App.printProposal()">🖶 Print / Save PDF</button>
+    </div>
+
+    <div class="card">
+      <h2>Slides in this presentation</h2>
+      <div class="cardhint">Untick a slide to hide it when you present or print. Nothing is deleted, tick it again to bring it back.</div>
+      <div id="propSlideList" class="slide-toggles"></div>
     </div>
 
     <div class="card">
@@ -3354,7 +3367,7 @@ const App = {
   presentProposal(){ const p=this.person(); if(!p) return; App.Proposal.open(p.id); },
   printProposal(){
     const p=this.person(); if(!p) return;
-    App.Proposal.open(p.id);
+    if(App.Proposal.open(p.id)===false) return;
     const onBeforePrint=()=>ppFitMechPages();
     const onAfterPrint=()=>{
       ppUnfitMechPages(); App.Proposal.close();
@@ -3625,6 +3638,28 @@ const App = {
     pol.premiumManual=false; const r=ppProtect3EntryRate(pol); pol.premium = r!=null ? String(r) : '';
     this.save(); this.renderProposalPolicies();
   },
+  // show/hide a slide in the deck. key = cover|objectives|needs|plans|options|talk, or 'pol:<index>' for a policy page
+  propToggleSlide(key,show){
+    const pr=this.currentProposal(); if(!pr) return;
+    if(String(key).startsWith('pol:')){
+      const pol=(pr.policies||[])[Number(key.slice(4))]; if(!pol) return;
+      if(show) delete pol.hidden; else pol.hidden=true;
+      this.save(); this.renderProposalPolicies(); return;   // re-renders the slide list too
+    }
+    if(!pr.hiddenSlides) pr.hiddenSlides={};
+    if(show) delete pr.hiddenSlides[key]; else pr.hiddenSlides[key]=true;
+    this.save(); this.renderProposalSlideList();
+  },
+  renderProposalSlideList(){
+    const el=$('#propSlideList'); if(!el) return;
+    const pr=this.currentProposal(); if(!pr) return;
+    const H=pr.hiddenSlides||{};
+    const items=[['cover','Cover',!!H.cover],['objectives','Objectives',!!H.objectives],['needs','Needs analysis',!!H.needs],['plans','Recommended plans',!!H.plans]];
+    (pr.policies||[]).forEach((pol,i)=>items.push(['pol:'+i, pol.name||'Policy page '+(i+1), !!pol.hidden]));
+    items.push(['options','Your options',!!H.options],['talk','Next steps',!!H.talk]);
+    let n=0;
+    el.innerHTML=items.map(([key,label,hid])=>`<label class="slide-tog ${hid?'off':''}"><input type="checkbox" ${hid?'':'checked'} onchange="App.propToggleSlide('${key}',this.checked)"><span class="n">${hid?'':++n}</span>${esc(label)}</label>`).join('');
+  },
   propPolicyField(i,key,val){
     const pr=this.currentProposal(); const pol=pr.policies[i]; if(!pol) return;
     pol[key]=val; this.save();
@@ -3833,10 +3868,11 @@ const App = {
           <div class="cardhint">This page draws the full Overview of AIA HealthShield Gold Max Plans &amp; Benefits of AIA Max VitalHealth Pro tables automatically on the deck — no benefit typing needed, just pick the tier above.</div>
         `;
       }
-      return `<div class="policy-block">
+      return `<div class="policy-block ${pol.hidden?'is-hidden':''}">
         <div class="prow-flat" style="align-items:center">
-          <b style="flex:0 0 auto">${i+1}. ${esc(pol.name)||kindLabel[pol.kind]||pol.kind} <span style="font-weight:400;color:var(--ink-faint);font-size:12px">(${kindLabel[pol.kind]||pol.kind})</span></b>
+          <b style="flex:0 0 auto">${i+1}. ${esc(pol.name)||kindLabel[pol.kind]||pol.kind} <span style="font-weight:400;color:var(--ink-faint);font-size:12px">(${kindLabel[pol.kind]||pol.kind})</span>${pol.hidden?'<span class="hid-pill">Hidden from deck</span>':''}</b>
           <div class="spacer"></div>
+          <button class="btn small" onclick="App.propToggleSlide('pol:${i}',${pol.hidden?'true':'false'})">${pol.hidden?'Show in deck':'Hide from deck'}</button>
           <button class="btn small" ${i===0?'disabled':''} onclick="App.propPolicyMove(${i},-1)">↑</button>
           <button class="btn small" ${i===(pr.policies.length-1)?'disabled':''} onclick="App.propPolicyMove(${i},1)">↓</button>
           <button class="btn small danger" onclick="App.propDelPolicy(${i})">Remove page</button>
@@ -3844,6 +3880,7 @@ const App = {
         ${body}
       </div>`;
     }).join('') || '<div class="cardhint">No policy pages yet. Add one for each plan you\'re recommending.</div>';
+    this.renderProposalSlideList();
   },
 
 };
@@ -4602,8 +4639,11 @@ App.Proposal = {
     ensureProposalOptions(p.proposal);
     const adv={ advisorName:App.data.settings.advisorName, advisorTitle:App.data.settings.advisorTitle, advisorMeta:App.data.settings.advisorMeta||'MDRT® · IBFQ® · CAWA®', advisorPhone:App.data.settings.advisorPhone, advisorEmail:App.data.settings.advisorEmail };
     const pr=p.proposal;
-    const policyHtml=(pr.policies||[]).map(pol=>ppPolicySection(pol,p)).join('');
-    const deckHtml = ppCoverHtml(p,adv) + ppObjectivesHtml(pr) + ppNeedsHtml(pr) + ppPlansHtml(pr) + policyHtml + ppOptionsHtml(pr) + ppTalkHtml(pr,adv);
+    // hidden slides (ticked off in the editor's "Slides in this presentation" card) are skipped for both present and print
+    const H=pr.hiddenSlides||{};
+    const policyHtml=(pr.policies||[]).filter(pol=>!pol.hidden).map(pol=>ppPolicySection(pol,p)).join('');
+    const deckHtml = (H.cover?'':ppCoverHtml(p,adv)) + (H.objectives?'':ppObjectivesHtml(pr)) + (H.needs?'':ppNeedsHtml(pr)) + (H.plans?'':ppPlansHtml(pr)) + policyHtml + (H.options?'':ppOptionsHtml(pr)) + (H.talk?'':ppTalkHtml(pr,adv));
+    if(!deckHtml.trim()){ toast('Every slide is hidden. Tick at least one slide to present.'); return false; }
     const layer=$('#proposalLayer');
     layer.innerHTML = `
       <div class="pp-progress" id="ppProg"></div>
@@ -4632,6 +4672,7 @@ App.Proposal = {
     };
     document.addEventListener('keydown', this._keyHandler);
     this.idx=-1; this.go(0);
+    return true;
   },
   close(){
     const layer=$('#proposalLayer'); if(!layer) return;
