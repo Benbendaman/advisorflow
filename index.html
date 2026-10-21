@@ -540,6 +540,11 @@
 /* ---- policy: whole life ---- */
 #proposalLayer .pp-polylayout{display:grid;grid-template-columns:.92fr 1.08fr;gap:2.4rem;align-items:center;width:100%}
 #proposalLayer .pp-pcol .pp-facts{display:flex;flex-direction:column;gap:.85rem;margin-top:1.3rem}
+#proposalLayer .pp-termcov{margin-top:1.1rem;border:1.5px solid var(--pp-line);border-radius:14px;background:#fff;overflow:hidden}
+#proposalLayer .pp-termcov-row{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:.2rem 1rem;padding:.6rem 1.05rem;border-top:1px solid var(--pp-line)}
+#proposalLayer .pp-termcov-row:first-child{border-top:0}
+#proposalLayer .pp-termcov-row span{font-size:.82rem;color:var(--pp-muted)}
+#proposalLayer .pp-termcov-row b{font-family:var(--pp-serif);font-size:1.2rem;font-weight:500;color:var(--pp-ink);white-space:nowrap}
 #proposalLayer .pp-fact .pp-fl{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--pp-muted)}
 #proposalLayer .pp-fact .pp-fv{font-family:var(--pp-serif);font-size:1.12rem;color:var(--pp-ink);line-height:1.25}
 #proposalLayer .pp-prem-line{margin-top:1.4rem;font-size:.95rem;color:#5c564c}
@@ -3798,7 +3803,14 @@ const App = {
             <div><label>Total premium (with all riders) / year</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 735.00" value="${fmt2(pol.premium)}" oninput="App.propPolicyField(${i},'premium',this.value)"></div>
           </div>
           <div class="form-row">
-            <div><label>Policy term</label><select onchange="App.propPolicyField(${i},'term',this.value)">${PROPOSAL_TERM_OPTIONS.map(t=>`<option value="${t}" ${pol.term===t?'selected':''}>${PROPOSAL_TERM_LABELS[t]}</option>`).join('')}</select></div>
+            <div><label>Late stage CI cover (leave blank if none)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 200,000" value="${fmt2(pol.ciLate)}" oninput="App.propPolicyField(${i},'ciLate',this.value)"></div>
+            <div><label>Early & intermediate stage CI cover${ppTermAllowsEarlyCi(pol.term)?' (leave blank if none)':''}</label>${ppTermAllowsEarlyCi(pol.term)
+              ? `<input type="text" inputmode="decimal" class="money" placeholder="e.g. 100,000" value="${fmt2(pol.ciEarly)}" oninput="App.propPolicyField(${i},'ciEarly',this.value)">`
+              : `<input type="text" disabled placeholder="Not available on To age 65 / 75 terms" value="">`}</div>
+          </div>
+          ${!ppTermAllowsEarlyCi(pol.term)&&num(pol.ciEarly)?`<div class="cardhint">The ${fmt(num(pol.ciEarly))} early stage CI amount you entered earlier is kept but not shown, because To age 65 / 75 terms only allow late stage CI. Switch back to a fixed year term to use it.</div>`:''}
+          <div class="form-row">
+            <div><label>Policy term</label><select onchange="App.propPolicyField(${i},'term',this.value); App.renderProposalPolicies()">${PROPOSAL_TERM_OPTIONS.map(t=>`<option value="${t}" ${pol.term===t?'selected':''}>${PROPOSAL_TERM_LABELS[t]}</option>`).join('')}</select></div>
             <div><label>Start age (auto-filled from DOB — edit if needed)</label><input type="number" placeholder="e.g. 32" value="${esc(pol.startAge)}" oninput="App.propPolicyField(${i},'startAge',this.value)"></div>
           </div>
           <div class="cardhint">Cover ends at age ${(pol.term==='to65'?65:pol.term==='to75'?75:(num(pol.startAge)+num(pol.term)))||'—'}. No manual chart editing — it draws itself from these fields.</div>
@@ -4174,7 +4186,7 @@ function blankPolicy(kind){
     features:['150 Medical Conditions (73 illnesses)','Ultimate Reset Benefit','Death Benefit','Catastrophic CI Benefit (Enhancer)','Ultimate Relapse Benefit (Enhancer)'],
     premium:'' };
   if(kind==='protect3') return { kind, type:'Critical Illness · Cancer, Heart Attack, Stroke', name:'AIA Protect 3', planTier:'3', startAge:'', renewal:'yearly', gender:'M', smoker:'NS', premium:'', premiumManual:false };
-  if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', term:'30', startAge:'', premium:'' };
+  if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', ciLate:'', ciEarly:'', term:'30', startAge:'', premium:'' };
   if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
   // hospital — Integrated Shield Plan. tier drives plan name + rider name automatically; the
   // coverage table itself is fixed (HOSPITAL_TABLE) and just highlights the selected tier column.
@@ -4478,6 +4490,9 @@ function ppGppChart(c){
   </svg>`;
 }
 // ---- simple Term Life policy page (e.g. AIA Secure Flexi Term — Death & TPD only) ----
+// Secure Flexi Term CI rider rule (per Ben): "to age 65/75" terms only allow major (late) stage CI;
+// fixed-year terms can also add early & intermediate stage CI.
+function ppTermAllowsEarlyCi(term){ return term!=='to65' && term!=='to75'; }
 function ppTermEndAge(startAge, term){
   const s=num(startAge);
   if(term==='to65') return 65;
@@ -4512,11 +4527,22 @@ function ppTermChart(pol){
 }
 function ppTermSection(pol){
   const years=ppTermYears(pol.startAge,pol.term);
+  const sa=num(pol.sumAssured), late=num(pol.ciLate), early=ppTermAllowsEarlyCi(pol.term)?num(pol.ciEarly):0;
+  const amt=v=>'S$ '+v.toLocaleString('en-SG');
+  const covRows=[];
+  if(sa) covRows.push(`<div class="pp-termcov-row"><span>Death &amp; TPD</span><b>${amt(sa)}</b></div>`);
+  if(late) covRows.push(`<div class="pp-termcov-row"><span>Late stage CI</span><b>${amt(late)}</b></div>`);
+  if(early) covRows.push(`<div class="pp-termcov-row"><span>Early &amp; intermediate CI</span><b>${amt(early)}</b></div>`);
+  const end=ppTermEndAge(pol.startAge,pol.term);
+  const termLead = (late||early)
+    ? `Death, disability and critical illness cover${end?` until age <b>${end}</b>`:''}.`
+    : `1x Death and Total Permanent Disability coverage of <b>S$ ${sa.toLocaleString('en-SG')}</b>`;
   return `<section class="pp-slide pp-policy"><div class="pp-pad pp-polylayout">
     <div class="pp-pcol">
       <div class="pp-kicker pp-reveal" style="--i:0">Proposed Coverage</div>
       <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(pol.name)}</h2>
-      <div class="pp-lead pp-reveal" style="--i:2">1x Death and Total Permanent Disability coverage of <b>S$ ${num(pol.sumAssured).toLocaleString('en-SG')}</b></div>
+      <div class="pp-lead pp-reveal" style="--i:2">${termLead}</div>
+      ${covRows.length?`<div class="pp-termcov pp-reveal" style="--i:3">${covRows.join('')}</div>`:''}
       <div class="pp-facts pp-reveal" style="--i:3">
         <div class="pp-fact"><div class="pp-fl">Premium Term</div><div class="pp-fv">${years} years</div></div>
         <div class="pp-fact"><div class="pp-fl">Total Premium (with all riders)</div><div class="pp-fv">${fmt(num(pol.premium))} / year <span style="font-size:.8rem;color:var(--pp-muted)">(${fmt(ppMonthly(pol.premium))} / month)</span></div></div>
