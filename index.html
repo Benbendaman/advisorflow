@@ -5414,6 +5414,32 @@ App.init();
   .chart-plot-wrap{
     position:relative;
   }
+  .chart-card{position:relative;}
+  .proj-expand{position:absolute;top:14px;right:14px;border:1px solid var(--line);background:#fff;color:var(--navy);font:600 12px var(--sans);padding:6px 11px;border-radius:20px;cursor:pointer;}
+  .proj-expand:hover{border-color:var(--bronze);color:var(--bronze);}
+  #chartPlotWrap{cursor:zoom-in;}
+  .client-row{display:grid;grid-template-columns:1.6fr 1fr;gap:10px;margin-bottom:10px;}
+  .client-row input{font:600 16px var(--serif);color:var(--navy);border:none;border-bottom:2px solid var(--line);background:transparent;padding:4px 2px 6px;outline:none;min-width:0;}
+  .client-row input:focus{border-bottom-color:var(--bronze);}
+  .proj-full{position:fixed;inset:0;z-index:9999;background:var(--cream);overflow-y:auto;display:none;}
+  .proj-full.open{display:block;}
+  .proj-inner{max-width:min(1240px, calc((100vh - 370px) * 2.38 + 80px));min-width:min(100%, 760px);margin:0 auto;padding:30px 40px 22px;}
+  .proj-close{position:fixed;top:14px;right:18px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;z-index:2;}
+  .proj-close:hover{color:var(--navy);border-color:var(--navy);}
+  .proj-kicker{font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--bronze);}
+  .proj-title{font-family:var(--serif);font-size:clamp(26px,3.2vw,40px);font-weight:600;color:var(--navy);margin:6px 0 4px;}
+  .proj-sub{font-size:15px;color:var(--muted);margin:0 0 18px;}
+  .proj-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:12px;}
+  .proj-card{background:var(--paper);border:1px solid var(--line);border-top:3px solid var(--bronze);border-radius:12px;padding:12px 16px;}
+  .proj-card:last-child{border-top-color:var(--teal);}
+  .proj-card .pc-lab{font-size:13px;font-weight:700;color:var(--navy);}
+  .proj-card .pc-lab em{display:block;font-style:normal;font-weight:500;font-size:11.5px;color:var(--muted);}
+  .proj-card .pc-val{font-family:var(--serif);font-size:26px;font-weight:600;color:var(--navy);margin-top:4px;}
+  .proj-card .pc-sub{font-size:12px;color:var(--muted);}
+  .proj-legend{margin:4px 0 6px;}
+  .proj-plot{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 12px 4px;}
+  .proj-plot svg.chart{cursor:crosshair;}
+  .proj-fine{font-size:11px;color:var(--muted);line-height:1.5;margin:10px 0 0;}
   .chart-tooltip{
     position:absolute;
     pointer-events:none;
@@ -5654,6 +5680,13 @@ App.init();
         <div class="calc-grid">
 
           <div class="calc-controls">
+            <p class="field-label">Personalise for your client (optional)</p>
+            <div class="client-row">
+              <input type="text" id="clientName" placeholder="Client name" autocomplete="off">
+              <input type="number" id="clientAge" placeholder="Age today" min="0" max="80" step="1">
+            </div>
+            <p class="mini-note" style="margin:-4px 0 20px;">Adding an age switches the chart to show the client's age. Nothing typed here is saved.</p>
+
             <p class="field-label">How often would you pay?</p>
             <div class="pill-group" id="freqPills">
               <button type="button" class="pill" data-freq="monthly">Monthly</button>
@@ -5751,6 +5784,7 @@ App.init();
             </div>
 
             <div class="chart-card">
+              <button type="button" class="proj-expand" id="projExpandBtn">&#10530; Full screen</button>
               <h5>Projected policy value over time</h5>
               <p class="chart-sub">Move your cursor (or finger) over the chart to see the projected policy value at any year.</p>
               <div class="chart-legend">
@@ -5762,7 +5796,7 @@ App.init();
                 <svg class="chart" id="chartSvg" viewBox="0 0 640 280" preserveAspectRatio="none"></svg>
                 <div class="chart-tooltip" id="chartTooltip"></div>
               </div>
-              <p class="chart-hint">Hover or tap anywhere on the line to explore a specific policy year.</p>
+              <p class="chart-hint">Hover or tap anywhere on the line to explore a specific policy year. Click the chart (or Full screen) for the client view.</p>
               <p class="chart-hint" style="margin-top:4px;">Shown after the Supplementary Charge, before insurance charges and fund fees. This is policy value, not surrender value.</p>
             </div>
 
@@ -5775,6 +5809,26 @@ App.init();
       </div>
     </div>
   </section>
+
+  <div class="proj-full" id="projFull" aria-hidden="true">
+    <button type="button" class="proj-close" id="projClose" aria-label="Close">&times;</button>
+    <div class="proj-inner">
+      <div class="proj-kicker">AIA Pro Achiever 3.0 &middot; Projection</div>
+      <h2 class="proj-title" id="projTitle">Your projected policy value</h2>
+      <p class="proj-sub" id="projSub"></p>
+      <div class="proj-cards" id="projCards"></div>
+      <div class="chart-legend proj-legend">
+        <span class="legend-chip"><span class="swatch" style="background:var(--bronze);"></span>Projected policy value</span>
+        <span class="legend-chip"><span class="swatch band" style="background:var(--bronze-light);"></span>5% Special Bonus years</span>
+        <span class="legend-chip"><span class="swatch band" style="background:var(--teal);"></span>8% Special Bonus years</span>
+      </div>
+      <div class="chart-plot-wrap proj-plot" id="projPlotWrap">
+        <svg class="chart" id="projSvg" viewBox="0 0 1000 420"></svg>
+        <div class="chart-tooltip" id="projTooltip"></div>
+      </div>
+      <p class="proj-fine">Illustration only, not a Benefit Illustration. Projected policy value after the Supplementary Charge, before insurance charges and fund fees; not surrender value. Assumes every premium is paid on time and the growth rate shown, which is not guaranteed. Bonus rates per the AIA Pro Achiever 3.0 product summary.</p>
+    </div>
+  </div>
 
   <section id="protection">
     <div class="section-head">
@@ -5973,7 +6027,6 @@ App.init();
   var chartPlotWrap = document.getElementById("chartPlotWrap");
   var chartTooltip = document.getElementById("chartTooltip");
 
-  var chartState = null;
 
   function setActivePill(wrap, attr, val){
     var pills = wrap.querySelectorAll(".pill");
@@ -6046,89 +6099,153 @@ App.init();
     render();
   });
 
-  function buildChart(rows, continueAfterIip){
-    var W = 640, H = 280;
-    var padL = 54, padR = 16, padT = 16, padB = 30;
-    var innerW = W - padL - padR;
-    var innerH = H - padT - padB;
+  // ---- chart engine: one builder used for the small in-page chart and the full-screen client view ----
+  // ageStart (optional) switches the x-axis to the client's age with the policy year underneath.
+  function makeChart(svgEl, wrapEl, ttEl, big){
+    var cs = null;
+    var F = big ? 1.5 : 1;                      // font scale
+    function draw(rows, continueAfterIip, ageStart){
+      var W = big ? 1000 : 640, H = big ? 420 : 280;
+      var hasAge = ageStart !== null && ageStart !== undefined;
+      var padL = big ? 78 : 54, padR = big ? 24 : 16, padT = big ? 30 : 16, padB = (hasAge ? 44 : 30) * (big ? 1.3 : 1);
+      var innerW = W - padL - padR;
+      var innerH = H - padT - padB;
+      var maxVal = 0;
+      rows.forEach(function(r){ if (r.value > maxVal) maxVal = r.value; });
+      maxVal = maxVal * 1.12;
+      if (maxVal <= 0) maxVal = 1000;
+      var n = rows.length;
+      function xFor(i){ return padL + (innerW * i) / (n - 1); }
+      function yFor(v){ return padT + innerH - (innerH * v) / maxVal; }
+      var t = function(x, y, size, fill, anchor, txt, weight){
+        return '<text x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" font-size="' + (size * F).toFixed(1) + '" fill="' + fill + '" text-anchor="' + anchor + '"' + (weight ? ' font-weight="' + weight + '"' : '') + ' font-family="Inter, sans-serif">' + txt + '</text>';
+      };
 
-    var maxVal = 0;
-    rows.forEach(function(r){ if (r.value > maxVal) maxVal = r.value; });
-    maxVal = maxVal * 1.12;
-    if (maxVal <= 0) maxVal = 1000;
+      var d = "", area = "";
+      rows.forEach(function(r, i){
+        var x = xFor(i), y = yFor(r.value);
+        d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
+      });
+      if (big) area = '<path d="' + d + 'L' + xFor(n - 1).toFixed(1) + ',' + (padT + innerH) + ' L' + padL + ',' + (padT + innerH) + ' Z" fill="#a3763f" opacity="0.08" />';
 
-    var n = rows.length;
-    function xFor(i){ return padL + (innerW * i) / (n - 1); }
-    function yFor(v){ return padT + innerH - (innerH * v) / maxVal; }
-
-    var d = "";
-    rows.forEach(function(r, i){
-      var x = xFor(i), y = yFor(r.value);
-      d += (i === 0 ? "M" : "L") + x.toFixed(1) + "," + y.toFixed(1) + " ";
-    });
-
-    var gridLines = "";
-    var gridLabels = "";
-    for (var g = 0; g <= 4; g++){
-      var gy = padT + (innerH * g) / 4;
-      var gv = maxVal * (1 - g / 4);
-      gridLines += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="#e4ddd2" stroke-width="1" />';
-      gridLabels += '<text x="' + (padL - 8) + '" y="' + (gy + 4).toFixed(1) + '" font-size="9.5" fill="#6b6f76" text-anchor="end" font-family="Inter, sans-serif">' + fmtCompact(gv) + '</text>';
-    }
-
-    var xLabels = "";
-    var step = n <= 16 ? 2 : (n <= 22 ? 3 : 5);
-    for (var i = 0; i < n; i++){
-      if (i % step === 0 || i === n - 1){
-        var x = xFor(i);
-        xLabels += '<text x="' + x.toFixed(1) + '" y="' + (H - 8) + '" font-size="9.5" fill="#6b6f76" text-anchor="middle" font-family="Inter, sans-serif">Yr ' + rows[i].year + '</text>';
+      var gridLines = "", gridLabels = "";
+      for (var g = 0; g <= 4; g++){
+        var gy = padT + (innerH * g) / 4;
+        var gv = maxVal * (1 - g / 4);
+        gridLines += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="#e4ddd2" stroke-width="1" />';
+        gridLabels += t(padL - 8, gy + 4, 9.5, "#6b6f76", "end", fmtCompact(gv));
       }
-    }
 
-    // markers: year 3 (welcome bonus ends) and year 10 (IIP ends, charges stop, special bonus begins)
-    var markers = "";
-    if (rows.length >= 3){
-      var mx3 = xFor(2);
-      markers += '<line x1="' + mx3.toFixed(1) + '" y1="' + padT + '" x2="' + mx3.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#8a94a0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6" />' +
-        '<text x="' + mx3.toFixed(1) + '" y="' + (H - 18) + '" font-size="8.5" fill="#6b6f76" text-anchor="middle" font-family="Inter, sans-serif">welcome bonus ends</text>';
-    }
-    if (rows.length >= 10){
-      var mx10 = xFor(9);
-      var iipLabel = continueAfterIip ? "IIP ends" : "IIP ends, premiums stop";
-      markers += '<line x1="' + mx10.toFixed(1) + '" y1="' + padT + '" x2="' + mx10.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#c99a5f" stroke-width="1" stroke-dasharray="3,3" />' +
-        '<text x="' + mx10.toFixed(1) + '" y="' + (padT - 4) + '" font-size="9" fill="#a3763f" text-anchor="middle" font-family="Inter, sans-serif">' + iipLabel + '</text>';
-    }
-
-    // shaded bands for the two Special Bonus stages (only when premiums continue past the IIP)
-    var bands = "";
-    if (continueAfterIip && n > SPECIAL_START){
-      var b5s = xFor(SPECIAL_START - 1), b5e = xFor(Math.min(SPECIAL_MID_END, n) - 1);
-      bands += '<rect x="' + b5s.toFixed(1) + '" y="' + padT + '" width="' + (b5e - b5s).toFixed(1) + '" height="' + innerH + '" fill="#c99a5f" opacity="0.12" />' +
-        '<text x="' + ((b5s + b5e) / 2).toFixed(1) + '" y="' + (padT + 14) + '" font-size="9.5" font-weight="600" fill="#a3763f" text-anchor="middle" font-family="Inter, sans-serif">5% Special Bonus</text>';
-      if (n > SPECIAL_MID_END){
-        var b8s = b5e, b8e = xFor(n - 1);
-        bands += '<rect x="' + b8s.toFixed(1) + '" y="' + padT + '" width="' + (b8e - b8s).toFixed(1) + '" height="' + innerH + '" fill="#4d7a68" opacity="0.12" />' +
-          '<text x="' + ((b8s + b8e) / 2).toFixed(1) + '" y="' + (padT + 14) + '" font-size="9.5" font-weight="600" fill="#3f6656" text-anchor="middle" font-family="Inter, sans-serif">8% Special Bonus</text>';
+      var xLabels = "";
+      var step = n <= 16 ? 2 : (n <= 22 ? 3 : 5);
+      for (var i = 0; i < n; i++){
+        var yr = rows[i].year;
+        if (yr % step === 0 || i === 0){
+          var x = xFor(i);
+          if (hasAge){
+            xLabels += t(x, H - padB + 16 * F, 9.5, "#1c2b3a", "middle", "Age " + (ageStart + yr), "600") +
+                       t(x, H - padB + 28 * F, 8, "#8a8f96", "middle", "Yr " + yr);
+          } else {
+            xLabels += t(x, H - 8, 9.5, "#6b6f76", "middle", "Yr " + yr);
+          }
+        }
       }
+
+      // markers: year 3 (welcome bonus ends) and year 10 (IIP ends, charges stop, special bonus begins)
+      var markers = "";
+      if (rows.length >= 3){
+        var mx3 = xFor(2);
+        markers += '<line x1="' + mx3.toFixed(1) + '" y1="' + padT + '" x2="' + mx3.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#8a94a0" stroke-width="1" stroke-dasharray="3,3" opacity="0.6" />';
+        if (!hasAge) markers += t(mx3, H - 18, 8.5, "#6b6f76", "middle", "welcome bonus ends");
+      }
+      if (rows.length >= 10){
+        var mx10 = xFor(9);
+        var iipLabel = continueAfterIip ? "IIP ends" : "IIP ends, premiums stop";
+        markers += '<line x1="' + mx10.toFixed(1) + '" y1="' + padT + '" x2="' + mx10.toFixed(1) + '" y2="' + (padT + innerH) + '" stroke="#c99a5f" stroke-width="1" stroke-dasharray="3,3" />' +
+          t(mx10, padT - 5, 9, "#a3763f", "middle", iipLabel);
+      }
+
+      // shaded bands for the two Special Bonus stages (only when premiums continue past the IIP)
+      var bands = "";
+      if (continueAfterIip && n > SPECIAL_START){
+        var b5s = xFor(SPECIAL_START - 1), b5e = xFor(Math.min(SPECIAL_MID_END, n) - 1);
+        bands += '<rect x="' + b5s.toFixed(1) + '" y="' + padT + '" width="' + (b5e - b5s).toFixed(1) + '" height="' + innerH + '" fill="#c99a5f" opacity="0.12" />' +
+          t((b5s + b5e) / 2, padT + 14 * F, 9.5, "#a3763f", "middle", "5% Special Bonus", "600");
+        if (n > SPECIAL_MID_END){
+          var b8s = b5e, b8e = xFor(n - 1);
+          bands += '<rect x="' + b8s.toFixed(1) + '" y="' + padT + '" width="' + (b8e - b8s).toFixed(1) + '" height="' + innerH + '" fill="#4d7a68" opacity="0.12" />' +
+            t((b8s + b8e) / 2, padT + 14 * F, 9.5, "#3f6656", "middle", "8% Special Bonus", "600");
+        }
+      }
+
+      // full-screen view: label the end value right on the line so a screenshot carries the headline number
+      var endLabel = "";
+      if (big && n > 1){
+        var ex = xFor(n - 1), ey = yFor(rows[n - 1].value);
+        endLabel = '<circle cx="' + ex.toFixed(1) + '" cy="' + ey.toFixed(1) + '" r="6" fill="#a3763f" stroke="#fff" stroke-width="2" />' +
+          t(ex - 10, ey - 14, 13, "#1c2b3a", "end", fmtMoney(rows[n - 1].value), "700");
+      }
+
+      svgEl.innerHTML =
+        gridLines + bands + markers + area +
+        '<path d="' + d + '" fill="none" stroke="#a3763f" stroke-width="' + (big ? 3.5 : 2.75) + '" />' +
+        gridLabels + xLabels + endLabel +
+        '<g class="hoverLayer"></g>' +
+        '<rect x="' + padL + '" y="0" width="' + innerW + '" height="' + H + '" fill="transparent" />';
+      svgEl.setAttribute("viewBox", "0 0 " + W + " " + H);
+      cs = { rows: rows, padL: padL, padT: padT, innerW: innerW, innerH: innerH, maxVal: maxVal, n: n, W: W, H: H, ageStart: hasAge ? ageStart : null };
     }
 
-    var svgContent =
-      gridLines +
-      bands +
-      markers +
-      '<path d="' + d + '" fill="none" stroke="#a3763f" stroke-width="2.75" />' +
-      gridLabels +
-      xLabels +
-      '<g id="hoverLayer"></g>' +
-      '<rect id="hoverCapture" x="' + padL + '" y="0" width="' + innerW + '" height="' + H + '" fill="transparent" />';
-
-    chartSvg.innerHTML = svgContent;
-
-    chartState = {
-      rows: rows,
-      padL: padL, padT: padT, innerW: innerW, innerH: innerH,
-      maxVal: maxVal, n: n, W: W, H: H
-    };
+    function show(clientX, clientY){
+      if (!cs) return;
+      var svgRect = svgEl.getBoundingClientRect();
+      if (svgRect.width === 0) return;
+      var localX = (clientX - svgRect.left) * (cs.W / svgRect.width);
+      var idx = Math.round(((localX - cs.padL) / cs.innerW) * (cs.n - 1));
+      idx = Math.max(0, Math.min(cs.n - 1, idx));
+      var r = cs.rows[idx];
+      var x = cs.padL + (cs.innerW * idx) / (cs.n - 1);
+      var y = cs.padT + cs.innerH - (cs.innerH * r.value) / cs.maxVal;
+      var hoverLayer = svgEl.querySelector(".hoverLayer");
+      if (hoverLayer){
+        hoverLayer.innerHTML =
+          '<line x1="' + x.toFixed(1) + '" y1="' + cs.padT + '" x2="' + x.toFixed(1) + '" y2="' + (cs.padT + cs.innerH) + '" stroke="#1c2b3a" stroke-width="1" stroke-dasharray="2,3" opacity="0.5" />' +
+          '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (big ? 7 : 5) + '" fill="#a3763f" stroke="#fff" stroke-width="1.5" />';
+      }
+      var head = cs.ageStart !== null ? ('Age ' + (cs.ageStart + r.year) + ' &middot; Policy Year ' + r.year) : ('Policy Year ' + r.year);
+      var html = '<span class="tt-year">' + head + '</span>' +
+        '<div class="tt-row"><span class="tt-dot" style="background:var(--bronze);"></span>Policy value: ' + fmtMoney(r.value) + '</div>' +
+        '<div class="tt-row" style="opacity:.8">Premiums paid to date: ' + fmtMoney(r.cumPrem) + '</div>';
+      var bonusThisYear = r.bonusW + r.bonusS;
+      if (bonusThisYear > 0 || r.cumBonus > 0){
+        var tag = r.bonusW > 0 ? "Welcome Bonus" : (r.specialRate ? (Math.round(r.specialRate * 100) + "% Special Bonus") : "");
+        html += '<div class="tt-bonus">' +
+          (bonusThisYear > 0 ? 'Bonus credited this year: ' + fmtMoney(bonusThisYear) + (tag ? ' (' + tag + ')' : '') + '<br>' : '') +
+          'Total bonuses to date: ' + fmtMoney(r.cumBonus) + '</div>';
+      }
+      ttEl.innerHTML = html;
+      ttEl.classList.add("visible");
+      var wrapRect = wrapEl.getBoundingClientRect();
+      var left = clientX - wrapRect.left + 14;
+      var top = clientY - wrapRect.top - 14;
+      var ttWidth = ttEl.offsetWidth || 190;
+      if (left + ttWidth > wrapRect.width) left = clientX - wrapRect.left - ttWidth - 14;
+      if (left < 0) left = 4;
+      if (top < 0) top = 4;
+      ttEl.style.left = left + "px";
+      ttEl.style.top = top + "px";
+    }
+    function hide(){
+      ttEl.classList.remove("visible");
+      var hoverLayer = svgEl.querySelector(".hoverLayer");
+      if (hoverLayer) hoverLayer.innerHTML = "";
+    }
+    wrapEl.addEventListener("mousemove", function(e){ show(e.clientX, e.clientY); });
+    wrapEl.addEventListener("mouseleave", hide);
+    wrapEl.addEventListener("touchstart", function(e){ if (e.touches && e.touches[0]) show(e.touches[0].clientX, e.touches[0].clientY); }, { passive:true });
+    wrapEl.addEventListener("touchmove", function(e){ if (e.touches && e.touches[0]) show(e.touches[0].clientX, e.touches[0].clientY); }, { passive:true });
+    wrapEl.addEventListener("touchend", hide);
+    return { draw: draw, hide: hide };
   }
 
   function fmtCompact(n){
@@ -6137,72 +6254,74 @@ App.init();
     return "$" + Math.round(n);
   }
 
-  function xForState(cs, i){ return cs.padL + (cs.innerW * i) / (cs.n - 1); }
-  function yForState(cs, v){ return cs.padT + cs.innerH - (cs.innerH * v) / cs.maxVal; }
+  var mainChart = makeChart(chartSvg, chartPlotWrap, chartTooltip, false);
+  var projFull = document.getElementById("projFull");
+  var bigChart = makeChart(document.getElementById("projSvg"), document.getElementById("projPlotWrap"), document.getElementById("projTooltip"), true);
+  var clientNameInput = document.getElementById("clientName");
+  var clientAgeInput = document.getElementById("clientAge");
+  var lastSim = null, lastAnnual = 0;
 
-  function showTooltip(clientX, clientY){
-    if (!chartState) return;
-    var svgRect = chartSvg.getBoundingClientRect();
-    if (svgRect.width === 0) return;
-    var scaleX = chartState.W / svgRect.width;
-    var localX = (clientX - svgRect.left) * scaleX;
+  // age today, or null when left blank / out of range. Entry age for this plan is up to 70.
+  function clientAge(){
+    var v = parseInt(clientAgeInput.value, 10);
+    return (isNaN(v) || v < 0 || v > 80) ? null : v;
+  }
+  function escHtml(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
-    var frac = (localX - chartState.padL) / chartState.innerW;
-    var idx = Math.round(frac * (chartState.n - 1));
-    idx = Math.max(0, Math.min(chartState.n - 1, idx));
-
-    var r = chartState.rows[idx];
-    var x = xForState(chartState, idx);
-    var y = yForState(chartState, r.value);
-
-    var hoverLayer = chartSvg.querySelector("#hoverLayer");
-    if (hoverLayer){
-      hoverLayer.innerHTML =
-        '<line x1="' + x.toFixed(1) + '" y1="' + chartState.padT + '" x2="' + x.toFixed(1) + '" y2="' + (chartState.padT + chartState.innerH) + '" stroke="#1c2b3a" stroke-width="1" stroke-dasharray="2,3" opacity="0.5" />' +
-        '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="5" fill="#a3763f" stroke="#fff" stroke-width="1.5" />';
+  // milestone cards: with an age, end of the 10-year IIP, 55, 65 and the end of the 40-year horizon; else policy years
+  function milestones(rows, age){
+    var years = [];
+    if (age !== null){
+      [10, 55 - age, 65 - age, rows.length].forEach(function(y){ if (y >= 1 && y <= rows.length && years.indexOf(y) < 0) years.push(y); });
+      years.sort(function(a, b){ return a - b; });
+      // drop a milestone that sits within 2 years of the next one, keep the later, rounder age
+      years = years.filter(function(y, i){ return i === years.length - 1 || years[i + 1] - y > 2; });
+    } else {
+      years = [10, 20, 30, rows.length].filter(function(y){ return y <= rows.length; });
     }
-
-    var html = '<span class="tt-year">Policy Year ' + r.year + '</span>' +
-      '<div class="tt-row"><span class="tt-dot" style="background:var(--bronze);"></span>Policy value: ' + fmtMoney(r.value) + '</div>';
-
-    var bonusThisYear = r.bonusW + r.bonusS;
-    if (bonusThisYear > 0 || r.cumBonus > 0){
-      var tag = r.bonusW > 0 ? "Welcome Bonus" : (r.specialRate ? (Math.round(r.specialRate * 100) + "% Special Bonus") : "");
-      html += '<div class="tt-bonus">' +
-        (bonusThisYear > 0 ? 'Bonus credited this year: ' + fmtMoney(bonusThisYear) + (tag ? ' (' + tag + ')' : '') + '<br>' : '') +
-        'Total bonuses to date: ' + fmtMoney(r.cumBonus) + '</div>';
-    }
-    chartTooltip.innerHTML = html;
-    chartTooltip.classList.add("visible");
-
-    var wrapRect = chartPlotWrap.getBoundingClientRect();
-    var left = clientX - wrapRect.left + 14;
-    var top = clientY - wrapRect.top - 14;
-    var ttWidth = chartTooltip.offsetWidth || 190;
-    if (left + ttWidth > wrapRect.width) left = clientX - wrapRect.left - ttWidth - 14;
-    if (left < 0) left = 4;
-    if (top < 0) top = 4;
-    chartTooltip.style.left = left + "px";
-    chartTooltip.style.top = top + "px";
+    return years.slice(-4);
   }
 
-  function hideTooltip(){
-    chartTooltip.classList.remove("visible");
-    var hoverLayer = chartSvg.querySelector("#hoverLayer");
-    if (hoverLayer) hoverLayer.innerHTML = "";
+  function renderProjFull(){
+    if (!lastSim) return;
+    var cfg = freqConfig[state.freq];
+    var age = clientAge();
+    var name = (clientNameInput.value || "").trim();
+    document.getElementById("projTitle").innerHTML = name ? escHtml(name) + "&rsquo;s projected policy value" : "Your projected policy value";
+    var bits = [fmtMoney(state.amount) + " " + cfg.short + " (" + fmtMoney(lastAnnual) + " a year)"];
+    if (age !== null) bits.push("starting at age " + age);
+    bits.push((state.capitalGain * 100).toFixed(1) + "% p.a. assumed growth");
+    bits.push(state.continueAfterIip ? "keeps investing after year 10" : "stops premiums after year 10");
+    document.getElementById("projSub").innerHTML = bits.join(" &middot; ");
+    var rows = lastSim.rows;
+    document.getElementById("projCards").innerHTML = milestones(rows, age).map(function(y){
+      var r = rows[y - 1];
+      var lab = age !== null ? ("Age " + (age + y) + "<em>Policy year " + y + "</em>") : ("Policy year " + y + "<em>" + (y === 10 ? "End of IIP" : "&nbsp;") + "</em>");
+      return '<div class="proj-card"><div class="pc-lab">' + lab + '</div><div class="pc-val">' + fmtMoney(r.value) + '</div><div class="pc-sub">Premiums paid ' + fmtMoney(r.cumPrem) + '</div></div>';
+    }).join("");
+    bigChart.draw(rows, state.continueAfterIip, age);
+    bigChart.hide();
   }
+  function openProjFull(){
+    renderProjFull();
+    projFull.classList.add("open");
+    projFull.setAttribute("aria-hidden", "false");
+  }
+  function closeProjFull(){
+    projFull.classList.remove("open");
+    projFull.setAttribute("aria-hidden", "true");
+    bigChart.hide();
+  }
+  document.getElementById("projExpandBtn").addEventListener("click", openProjFull);
+  // click the chart itself to expand (mouse only, so a tap on a tablet still explores the line)
+  var lastTouch = 0;
+  chartPlotWrap.addEventListener("touchstart", function(){ lastTouch = Date.now(); }, { passive:true });
+  chartPlotWrap.addEventListener("click", function(){ if (Date.now() - lastTouch > 800) openProjFull(); });
+  document.getElementById("projClose").addEventListener("click", closeProjFull);
+  document.addEventListener("keydown", function(e){ if (e.key === "Escape" && projFull.classList.contains("open")) closeProjFull(); });
+  clientNameInput.addEventListener("input", function(){ if (projFull.classList.contains("open")) renderProjFull(); });
+  clientAgeInput.addEventListener("input", function(){ render(); });
 
-  chartPlotWrap.addEventListener("mousemove", function(e){
-    showTooltip(e.clientX, e.clientY);
-  });
-  chartPlotWrap.addEventListener("mouseleave", hideTooltip);
-  chartPlotWrap.addEventListener("touchstart", function(e){
-    if (e.touches && e.touches[0]) showTooltip(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive:true });
-  chartPlotWrap.addEventListener("touchmove", function(e){
-    if (e.touches && e.touches[0]) showTooltip(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive:true });
-  chartPlotWrap.addEventListener("touchend", hideTooltip);
 
   function render(){
     var cfg = freqConfig[state.freq];
@@ -6244,8 +6363,10 @@ App.init();
     document.getElementById("segS8").style.width = (sim.cumS8 / tb * 100) + "%";
     document.getElementById("statBonusesSub").textContent = "That is " + (annual > 0 ? (totalBonus / (annual * (state.continueAfterIip ? HORIZON : 10)) * 100).toFixed(0) : 0) + "% on top of the premiums you paid in";
 
-    buildChart(sim.rows, state.continueAfterIip);
-    hideTooltip();
+    lastSim = sim; lastAnnual = annual;
+    mainChart.draw(sim.rows, state.continueAfterIip, clientAge());
+    mainChart.hide();
+    if (projFull.classList.contains("open")) renderProjFull();
   }
 
   // init
@@ -11119,6 +11240,10 @@ App.init();
   .fvar[data-var="P"]{color:var(--teal);}
   .fvar[data-var="r"]{color:var(--bronze);}
   .fvar[data-var="t"]{color:#5b6bd6;}
+  /* (1 + r) and its power sit in one inline group: inside the flex row a <sup> is a flex item and
+     ignores vertical-align, which dropped the exponent t to the baseline. */
+  .formula-row .fgroup{display:inline; white-space:nowrap;}
+  .formula-row .fexp{font-size:.55em; vertical-align:top; position:relative; top:-.35em; margin-left:.04em;}
   .slide.active .fvar{animation:pulseVar .7s var(--ease) both; animation-delay:calc(var(--vi,0)*140ms + 900ms);}
   @keyframes pulseVar{0%{transform:scale(1);}45%{transform:scale(1.22);}100%{transform:scale(1);}}
 
@@ -11288,7 +11413,7 @@ App.init();
             <span class="fvar" data-var="A" id="letA" style="--vi:0">A</span>
             <span class="op">=</span>
             <span class="fvar" data-var="P" id="letP" style="--vi:1">P</span>
-            <span class="op">(</span>1&nbsp;+&nbsp;<span class="fvar" data-var="r" id="letR" style="--vi:2">r</span><span class="op">)</span><sup class="fvar" data-var="t" id="letT" style="--vi:3; font-size:.55em">t</sup>
+            <span class="fgroup"><span class="op">(</span>1&nbsp;+&nbsp;<span class="fvar" data-var="r" id="letR" style="--vi:2">r</span><span class="op">)</span><sup class="fvar fexp" data-var="t" id="letT" style="--vi:3">t</sup></span>
           </div>
 
           <div class="var-cards">
