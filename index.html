@@ -646,6 +646,30 @@
 #proposalLayer .pp-p3future b{color:var(--pp-ink);font-weight:600}
 #proposalLayer .pp-p3fine{font-size:.66rem;color:var(--pp-muted);line-height:1.5;margin-top:.8rem}
 @media(max-width:900px){#proposalLayer .pp-p3{grid-template-columns:1fr;gap:1.4rem}}
+#proposalLayer .pp-pa3{display:grid;grid-template-columns:.8fr 1.2fr;gap:2.6rem;align-items:center;width:100%}
+#proposalLayer .pp-pa3 .pp-pcol .pp-facts{gap:.5rem;margin-top:.9rem}
+#proposalLayer .pp-pa3 .pp-fact .pp-fv{font-size:1rem}
+#proposalLayer .pp-pa3bonus{margin-top:1rem;background:#fff;border:1.5px solid var(--pp-line);border-radius:14px;padding:.55rem .9rem .5rem}
+#proposalLayer .pp-pa3bonus-h{display:flex;justify-content:space-between;font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--pp-muted);padding-bottom:.3rem}
+#proposalLayer .pp-pa3bonus-r{display:flex;justify-content:space-between;align-items:baseline;gap:.8rem;padding:.35rem 0;border-top:1px solid var(--pp-line)}
+#proposalLayer .pp-pa3bonus-r b{font-size:.84rem;color:var(--pp-ink);font-weight:600}
+#proposalLayer .pp-pa3bonus-r em{display:block;font-style:normal;font-size:.72rem;color:var(--pp-muted);line-height:1.35}
+#proposalLayer .pp-pa3bonus-r .v{font-family:var(--pp-serif);font-size:1.05rem;color:var(--pp-ink);white-space:nowrap}
+#proposalLayer .pp-pa3bonus-t{display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px solid var(--pp-ink);margin-top:.15rem;padding-top:.4rem;font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--pp-muted)}
+#proposalLayer .pp-pa3bonus-t b{font-family:var(--pp-serif);font-size:1.2rem;letter-spacing:0;color:var(--pp-pine);font-weight:500}
+#proposalLayer .pp-pa3cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7rem}
+#proposalLayer .pp-pa3card{background:#fff;border:1.5px solid var(--pp-line);border-top:3px solid var(--pp-gold);border-radius:14px;padding:.8rem 1rem}
+#proposalLayer .pp-pa3card:last-child{border-top-color:var(--pp-pine)}
+#proposalLayer .pp-pa3age{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--pp-terra);font-weight:700}
+#proposalLayer .pp-pa3age span{display:block;letter-spacing:0;text-transform:none;font-weight:500;color:var(--pp-muted);font-size:.74rem}
+#proposalLayer .pp-pa3val{font-family:var(--pp-serif);font-size:clamp(1.35rem,2vw,1.8rem);color:var(--pp-ink);margin:.25rem 0 .1rem}
+#proposalLayer .pp-pa3meta{font-size:.76rem;color:var(--pp-muted);line-height:1.45}
+#proposalLayer .pp-pa3meta b{color:var(--pp-pine)}
+#proposalLayer .pp-pa3chart{margin-top:.8rem;background:#fff;border:1.5px solid var(--pp-line);border-radius:14px;padding:.6rem .8rem .5rem}
+#proposalLayer .pp-pa3legend{display:flex;gap:1.2rem;font-size:.72rem;color:var(--pp-muted);padding:0 .3rem}
+#proposalLayer .pp-pa3legend i{display:inline-block;width:16px;height:3px;border-radius:2px;vertical-align:middle;margin-right:.4rem}
+#proposalLayer .pp-pa3legend i.dash{background:repeating-linear-gradient(90deg,#8A8274 0 5px,transparent 5px 9px)}
+@media(max-width:900px){#proposalLayer .pp-pa3{grid-template-columns:1fr;gap:1.2rem}}
 #proposalLayer .pp-cirelapse-body b{color:var(--pp-text)}
 #proposalLayer .pp-cichips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1.4rem}
 #proposalLayer .pp-cichip{padding:.35rem .85rem;border:1px solid var(--pp-line);border-radius:20px;font-size:.78rem;color:#5c564c;background:#FBF7EF}
@@ -1096,6 +1120,7 @@
         <button class="btn small" onclick="App.propAddPolicy('term','AIA Secure Flexi Term')">+ Secure Flexi Term</button>
         <button class="btn small" onclick="App.propAddPolicy('ci','AIA Ultimate Critical Cover')">+ Ultimate Critical Cover</button>
         <button class="btn small" onclick="App.propAddPolicy('protect3','AIA Protect 3')">+ AIA Protect 3</button>
+        <button class="btn small" onclick="App.propAddPolicy('proachiever','AIA Pro Achiever 3.0')">+ AIA Pro Achiever 3.0</button>
         <button class="btn small" onclick="App.propAddPolicy('accident','AIA Solitaire Personal Accident')">+ Solitaire Personal Accident</button>
         <button class="btn small" onclick="App.propAddPolicy('hospital','A')">+ HealthShield Gold Max A</button>
         <button class="btn small" onclick="App.propAddPolicy('hospital','B')">+ HealthShield Gold Max B</button>
@@ -3535,6 +3560,7 @@ const App = {
     opt.premium = pr.policies.map(pol=>{
       if(pol.kind==='hospital'){ const t=ppHospitalTotals(pol); return { plan: (pol.name||'')+(pol.riderName?' + '+pol.riderName:''), medisave: t.totalMedisave, cash: t.totalCash }; }
       if(pol.kind==='accident') return { plan: pol.name||'', medisave: 0, cash: ppAccidentTotal(pol) };
+      if(pol.kind==='proachiever') return { plan: pol.name||'', medisave: 0, cash: pa3Annual(pol) };
       // wholelife, term, ci all keep a single annual cash premium field
       return { plan: pol.name||'', medisave: 0, cash: num(pol.premium) };
     });
@@ -3609,7 +3635,7 @@ const App = {
     } else if(name){
       pol.name=name;
     }
-    if(kind==='term' || kind==='protect3'){
+    if(kind==='term' || kind==='protect3' || kind==='proachiever'){
       const p=this.person();
       if(p && p.dob){ const a=ageFrom(p.dob); if(a!=null) pol.startAge=String(a); }
     }
@@ -3703,7 +3729,7 @@ const App = {
   },
   renderProposalPolicies(){
     const pr=this.currentProposal();
-    const kindLabel={wholelife:'Whole Life',hospital:'Hospital & Surgical',accident:'Personal Accident',ci:'Critical Illness',term:'Term Life',protect3:'Critical Illness (Protect 3)'};
+    const kindLabel={wholelife:'Whole Life',hospital:'Hospital & Surgical',accident:'Personal Accident',ci:'Critical Illness',term:'Term Life',protect3:'Critical Illness (Protect 3)',proachiever:'Investment (Pro Achiever)'};
     $('#propPolicyBlocks').innerHTML=(pr.policies||[]).map((pol,i)=>{
       let body='';
       if(pol.kind==='wholelife'){
@@ -3758,6 +3784,28 @@ const App = {
           <div class="cardhint">The "How claims are counted" box and the Ultimate Relapse Benefit callout (UCC Enhancer rider: 5 major conditions, 50% of IA per claim, 100% of IA total, 2-year wait from last diagnosis) are fixed product wording and shown automatically below — no need to add it here.</div>
           <div class="pp-editor-sub">Feature chips (comma separated)</div>
           <input type="text" placeholder="e.g. 150 Medical Conditions (73 illnesses), Ultimate Reset Benefit, Death Benefit, Catastrophic CI Benefit (Enhancer), Ultimate Relapse Benefit (Enhancer)" value="${esc((pol.features||[]).join(', '))}" oninput="App.propPolicyFeatures(${i},this.value)">
+        `;
+      } else if(pol.kind==='proachiever'){
+        const paRows=pa3Project(pol,75), paStart=pa3StartAge(pol);
+        const paHint=pa3Milestones(pol).map(a=>{ const r=paRows[a-paStart-1]; return r?`Age ${a}: <b>${fmt(Math.round(r.value))}</b>`:''; }).filter(Boolean).join(' &middot; ');
+        body=`
+          <div class="form-row">
+            <div><label>Type / label</label><input type="text" placeholder="Investment-linked plan" value="${esc(pol.type)}" oninput="App.propPolicyField(${i},'type',this.value)"></div>
+            <div><label>Plan name</label><input type="text" list="dlPropPlans" placeholder="AIA Pro Achiever 3.0" value="${esc(pol.name)}" oninput="App.propPolicyField(${i},'name',this.value)"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Pays every</label><select onchange="App.propPolicyField(${i},'freq',this.value); App.renderProposalPolicies()">${[['monthly','Month'],['quarterly','Quarter'],['semiannual','Half-year'],['annual','Year']].map(o=>`<option value="${o[0]}" ${(pol.freq||'monthly')===o[0]?'selected':''}>${o[1]}</option>`).join('')}</select></div>
+            <div><label>Premium per payment (S$)</label><input type="text" inputmode="decimal" class="money" placeholder="e.g. 500" value="${fmt2(pol.amount)}" oninput="App.propPolicyField(${i},'amount',this.value)" onchange="App.renderProposalPolicies()"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Start age (auto-filled from DOB)</label><input type="number" placeholder="e.g. 30" value="${esc(pol.startAge)}" oninput="App.propPolicyField(${i},'startAge',this.value)" onchange="App.renderProposalPolicies()"></div>
+            <div><label>Gender (sets the insurance charge)</label><select onchange="App.propPolicyField(${i},'gender',this.value); App.renderProposalPolicies()"><option value="M" ${pol.gender!=='F'?'selected':''}>Male</option><option value="F" ${pol.gender==='F'?'selected':''}>Female</option></select></div>
+          </div>
+          <div class="form-row">
+            <div><label>Projected annual return, after fund fees (%)</label><input type="number" step="0.5" min="0" max="15" placeholder="e.g. 6" value="${esc(pol.returnPct)}" oninput="App.propPolicyField(${i},'returnPct',this.value)" onchange="App.renderProposalPolicies()"></div>
+            <div><label>Premium payment</label><select onchange="App.propPolicyField(${i},'payMode',this.value); App.renderProposalPolicies()"><option value="keep" ${pol.payMode!=='iip10'?'selected':''}>Keep paying throughout</option><option value="iip10" ${pol.payMode==='iip10'?'selected':''}>Stop after 10 years</option></select></div>
+          </div>
+          <div class="cardhint">${fmt(pa3Annual(pol))} a year, Tier ${pa3Tier(pa3Annual(pol))}. Projected policy value net of policy charges: ${paHint||'start age is past 75'}.</div>
         `;
       } else if(pol.kind==='protect3'){
         const p3Rate=ppProtect3EntryRate(pol);
@@ -4163,6 +4211,145 @@ function ppProtect3Section(pol){
   </div>${ppPolicyFoot()}</section>`;
 }
 
+// ---------- AIA Pro Achiever 3.0 : proposal policy page (projection net of policy charges) ----------
+// Source: AIA Pro Achiever 3.0 Product Summary ver 2.0 (092024), as extracted in the advisor notes template.
+// Modelled monthly: regular premiums (no premium charge on regular premiums), Welcome Bonus yrs 1-3 by tier,
+// Special Bonus 5% of premium yrs 10-20 and 8% from yr 21 (only while premiums are paid),
+// Supplementary Charge 3.90% p.a. monthly for policy years 1-10, Benefit Charge monthly on Sum-at-Risk
+// (premiums paid - policy value, if positive), and the Full Surrender Charge for surrender values in yrs 1-10.
+// Fund management fees sit inside the fund unit price, so the return Ben keys in is the fund return after fund fees.
+const PA3_FREQ = { monthly:{n:12,label:'month'}, quarterly:{n:4,label:'quarter'}, semiannual:{n:2,label:'half-year'}, annual:{n:1,label:'year'} };
+const PA3_WELCOME = { A:[0.15,0.18,0.20], B:[0.10,0.13,0.15], C:[0.05,0.08,0.10], D:[0.05,0,0] };
+const PA3_SURRENDER = [1,1,0.8,0.7,0.6,0.5,0.45,0.35,0.2,0.05]; // policy yrs 1-10, 0% from yr 11
+// Benefit Charge, annual rate per S$1,000 Sum-at-Risk at sample attained ages (Appendix A extract).
+// Ages between samples are interpolated on a log scale; the full Appendix A table gives AIA's exact rate.
+const PA3_BC_AGES = [20,30,40,50,60,70,80];
+const PA3_BC = { M:[0.71,0.76,1.33,3.59,10.89,28.90,68.09], F:[0.65,0.65,0.98,2.39,8.44,21.81,53.89] };
+function pa3Tier(annual){ return annual>=12000?'A':annual>=7200?'B':annual>=4800?'C':'D'; }
+function pa3BenefitRate(age, gender){
+  const r=PA3_BC[gender==='F'?'F':'M'], A=PA3_BC_AGES;
+  if(age<=A[0]) return r[0];
+  if(age>=A[A.length-1]){ const g=r[r.length-1]/r[r.length-2]; return r[r.length-1]*Math.pow(g,(age-A[A.length-1])/10); }
+  let k=0; while(A[k+1]<age) k++;
+  const f=(age-A[k])/(A[k+1]-A[k]);
+  return Math.exp(Math.log(r[k])+(Math.log(r[k+1])-Math.log(r[k]))*f);
+}
+function pa3Annual(pol){ const f=PA3_FREQ[pol.freq]||PA3_FREQ.monthly; return num(pol.amount)*f.n; }
+function pa3StartAge(pol){ return Math.max(0, Math.min(70, Math.floor(num(pol.startAge)) || 30)); }
+// returns one row per policy year: age at end of year, policy value, surrender value, premiums paid, bonuses, charges
+function pa3Project(pol, toAge){
+  const f=PA3_FREQ[pol.freq]||PA3_FREQ.monthly, annual=pa3Annual(pol), pay=annual/f.n, gap=12/f.n;
+  const wr=PA3_WELCOME[pa3Tier(annual)], g=num(pol.returnPct)/100, gm=Math.pow(1+g,1/12)-1;
+  const start=pa3StartAge(pol), years=Math.max(1,(toAge||75)-start), keepPaying=pol.payMode!=='iip10';
+  let value=0, prem=0, bonus=0, charges=0, bW=0, bS5=0, bS8=0; const rows=[];
+  for(let y=1;y<=years;y++){
+    const paying = y<=10 || keepPaying;
+    const age = start+y-1;                       // attained age during this policy year
+    const bcMonthly = pa3BenefitRate(age, pol.gender)/1000/12;
+    for(let m=0;m<12;m++){
+      if(paying && m%gap===0){
+        value+=pay; prem+=pay;
+        let b=0;
+        if(y<=3){ const w=wr[y-1]*pay; b+=w; bW+=w; }
+        if(y>=10 && y<=20){ b+=0.05*pay; bS5+=0.05*pay; } else if(y>20){ b+=0.08*pay; bS8+=0.08*pay; }
+        value+=b; bonus+=b;
+      }
+      let c=0;
+      if(y<=10) c+=value*0.039/12;               // Supplementary Charge
+      const sar=prem-value; if(sar>0) c+=sar*bcMonthly; // Benefit Charge
+      value-=c; charges+=c; if(value<0) value=0;
+      value+=value*gm;
+    }
+    const sc = y<=10 ? PA3_SURRENDER[y-1] : 0;
+    rows.push({ year:y, age:start+y, value, surrender:value*(1-sc), prem, bonus, charges, bW, bS5, bS8 });
+  }
+  return rows;
+}
+function pa3Milestones(pol){
+  const start=pa3StartAge(pol);
+  return [55,65,75].filter(a=>a>start);
+}
+function ppPa3Chart(pol, rows){
+  const INK='#173A36',GOLD='#C39B5A',MUT='#8A8274',LINE='#E3D9C6',PINE='#1F4B45';
+  const W=640,H=300,pl=58,pr=20,pt=24,pb=40, iw=W-pl-pr, ih=H-pt-pb;
+  const n=rows.length, start=pa3StartAge(pol);
+  const maxV=Math.max(1,...rows.map(r=>Math.max(r.value,r.prem)))*1.1;
+  const X=i=>pl+iw*(i+1)/n, Y=v=>pt+ih-ih*v/maxV;
+  const pts=[[pl,Y(0)]].concat(rows.map((r,i)=>[X(i),Y(r.value)]));
+  const line=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const area=line+` L${X(n-1).toFixed(1)},${pt+ih} L${pl},${pt+ih} Z`;
+  const premLine=[[pl,Y(0)]].concat(rows.map((r,i)=>[X(i),Y(r.prem)])).map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const compact=v=>v>=1e6?'S$'+(v/1e6).toFixed(1)+'M':v>=1e3?'S$'+Math.round(v/1e3)+'k':'S$'+Math.round(v);
+  let grid='';
+  for(let k=0;k<=4;k++){ const v=maxV*k/4, y=Y(v); grid+=`<line x1="${pl}" y1="${y.toFixed(1)}" x2="${W-pr}" y2="${y.toFixed(1)}" stroke="${LINE}" stroke-width="1"/><text x="${pl-8}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="10.5" fill="${MUT}" font-family="Inter,sans-serif">${compact(v)}</text>`; }
+  let xl=`<text x="${pl}" y="${H-14}" text-anchor="middle" font-size="11" fill="${MUT}" font-family="Inter,sans-serif">${start}</text>`;
+  const marks=pa3Milestones(pol).map(a=>{ const i=a-start-1; if(i<0||i>=n) return ''; const x=X(i), y=Y(rows[i].value);
+    return `<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x.toFixed(1)}" y2="${pt+ih}" stroke="${GOLD}" stroke-dasharray="3,3"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5.5" fill="${GOLD}" stroke="#fff" stroke-width="2"/><text x="${x.toFixed(1)}" y="${H-14}" text-anchor="middle" font-size="11.5" font-weight="700" fill="${INK}" font-family="Inter,sans-serif">${a}</text>`; }).join('');
+  if(n>=10){ const x=X(9); xl+=`<line x1="${x.toFixed(1)}" y1="${pt}" x2="${x.toFixed(1)}" y2="${pt+ih}" stroke="${MUT}" stroke-dasharray="2,4" opacity=".6"/><text x="${x.toFixed(1)}" y="${pt-8}" text-anchor="middle" font-size="10" fill="${MUT}" font-family="Inter,sans-serif">Charges end (yr 10)</text>`; }
+  return `<svg class="pp-chartsvg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+    ${grid}${xl}
+    <path d="${area}" fill="${GOLD}" opacity=".12"/>
+    <path d="${premLine}" fill="none" stroke="${MUT}" stroke-width="1.6" stroke-dasharray="5,4"/>
+    <path d="${line}" fill="none" stroke="${PINE}" stroke-width="3"/>
+    ${marks}
+    <text x="${pl-16}" y="${H-14}" text-anchor="end" font-size="10.5" fill="${MUT}" font-family="Inter,sans-serif">Age</text>
+  </svg>`;
+}
+function ppPa3Section(pol){
+  const start=pa3StartAge(pol), annual=pa3Annual(pol), f=PA3_FREQ[pol.freq]||PA3_FREQ.monthly;
+  const ms=pa3Milestones(pol);
+  const rows=pa3Project(pol, 75);
+  const tier=pa3Tier(annual), ret=num(pol.returnPct);
+  const cards = ms.length ? ms.map((a,k)=>{ const r=rows[a-start-1]; if(!r) return '';
+      const mult = r.prem ? (r.value/r.prem) : 0;
+      return `<div class="pp-pa3card pp-reveal" style="--i:${3+k}">
+        <div class="pp-pa3age">At age ${a}<span>in ${a-start} years</span></div>
+        <div class="pp-pa3val">${fmt(Math.round(r.value))}</div>
+        <div class="pp-pa3meta">Premiums paid ${fmt(Math.round(r.prem))}${mult?` &middot; <b>${mult.toFixed(1)}x</b>`:''}</div>
+        ${r.surrender<r.value-1?`<div class="pp-pa3meta">Surrender value ${fmt(Math.round(r.surrender))}</div>`:''}
+      </div>`; }).join('')
+    : `<div class="pp-pa3card"><div class="pp-pa3meta">Start age ${start} is past the projection ages (55, 65, 75).</div></div>`;
+  const payLine = pol.payMode==='iip10' ? 'Premiums paid for 10 years, then stopped' : 'Premiums paid throughout';
+  // bonus breakdown: per-year amount from the premium, and totals credited up to the last projection age
+  const wr=PA3_WELCOME[tier], last=rows[rows.length-1]||{bW:0,bS5:0,bS8:0}, endAge=last.age||75;
+  const wPer=wr.map((r,k)=>r>0?`Yr ${k+1}: ${fmt(Math.round(annual*r))}`:'').filter(Boolean).join(' &middot; ');
+  const stopped=pol.payMode==='iip10';
+  const yrsTo=(a,b)=>Math.max(0,Math.min(b,rows.length)-a+1);
+  const n5=stopped?(rows.length>=10?1:0):yrsTo(10,20), n8=stopped?0:Math.max(0,rows.length-20);
+  const bonusRows=[
+    ['Welcome Bonus','Years 1 to 3', wPer||'None at this tier', last.bW],
+    ['Special Bonus 5%','Years 10 to 20', n5?`${fmt(Math.round(annual*0.05))} / year`:'Not received', last.bS5],
+    ['Special Bonus 8%','Year 21 onwards', n8?`${fmt(Math.round(annual*0.08))} / year`:(stopped?'Not received, premiums stop at yr 10':'Not reached by age '+endAge), last.bS8]
+  ];
+  const bonusTotal=last.bW+last.bS5+last.bS8;
+  const bonusHtml=`<div class="pp-pa3bonus pp-reveal" style="--i:4">
+      <div class="pp-pa3bonus-h"><span>Bonuses, based on your premium</span><span>Total to age ${endAge}</span></div>
+      ${bonusRows.map(r=>`<div class="pp-pa3bonus-r"><div><b>${r[0]}</b><em>${r[1]} &middot; ${r[2]}</em></div><div class="v">${fmt(Math.round(r[3]))}</div></div>`).join('')}
+      <div class="pp-pa3bonus-t"><span>Total bonuses</span><b>${fmt(Math.round(bonusTotal))}</b></div>
+    </div>`;
+  return `<section class="pp-slide pp-policy"><div class="pp-pad pp-pa3">
+    <div class="pp-pcol">
+      <div class="pp-kicker pp-reveal" style="--i:0">${esc(pol.type||'Investment-linked plan')}</div>
+      <h2 class="pp-reveal" style="--i:1;font-size:clamp(1.9rem,3vw,2.7rem);margin:.5rem 0">${esc(pol.name)}</h2>
+      <div class="pp-lead pp-reveal" style="--i:2;margin-top:.2rem">Regular investing with bonuses that grow the longer you stay invested.</div>
+      <div class="pp-facts pp-reveal" style="--i:3">
+        <div class="pp-fact"><div class="pp-fl">Premium</div><div class="pp-fv">${fmt(num(pol.amount))} / ${f.label} <span style="font-size:.8rem;color:var(--pp-muted)">(${fmt(annual)} / year, Tier ${tier})</span></div></div>
+        <div class="pp-fact"><div class="pp-fl">Starting age</div><div class="pp-fv">${start}</div></div>
+        <div class="pp-fact"><div class="pp-fl">Assumed return</div><div class="pp-fv">${ret.toFixed(ret%1?1:0)}% p.a. <span style="font-size:.8rem;color:var(--pp-muted)">after fund fees, not guaranteed</span></div></div>
+        <div class="pp-fact"><div class="pp-fl">Premium payment</div><div class="pp-fv">${payLine}</div></div>
+      </div>
+      ${bonusHtml}
+    </div>
+    <div class="pp-reveal" style="--i:2">
+      <div class="pp-pa3cards">${cards}</div>
+      <div class="pp-pa3chart">${ppPa3Chart(pol, rows)}
+        <div class="pp-pa3legend"><span><i style="background:#1F4B45"></i>Projected policy value</span><span><i class="dash"></i>Total premiums paid</span></div>
+      </div>
+      <div class="pp-p3fine">Projected policy value net of policy charges: Supplementary Charge (3.90% p.a., years 1 to 10) and Benefit Charge (insurance cost on the sum at risk, using AIA sample rates by age). Includes Welcome Bonus and Special Bonus. Fund management fees are reflected in the assumed return. Surrender value shown where a surrender charge still applies. Illustration only, not a Benefit Illustration; returns are not guaranteed and the policy value can fall.</div>
+    </div>
+  </div>${ppPolicyFoot()}</section>`;
+}
+
 function blankPolicy(kind){
   // Multiplier ends age is always 65 or 75, Covered-to age is fixed at 100 for this product, and
   // Term is always a 15/20/25-year premium-payment term — all three are dropdowns/locked in the
@@ -4185,6 +4372,7 @@ function blankPolicy(kind){
     // pulled straight from Ben's AIA UCC feature infographic (IMG_2761)
     features:['150 Medical Conditions (73 illnesses)','Ultimate Reset Benefit','Death Benefit','Catastrophic CI Benefit (Enhancer)','Ultimate Relapse Benefit (Enhancer)'],
     premium:'' };
+  if(kind==='proachiever') return { kind, type:'Investment-linked plan · Wealth accumulation', name:'AIA Pro Achiever 3.0', freq:'monthly', amount:'500', startAge:'', gender:'M', returnPct:'6', payMode:'keep' };
   if(kind==='protect3') return { kind, type:'Critical Illness · Cancer, Heart Attack, Stroke', name:'AIA Protect 3', planTier:'3', startAge:'', renewal:'yearly', gender:'M', smoker:'NS', premium:'', premiumManual:false };
   if(kind==='term') return { kind, type:'Term Life · Death / TPD', name:'AIA Secure Flexi Term', sumAssured:'', ciLate:'', ciEarly:'', term:'30', startAge:'', premium:'' };
   if(kind==='accident') return { kind, type:'Personal Accident', name:'AIA Solitaire Personal Accident', planTier:2, occClass:'classes12', includeHospRider:true };
@@ -4581,6 +4769,7 @@ function ppPolicySection(pol, person){
   if(pol.kind==='ci') return ppCiSection(pol);
   if(pol.kind==='term') return ppTermSection(pol);
   if(pol.kind==='protect3') return ppProtect3Section(pol);
+  if(pol.kind==='proachiever') return ppPa3Section(pol);
   if(pol.kind==='accident') return ppSolitairePaSection(pol);
   return ppBenefitSection(pol, person); // hospital
 }
